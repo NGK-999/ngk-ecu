@@ -56,3 +56,16 @@ painel de carro, com velocidade/RPM grandes e temperatura/óleo visíveis. Sem
 barra fixa de navegação no modo painel. Duplo toque no painel retorna ao menu.
 Essa exceção de gesto foi solicitada pelo responsável e não deve ser removida
 por diretrizes antigas de navegação exclusivamente por cliques simples.
+
+## Simulador Linux
+
+`simulator/ngk_simulator/`: modelo e codec puros em `model.py`/`protocol.py`,
+Qt somente em `window.py`, serial somente no worker `link.py` com transporte
+injetável e snapshot mais recente. App começa offline; abrir não conecta a USB.
+`sh scripts/test-simulator.sh` executa Qt offscreen e transporte em memória;
+nenhum teste automatizado abre porta física. BancadaUSB é etapa separada.
+
+Fonte USB é sempre identificada como SIM USB no firmware; TTL750ms retira
+valores/alertas antigos. Nenhum frame/controlador do simulador habilita GPIO,
+sensor físico, atuador, injeção ou ignição. Não persistir amostras/serial bruto.
+Atalho é do usuário local; dependências ficam na .venv, sem instalação no sistema.

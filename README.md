@@ -40,6 +40,23 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
   descompilação Xtensa.
   Instalar a ferramenta não identifica automaticamente tela ou GPIOs.
 
+## Simulador Linux
+
+Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
+RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
+simulação pela USB para o firmware 0.4.0-simulator. O painel marcaSIM USB e deixa
+os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
+desabilitados. Modelo ilustrativo, sem calibração do veículo.
+
+```sh
+./scripts/simulator
+```
+
+[Uso, instalação e testes](simulator/README.md). O aplicativo inicia desconectado,
+sem gravar amostras. Atalho local: **NGK ECU Simulador**.
+
+![Simulador NGK ECU, janela Linux em modo offline](docs/images/simulator.png)
+
 ## Documentação
 
 - [Escopo e próximos marcos](docs/escopo.md)
@@ -74,12 +91,13 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.3.0-cockpit** foi instalada em bancada: cockpit assimétrico, RPM
+O cockpit **0.3.0**, preservado no firmware **0.4.0-simulator**, foi instalado em bancada: cockpit assimétrico, RPM
 em barra crescente, números condensados grandes, índice de ajustes, perfis SD e
 Wi-Fi/BLE sob demanda. Os rádios começam desligados. A memória desta unidade
 limitou a ativação simultânea: usar um por vez; a interface informa recusa.
 
-Doze executáveis nativos, doze testes de fonte e três builds passaram.
+Quatorze executáveis nativos, doze testes de fonte, 35 testes do simulador
+e três builds passaram. A métrica abaixo foi medida no cockpit 0.3.0:
 Medição própria sintética: **57,6 apresentações parciais/s**, p95 de **17,1 ms**;
 com busca Wi-Fi ou anúncio BLE separado, cerca de 57,5–57,6/s. Não são telas completas
 por segundo nem medição óptica. Relatório e limites em [validação](docs/validacao.md).

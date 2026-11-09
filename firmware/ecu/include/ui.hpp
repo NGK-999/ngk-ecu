@@ -10,6 +10,8 @@ struct BenchmarkReport {
 };
 // These functions belong exclusively to the main UI task.
 bool begin();
+// Check readiness and schedule the cockpit before main begins a USB session.
+bool startUsbSimulation();
 void tick();
 void setStorage(bool mounted, std::uint32_t capacityMiB);
 // Explicit synthetic test: 20 full redraws, then 10 s of small updates at 17 ms.

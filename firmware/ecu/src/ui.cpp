@@ -5,6 +5,8 @@
 #include "profile_service.hpp"
 #include "radio.hpp"
 #include "cockpit_fonts.h"
+#include "simulation_service.hpp"
+#include "simulation_view.hpp"
 
 #include <Preferences.h>
 #include <algorithm>
@@ -60,6 +62,15 @@ lv_obj_t* unitLabel = nullptr;
 lv_obj_t* settingsStateLabel = nullptr;
 lv_obj_t* detailLabel = nullptr;
 lv_obj_t* keyboardValue = nullptr;
+lv_obj_t* temperatureValue = nullptr;
+lv_obj_t* oilValue = nullptr;
+lv_obj_t* rpmScaleLabel = nullptr;
+lv_obj_t* gearLabel = nullptr;
+lv_obj_t* gearValue = nullptr;
+lv_obj_t* dashboardHintLabel = nullptr;
+lv_obj_t* faultFooterLabel = nullptr;
+lv_obj_t* sensorSourceLabel = nullptr;
+std::array<lv_obj_t*, 4> sensorValues{};
 std::array<lv_obj_t*, 3> settingValues{}, networkLabels{}, networkButtons{};
 std::array<lv_obj_t*, 18> keyLabels{}, keyButtons{};
 std::array<lv_obj_t*, 20> rpmSegments{};
@@ -82,6 +93,7 @@ std::array<char, 96> localNotice{};
 std::uint32_t localNoticeAt = 0;
 bool localNoticeActive = false, localNoticeFailure = false;
 bool demoEnabled = false, keyboardForSsid = false, credentialActive = false;
+bool usbWasEnabled = false;
 std::uint32_t demoStartedAt = 0, demoUpdatedAt = 0, lastServicesAt = 0;
 unsigned settingsGroup = 0, networkPage = 0, keyboardBank = 0;
 LocalTextEntry textEntry;
@@ -93,7 +105,7 @@ enum Action : unsigned {
     ManualSsid, UseSavedWifi, ToggleBle, DiscoverBle, EraseBonds,
     PreviousNetworks, NextNetworks, BackWifi, CancelKeyboard, Backspace,
     PreviousKeys, NextKeys, SubmitKeyboard, ConfirmYes, ConfirmNo,
-    AcceptPairing, RejectPairing, OpenSettingsHome, UnitsPage, RpmPage, EditSetting = 100, KeyInput = 200, NetworkInput = 300, CategoryInput = 400
+    AcceptPairing, RejectPairing, OpenSettingsHome, UnitsPage, RpmPage, StopUsbSimulation, EditSetting = 100, KeyInput = 200, NetworkInput = 300, CategoryInput = 400
 };
 enum class Confirmation : std::uint8_t { None, Import, Bonds };
 Confirmation confirmation = Confirmation::None;
@@ -170,6 +182,26 @@ void setText(lv_obj_t* object, const char* value) {
     if (object && std::strcmp(lv_label_get_text(object), value) != 0) {
         lv_label_set_text(object, value);
     }
+}
+
+void setHidden(lv_obj_t* object, bool hidden) {
+    if (!object || lv_obj_has_flag(object, LV_OBJ_FLAG_HIDDEN) == hidden) return;
+    if (hidden) lv_obj_add_flag(object, LV_OBJ_FLAG_HIDDEN);
+    else lv_obj_clear_flag(object, LV_OBJ_FLAG_HIDDEN);
+}
+
+void setTextColor(lv_obj_t* object, std::uint32_t color) {
+    if (!object) return;
+    const auto wanted = lv_color_hex(color);
+    if (lv_obj_get_style_text_color(object, LV_PART_MAIN).full != wanted.full)
+        lv_obj_set_style_text_color(object, wanted, 0);
+}
+
+void setNumber(lv_obj_t* object, bool valid, std::int32_t number) {
+    if (!valid) { setText(object, unknown); return; }
+    char value[16];
+    std::snprintf(value, sizeof(value), "%ld", static_cast<long>(number));
+    setText(object, value);
 }
 
 void noScroll(lv_obj_t* object) {
@@ -339,7 +371,7 @@ void refreshSettingsView() {
     } else if (settingsGroup == 4) setText(modeLabel, storageMounted ? "SD PRONTO" : "SD AUSENTE");
     else if (settingsGroup == 5) setText(modeLabel, radioView.wifiEnabled ? "WI-FI LIGADO" : "WI-FI OFF");
     else if (settingsGroup == 6) setText(modeLabel, radioView.bleEnabled ? "BLE LIGADO" : "BLE OFF");
-    else setText(modeLabel, demoEnabled ? "DEMO ATIVO" : "LOCAL");
+    else setText(modeLabel, simulation::snapshot().enabled ? "SIM USB" : (demoEnabled ? "DEMO ATIVO" : "LOCAL"));
     char value[64];
     if (settingsGroup == 0) {
         std::snprintf(value, sizeof(value), "%u %%", unsigned(settings.brightness));
@@ -363,7 +395,7 @@ void refreshSettingsView() {
     } else if (settingsGroup == 3) {
         setText(settingValues[0], calibrationStored ? "Calibrar toque (salvo)" : "Calibrar toque");
         setText(settingValues[1], demoEnabled ? "Desligar DEMO" : "Ativar DEMO sintetico");
-        setText(detailLabel, "DEMO nao ativa entradas do motor.");
+        setText(detailLabel, simulation::snapshot().enabled ? "USB sintetico; encerrar libera DEMO." : "DEMO nao ativa entradas do motor.");
     } else if (settingsGroup == 4) {
         setText(detailLabel, profiles::statusText(profileView.status));
     } else if (settingsGroup == 5) {
@@ -438,6 +470,9 @@ void renderPage(Page next) {
     page = next;
     storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
+    temperatureValue = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
+    dashboardHintLabel = faultFooterLabel = sensorSourceLabel = nullptr;
+    sensorValues.fill(nullptr);
     settingValues.fill(nullptr); networkLabels.fill(nullptr); networkButtons.fill(nullptr);
     keyLabels.fill(nullptr); keyButtons.fill(nullptr); rpmSegments.fill(nullptr);
     segmentColors.fill(0x202020);
@@ -486,7 +521,10 @@ void renderPage(Page next) {
         rpmSignal = label(pageContent, noSignal, 228, 36, 84, &lv_font_montserrat_12, secondary);
         char scale[32];
         std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
-        label(pageContent, scale, 228, 57, 84, &lv_font_montserrat_12, secondary);
+        rpmScaleLabel = label(pageContent, scale, 228, 57, 84, &lv_font_montserrat_12, secondary);
+        gearLabel = label(pageContent, "MARCHA", 228, 36, 84, &lv_font_montserrat_12, warning);
+        gearValue = label(pageContent, unknown, 228, 45, 84, &lv_font_montserrat_28);
+        setHidden(gearLabel, true); setHidden(gearValue, true);
         for (unsigned index = 0; index < rpmSegments.size(); ++index) {
             const auto height = 12 + int(index) / 2;
             rpmSegments[index] = surface(pageContent, {8 + int(index) * 15, rpmBar.y + rpmBar.h - height, 12, height}, 0x202020, 0);
@@ -512,15 +550,17 @@ void renderPage(Page next) {
         label(pageContent, "TEMP. BLOCO", 8, 136, 116, &lv_font_montserrat_12, secondary);
         label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "C" : "F",
               136, 136, 20, &lv_font_montserrat_12, accent);
-        label(pageContent, unknown, 8, 151, 148, &lv_font_montserrat_28);
+        temperatureValue = label(pageContent, unknown, 8, 151, 148, &lv_font_montserrat_28);
         divider = surface(pageContent, {8, 189, 148, 1}, border, 0);
         lv_obj_set_style_border_width(divider, 0, 0);
         label(pageContent, "OLEO", 8, 201, 52, &lv_font_montserrat_12, secondary);
-        label(pageContent, noSignal, 72, 201, 84, &lv_font_montserrat_12);
+        oilValue = label(pageContent, noSignal, 72, 201, 84, &lv_font_montserrat_12);
         speedSignal = label(pageContent, noSignal, 8, dashboardHint.y, 96, &lv_font_montserrat_12, secondary);
-        auto* hint = label(pageContent, "2 toques: menu", 112, dashboardHint.y, 200,
+        dashboardHintLabel = label(pageContent, "2 toques: menu", 112, dashboardHint.y, 200,
                            &lv_font_montserrat_12, secondary);
-        lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_RIGHT, 0);
+        lv_obj_set_style_text_align(dashboardHintLabel, LV_TEXT_ALIGN_RIGHT, 0);
+        faultFooterLabel = label(pageContent, "", 8, dashboardHint.y, 304, &lv_font_montserrat_12, danger);
+        setHidden(faultFooterLabel, true);
     } else if (page == Page::SettingsHome) {
         constexpr std::array<const char*, 6> names{{"Tela", "Instrumentos", "Toque / DEMO", "Perfis SD", "Wi-Fi", "Bluetooth"}};
         for (unsigned index = 0; index < names.size(); ++index) {
@@ -533,9 +573,9 @@ void renderPage(Page next) {
         constexpr std::array<const char*, 4> names{{"RPM", "Bloco", "Velocidade", "Oleo (chave)"}};
         for (std::size_t i = 0; i < names.size(); ++i) {
             label(panel, names[i], 10, 10 + int(i) * 26, 118, &lv_font_montserrat_14);
-            label(panel, "-- / SEM SINAL", 132, 12 + int(i) * 26, 162, &lv_font_montserrat_12, secondary);
+            sensorValues[i] = label(panel, "-- / SEM SINAL", 132, 12 + int(i) * 26, 162, &lv_font_montserrat_12, secondary);
         }
-        label(panel, "Entradas fisicas desabilitadas", 10, 122, 284, &lv_font_montserrat_12, accent);
+        sensorSourceLabel = label(panel, "Entradas fisicas desabilitadas", 10, 122, 284, &lv_font_montserrat_12, accent);
         button(pageContent, "Menu", menuReturn, returnMenu);
     } else if (page == Page::Settings) {
         constexpr std::array<const char*, 7> names{{"TELA", "UNIDADES", "ESCALA RPM", "TOQUE / DEMO", "PERFIS SD", "WI-FI", "BLUETOOTH"}};
@@ -561,7 +601,7 @@ void renderPage(Page next) {
             settingValues[0] = lv_obj_get_child(control, 0);
             control = actionButton(pageContent, "", settingsRows[1], ToggleDemo);
             settingValues[1] = lv_obj_get_child(control, 0);
-            label(pageContent, "DEMO somente visual; desligado no boot.", 12, 146, 296, &lv_font_montserrat_12, secondary);
+            actionButton(pageContent, "Encerrar SIM USB", settingsRows[2], StopUsbSimulation);
         } else if (settingsGroup == 4) {
             actionButton(pageContent, "Exportar ajustes salvos", settingsRows[0], ExportProfile);
             actionButton(pageContent, "Importar perfil do SD", settingsRows[1], ImportProfile);
@@ -692,10 +732,17 @@ void handleAction() {
             refreshSettingsView(); localResult(applyPending); break;
         case Calibrate: calibrationRequested = true; break;
         case ToggleDemo:
+            if (simulation::snapshot().enabled) { showNotice("Encerre SIM USB antes de ativar DEMO"); break; }
             demoEnabled = !demoEnabled;
             demoStartedAt = millis(); demoUpdatedAt = demoStartedAt - 250;
             refreshSettingsView();
             if (demoEnabled) requestPage(Page::Panel);
+            break;
+        case StopUsbSimulation:
+            simulation::endAnySession();
+            demoEnabled = false;
+            showNotice("SIM USB encerrado", false);
+            refreshSettingsView();
             break;
         case ExportProfile:
             if (applyPending || importPending) showNotice("Aguarde a operacao anterior");
@@ -868,8 +915,70 @@ void pollServices(bool force = false) {
     }
 }
 
+void serviceUsbSimulation() {
+    const auto source = simulation::snapshot();
+    if (calibrating) return;  // Observe TTL even while the calibration overlay owns the UI.
+    if (!source.enabled && !usbWasEnabled) return;
+    const auto view = simulation::present(source, settingsEditor.values.speedUnit, settingsEditor.values.tempUnit);
+    if (!source.enabled) demoEnabled = false;
+    usbWasEnabled = source.enabled;
+    const bool dataPage = page == Page::Panel || page == Page::Sensors || page == Page::Menu;
+    if (dataPage || (page == Page::Settings && settingsGroup == 3)) {
+        setText(modeLabel, source.enabled ? (view.live ? "SIM USB" : "SIM SEM LINK") :
+                (page == Page::Settings ? "LOCAL" : "BANCADA"));
+        setTextColor(modeLabel, source.enabled ? warning : accent);
+    }
+    if (page == Page::Panel) {
+        setHidden(gearLabel, !source.enabled); setHidden(gearValue, !source.enabled);
+        setHidden(rpmScaleLabel, source.enabled); setHidden(rpmSignal, source.enabled);
+        setNumber(rpmValue, view.rpmValid, view.rpm);
+        setNumber(speedValue, view.speedValid, view.speed);
+        setNumber(temperatureValue, view.temperatureValid, view.temperature);
+        setTextColor(rpmValue, source.enabled && !view.rpmValid ? secondary : text);
+        setTextColor(speedValue, source.enabled && !view.speedValid ? secondary : text);
+        const bool hot = view.live && (source.frame.faults & simulation::Overheat);
+        setTextColor(temperatureValue, hot ? danger : text);
+        setText(oilValue, !view.oilValid ? noSignal : (view.oil ? "BAIXO" : "OK (SIM)"));
+        setTextColor(oilValue, view.oilValid && view.oil ? danger : text);
+        if (!view.gearValid) setText(gearValue, unknown);
+        else if (view.gear == -1) setText(gearValue, "R");
+        else if (view.gear == 0) setText(gearValue, "N");
+        else setNumber(gearValue, true, view.gear);
+        updateRpmBar(static_cast<unsigned>(view.rpm), view.rpmValid);
+        char value[24];
+        if (source.enabled) {
+            if (view.tpsValid) std::snprintf(value, sizeof(value), "TPS %ld%%", static_cast<long>(view.tps));
+            else std::snprintf(value, sizeof(value), "TPS --");
+            setText(speedSignal, value);
+        } else {
+            setText(speedSignal, noSignal);
+            setText(rpmSignal, noSignal);
+        }
+        const bool alert = source.enabled && view.alert != simulation::Alert::None;
+        setHidden(speedSignal, alert); setHidden(dashboardHintLabel, alert);
+        setHidden(faultFooterLabel, !alert);
+        setText(faultFooterLabel, simulation::alertText(view.alert));
+    } else if (page == Page::Sensors) {
+        const bool valid[]{view.rpmValid, view.temperatureValid, view.speedValid, view.oilValid};
+        const std::int32_t number[]{view.rpm, view.temperature, view.speed};
+        const char* units[]{"rpm", settingsEditor.values.tempUnit == TempUnit::Celsius ? "C" : "F",
+                            settingsEditor.values.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph"};
+        for (unsigned index = 0; index < sensorValues.size(); ++index) {
+            char value[32];
+            if (!valid[index]) std::snprintf(value, sizeof(value), "-- / SEM SINAL");
+            else if (index == 3) std::snprintf(value, sizeof(value), "%s", view.oil ? "BAIXO (SIM)" : "OK (SIM)");
+            else std::snprintf(value, sizeof(value), "%ld %s", static_cast<long>(number[index]), units[index]);
+            setText(sensorValues[index], value);
+            setTextColor(sensorValues[index], index == 3 && view.oilValid && view.oil ? danger : text);
+        }
+        setText(sensorSourceLabel, source.enabled ? (view.live ? "SIM USB / dados sinteticos" : "SIM SEM LINK / dados indisponiveis") :
+                "Entradas fisicas desabilitadas");
+        setTextColor(sensorSourceLabel, source.enabled ? warning : accent);
+    }
+}
+
 void serviceDemo() {
-    if (!demoEnabled || page != Page::Panel || calibrating || pairOverlay || benchmarkPhase != BenchmarkPhase::Idle) return;
+    if (!demoEnabled || simulation::snapshot().enabled || page != Page::Panel || calibrating || pairOverlay || benchmarkPhase != BenchmarkPhase::Idle) return;
     const auto now = millis();
     const auto period = settingsEditor.values.reducedMotion ? 250U : framePeriodMs(settingsEditor.values.refreshMode);
     if (std::uint32_t(now - demoUpdatedAt) < period) return;
@@ -1154,6 +1263,7 @@ void tick() {
     completeFlush();
     serviceBenchmark();
     pollServices();
+    serviceUsbSimulation();
     serviceDemo();
     lv_timer_handler();
     completeFlush();
@@ -1186,7 +1296,7 @@ void setStorage(bool mounted, std::uint32_t capacityMiB) {
 bool startBenchmark() {
     radio::Snapshot latest;
     if (radio::snapshot(latest)) radioView = latest;
-    if (!ready || calibrating || calibrationRequested || benchmarkReportReady ||
+    if (!ready || simulation::snapshot().enabled || calibrating || calibrationRequested || benchmarkReportReady ||
         credentialActive || pairOverlay || radioView.blePairingPending ||
         radioView.wifiScanInProgress || radioView.wifiConnecting || applyPending || importPending ||
         page == Page::Confirm || benchmarkPhase != BenchmarkPhase::Idle) return false;
@@ -1211,4 +1321,15 @@ bool takeBenchmarkReport(BenchmarkReport& report) {
 }
 
 bool benchmarkRunning() { return benchmarkPhase != BenchmarkPhase::Idle; }
+
+bool startUsbSimulation() {
+    radio::Snapshot latest;
+    if (radio::snapshot(latest)) radioView = latest;
+    if (!ready || calibrating || calibrationRequested || pairOverlay || radioView.blePairingPending ||
+        credentialActive || applyPending || importPending || benchmarkPhase != BenchmarkPhase::Idle) return false;
+    demoEnabled = false;
+    queuedAction = 0;
+    requestPage(Page::Panel);
+    return true;
+}
 }

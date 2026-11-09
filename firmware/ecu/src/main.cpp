@@ -15,6 +15,7 @@ extern "C" {
 #include "storage_schedule.hpp"
 #include "serial_tx.hpp"
 #include "ui.hpp"
+#include "simulation_service.hpp"
 #ifdef NGK_SD_MAINTENANCE
 #include <esp_task_wdt.h>
 #include "card_probe.hpp"
@@ -24,7 +25,7 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
-constexpr const char* Version = "0.3.0-cockpit";
+constexpr const char* Version = "0.4.0-simulator";
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
     uint32_t sectors = 0, type = 0;
@@ -259,6 +260,12 @@ void printInfo() {
     const auto radios = radioView();
     ecu::profiles::Snapshot profile;
     ecu::profiles::snapshot(profile);
+    const auto simulation = ecu::simulation::snapshot();
+#ifdef NGK_SD_MAINTENANCE
+    constexpr unsigned simulationProtocol = 0;
+#else
+    constexpr unsigned simulationProtocol = ecu::simulation::protocolVersion;
+#endif
     queuePrintf("{\"project\":\"NGK ECU\",\"firmware\":\"%s\",\"build\":\"%s\","
         "\"mode\":\"bench\",\"sensor_inputs_enabled\":false,\"actuators_enabled\":false,"
         "\"chip\":\"%s\",\"flash_bytes\":%u,\"psram_bytes\":%u,\"cpu_mhz\":%u,"
@@ -267,7 +274,8 @@ void printInfo() {
         "\"heap_free\":%u,\"heap_min\":%u,\"heap_largest\":%u,"
         "\"wifi_enabled\":%s,\"wifi_connected\":%s,\"ble_enabled\":%s,"
         "\"ble_advertising\":%s,\"ble_connected\":%s,\"radio_memory_failure\":%s,"
-        "\"profile_status\":%u,\"profile_revision\":%u,\"profile_persisted\":%s"
+        "\"profile_status\":%u,\"profile_revision\":%u,\"profile_persisted\":%s,"
+        "\"simulation_protocol\":%u,\"simulation_enabled\":%s,\"simulation_live\":%s"
 #ifdef NGK_SD_MAINTENANCE
         ",\"format_token\":%u"
 #endif
@@ -287,14 +295,61 @@ void printInfo() {
         radios.wifiEnabled ? "true" : "false", radios.wifiConnected ? "true" : "false",
         radios.bleEnabled ? "true" : "false", radios.bleAdvertising ? "true" : "false",
         radios.bleConnected ? "true" : "false", radios.memoryFailure ? "true" : "false",
-        unsigned(profile.status), unsigned(profile.revision), profile.persisted ? "true" : "false"
+        unsigned(profile.status), unsigned(profile.revision), profile.persisted ? "true" : "false",
+        simulationProtocol, simulation.enabled ? "true" : "false", simulation.live ? "true" : "false"
 #ifdef NGK_SD_MAINTENANCE
         , data.formatReady ? unsigned(bootToken) : 0U
 #endif
     );
 }
 
+#ifndef NGK_SD_MAINTENANCE
+void printSimulationStatus() {
+    const auto value = ecu::simulation::snapshot();
+    queuePrintf("{\"kind\":\"sim\",\"state\":\"%s\",\"protocol\":1,\"live\":%s,\"seq\":%u,\"faults\":%u}\n",
+        !value.enabled ? "off" : value.live ? "live" : "stale", value.live ? "true" : "false",
+        unsigned(value.frame.sequence), value.live ? unsigned(value.frame.faults) : 0U);
+}
+#endif
+
 void command(const char* line) {
+#ifndef NGK_SD_MAINTENANCE
+    if (!strcmp(line, "sim-start") || !strncmp(line, "sim-start ", 10)) {
+        uint32_t token = 0;
+        if (line[9] && !ecu::simulation::parseSessionToken(line + 10, token)) {
+            queueLine("{\"kind\":\"sim\",\"state\":\"rejected\",\"protocol\":1}");
+            return;
+        }
+        const auto current = ecu::simulation::snapshot();
+        const auto previous = current.frame.session;
+        if (token && current.enabled && token == previous) {
+            queueLine("{\"kind\":\"sim\",\"state\":\"rejected\",\"protocol\":1}");
+            return;
+        }
+        if (!ecu::ui::startUsbSimulation()) {
+            queueLine("{\"kind\":\"sim\",\"state\":\"busy\",\"protocol\":1}");
+            return;
+        }
+        if (!token) do { token = esp_random(); } while (!token || token == previous);
+        if (ecu::simulation::beginSession(token)) {
+            queuePrintf("{\"kind\":\"sim\",\"state\":\"ready\",\"protocol\":1,\"session\":%u}\n", unsigned(token));
+        } else queueLine("{\"kind\":\"sim\",\"state\":\"rejected\",\"protocol\":1}");
+        return;
+    }
+    if (!strcmp(line, "sim-status")) { printSimulationStatus(); return; }
+    if (!strncmp(line, "sim-stop ", 9)) {
+        uint32_t token = 0;
+        if (ecu::simulation::parseSessionToken(line + 9, token) && ecu::simulation::endSession(token)) printSimulationStatus();
+        else queueLine("{\"kind\":\"sim\",\"state\":\"rejected\",\"protocol\":1}");
+        return;
+    }
+    if (!strncmp(line, "SIM1 ", 5)) {
+        ecu::simulation::Frame frame;
+        if (!ecu::simulation::parseFrame(line, frame) || !ecu::simulation::submit(frame))
+            queueLine("{\"kind\":\"sim\",\"state\":\"rejected\",\"protocol\":1}");
+        return;
+    }
+#endif
     if (!strcmp(line, "info")) { printInfo(); return; }
     if (!strcmp(line, "radios") || !strcmp(line, "status")) { printRadios(); return; }
     if (!strcmp(line, "bench")) {

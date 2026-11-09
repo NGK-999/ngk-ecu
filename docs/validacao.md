@@ -176,7 +176,7 @@ Imagem normal final: **1393056 bytes**, SHA-256
 Linker: 95.544 bytes de RAM estática e1.386.485 bytes de aplicação (70,5% do slot).
 Os números em execução não equivalem ao RAM estático do linker.
 
-Heap em `info`/`radios` usa MALLOC_CAP_INTERNAL; o benchmark usa 8BIT.
+Heap em `info`/`radios` usa MALLOC_CAP_INTERNAL; o benchmark usa 8 BIT.
 Essas capacidades diferem, portanto não subtrair valores entre esses relatórios
 como se fossem a mesma métrica. Heap mínimo cobre todo o boot, inclusive
 ensaios de rádio anteriores; não é mínimo isolado de cada janela.
@@ -206,7 +206,7 @@ nova. Dois revisores independentes examinaram navegação, callbacks/DMA e pool.
 Harness local de ponteiro real LVGL usou display/touch/tempo/serviços sintéticos:
 menu, 6categorias, abas, Voltar/Menu/Salvar, confirmação tardia e DEMO/duplo toque
 passaram. Rascunho preservado entre telas. Quarenta ciclos não perderam memória:
-17.488B livres antes/depois no índice; modalBLE sobre painel 6200B e após fechar
+17.488 B livres antes/depois no índice; modalBLE sobre painel 6200B e após fechar
 9632B. São valores do host 64bits, não RAM da placa. Host sem recortes nas
 transições de dígitos; capturas publicadas são renderizações do código.
 
@@ -238,3 +238,61 @@ avaliação de leitura no veículo ou preferência estética definitiva.
 Imagem normal 0.3.0: **1404240 bytes**, SHA-256
 `5ca470324a7cf12f2f74274b0141e3f4027c9e87216a08f86c072cc1faf14ffd`. Gravação conferida pelo esptool.
 Linker:95.552B de RAM estática;1.397.665B de aplicação (71,1% do slot).
+
+## Simulador Linux e firmware 0.4.0
+
+Aplicativo Python3.12,PySide6-Essentials6.12.0 e pyserial3.5 na .venv do projeto.
+Dependências isoladas, pip check sem incompatibilidades; nenhum runtime do sistema,
+grupo, ACL ou configuração global de agente alterado. Atalho instalado no menu
+de aplicativos do usuário, sem sobrescrever atalho alheio.
+
+### Execução local, sem serial física
+
+35 testes Python passaram:15 modelo,6 codec,8 link com transporte em memória e6 GUI Qt.
+A suíteGUI usaQT_QPA_PLATFORM=offscreen. Valida controles, modo Manual/TPS,
+falhas exclusivas, presets, parar/pausar e geometria980×680. CurvaRPM limitada
+a 10 s/400pontos em memória; sem arquivos de amostras. RXlimitado, snapshotlatest
+sem fila crescente e thread serial separada daGUI. Appinicialmenteoffline;
+identificaNGK ECU/protocolo antes de iniciar transmissão.
+
+Regressões RED/GREEN: cancelar antes de ready não deixa sessão órfã (nonce
+conhecido antes do start); ready protocolbooleano e token divergente rejeitados;
+portas USB oferecidas antes das portas legadas, sem abrir nenhuma na enumeração.
+
+14 executáveis nativos ASan/UBSan e12 testes de fontes passaram. Casos de
+protocoloC++/Python golden, limites, replay, stop,TTL 750/wrap e apresentação
+validada:0!=ausente, conversões, prioridades e stale sem payload antigo.
+Foi reproduzido/corrigido reviver frame após ciclo completodemillis: expiração
+observada fica latched até novo frame válido/sessão. TTL também é observado
+na calibração. Noncerepetido não altera navegação antes da rejeição.
+
+Dois revisores examinaram protocolo/main, runtimeeUI e cliente. Harness real
+LVGL/service com relógio fake passou em live/erros/stale/saída e Sensors. Pool 32 KiB
+nohost:PanelSIM74%,8624Blivres; modalBLEsobreSIM85%,5192Blivres,semOOM.
+Esses são valores dehost 64bits, não folga medida noESP32.
+
+### Janela real no Linux
+
+Aplicativo visível em Wayland,1120×760, captura inicialoffline inspecionada.
+Offscreen também inspecionado980×680; gráfico opcional oculta em janelas
+menores, preservando controles e números. O processo ficou aberto para o
+operador, sem conexão automática. A captura publicada é da janela nativa com
+dados sintéticos em estado inicial, não uma amostra de motor real.
+
+### Bancada física separada
+
+Porta conferiu projetoNGK ECU e normal 0.3.0 antes da atualização. Instalado
+normal 0.4.0 emapp0x10000, hashconferido. SD permaneceu montado; nenhum formato.
+Protocolo1 identificado, nonceeco confirmado, frame válido aceito, replay
+recusado, benchmark bloqueado duranteSIM, TTLstale observado, novosframes
+retomaram leituras, flags de falha conferiram e stopcorreto encerrou sessão.
+Stopcomtokendivergentefoirecusado. O SerialLink real transmitiu, pausou até
+stale, retomou e fechouoffline. Nenhum dado bruto foi gravado/publicado.
+
+Firmware manteve sensor_inputs_enabled=false eactuators_enabled=false.
+Sem operação no veículo, sensores reais, injeção/ignição ou medição óptica.
+Desempenho do cockpit 0.3.0 permanece histórico; não foi repetido um ensaioFPS
+completo0.4.0. O produtorUSB tem cadência alvo20 Hz; isso não é FPSóptico.
+
+Imagem normal 0.4.0: **1409104 bytes**, SHA-256
+`fbcf02892fda613158f27ab20cd1cb879a9df7e32474ea2892a6f7a9564c7bc6`. Linker95.648 B RAMestática/1.402.525Bflash (71,3% do slot).

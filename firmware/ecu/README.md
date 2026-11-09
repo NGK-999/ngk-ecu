@@ -28,7 +28,7 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run 
 ```
 
 Compilar não abre porta USB nem grava a placa. Os testes nativos não usam
-hardware; execute `sh scripts/test-native.sh` (12 executáveis C++17 com avisos e
+hardware; execute `sh scripts/test-native.sh` (14 executáveis C++17 com avisos e
 ASan/UBSan). As fontes têm 12 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
 
 ## Ajustes e conexões
@@ -73,6 +73,46 @@ São pedidos assíncronos; a resposta QUEUED não significa conclusão.
 `info` inclui revisão/estado de perfis. `bench` mede a cena sintética de 20
 redesenhos completos +10 s parciais e retorna ao menu; não envia leituras reais.
 Não há comando serial para informar senha ou aceitar pareamento.
+
+## Simulação USB — normal 0.4.0
+
+O appLinux está em [simulator/](../../simulator/README.md). Nenhuma porta é
+aberta ao iniciar o app; Conectar identifica o projeto e simulation_protocol1.
+Manutenção anuncia protocolo 0 e não aceita comandos de simulação.
+
+`sim-start TOKEN` abre sessão com token1..UINT32MAX definido pelo cliente antes
+da escrita; isso permite encerrar mesmo se cancelar antes da resposta ready.
+A variante `sim-start` sem argumento gera token no painel para diagnóstico.
+Ready é JSON kind sim,state ready,protocol1 e eco de session. Não é uma
+credencial de controle do motor; não existem comandos de atuação.
+
+Frame ASCII com LF,até 95bytes:
+
+```text
+SIM1 TOKEN SEQ RPM SPEED10 TEMP10 TPS10 GEAR OIL FAULTS
+```
+
+RPM0..12000; SPEED10=km/h×10(0..2500); TEMP10=C×10(-400..2000);
+TPS10=percentual×10(0..1000); GEAR-1(R),0(N),1..4; OIL0normal/1baixo/2ausente.
+FAULTS bits1/2/4/8/16/32/64/128 representam ausênciaRPM/velocidade, bloco aberto/
+curto, óleo baixo, superaquecimento, TPS/marcha inválidos. Aberto+curto são
+mutuamente exclusivos. Tokens/seq sãouint32nãozero; sequência estritamente
+crescente sem wrap na sessão. Nova sessão reinicia sequência.
+
+`sim-status` retorna somente metadados live/seq/faults; nenhuma amostra.
+`sim-stop TOKEN` encerra apenas a sessão correspondente. Parser rejeita
+overflow, campos inválidos/extra/garbage e replay sem atualizar validade.
+
+TTL 750 ms contado da última amostra válida, com expiração observada fixada
+até novo frame ou nova sessão. Não revive frame antigo após voltar millis.
+Stale mostraSIM SEM LINK, remove valores/alertas antigos e mantém saída local
+emAjustes/Toque-DEMO/EncerrarSIM USB. Stop/reboot limpa a sessão; nenhum frame
+é persistido. Benchmark eDEMO recusados durante sessãoUSB.
+
+SIM USB mostra marcha/TPS e sinaliza texto/cor por validade. Ausência vira--,
+zero permanece valor. Os instrumentos arredondam velocidade/bloco para inteiros;
+os dados do protocolo mantêm décimos. USB é fonte sintética prioritária, sem
+misturar valores deDEMO ou sinais físicos.
 
 ## SD e manutenção
 
