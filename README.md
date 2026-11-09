@@ -14,8 +14,8 @@ painéis de gerenciamento de motor. Interface e firmware serão próprios.
 | Temperatura do bloco | °C | Sensor, ponto de instalação e calibração |
 | Velocidade do veículo | km/h | Sensor, pulsos por volta e circunferência da roda |
 
-Armazenamento previsto em cartão microSD informado como 32 GB, com uso e
-formato a validar na placa. Incluir os sensores e sinais originais que
+Armazenamento em cartão microSD de 32 GB, preparado e verificado em FAT32
+pela própria placa. Incluir os sensores e sinais originais que
 efetivamente existem nesse motor, conforme o [inventário](docs/sensores-motor.md).
 Mapas de combustível, injeção **monoponto**, ignição e outras
 automações pertencem a etapas futuras, com projeto elétrico e validação próprios.
@@ -26,7 +26,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 ## Estado atual
 
 - Firmware próprio de bancada em [firmware/ecu](firmware/ecu/README.md), com
-  quatro páginas e instrumentos `-- / SEM SINAL`. Nenhum sensor/atuador externo
+  menu de quatro botões, sete páginas de ajustes e instrumentos `-- / SEM SINAL`. Nenhum sensor/atuador externo
   está habilitado. A aplicação de referência não é o produto da ECU.
 - Foto indica a família **ESP32-2432S028**; revisão e pinagem pendentes de confirmação.
 - Consulta USB confirmou **ESP32-D0WD-V3 rev. 3.1, flash de 4 MiB** e ponte CH340.
@@ -36,7 +36,8 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
   o correto. A consulta nova confirmou **30.255 MiB**; esse cartão foi preparado
   em FAT32 e passou por escrita/leitura de arquivo próprio temporário.
 - REA 6.8.0 e esptool 5.6.0 instalados localmente e com versões verificadas.
-  Análise de firmware ainda pendente; REA 6.8.0 não suporta Xtensa nativamente.
+  Análise do ELF próprio executada com objdump via REA; não houve
+  descompilação Xtensa.
   Instalar a ferramenta não identifica automaticamente tela ou GPIOs.
 
 ## Documentação
@@ -47,6 +48,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 - [Validação e bloqueios observados](docs/validacao.md)
 - [Sensores do motor 1300 carburado](docs/sensores-motor.md)
 - [Referência visual e limites de desempenho](docs/interface.md)
+- [SD, memória e otimizações](docs/armazenamento-e-desempenho.md)
 
 ## Liberar a serial nesta conexão Linux
 
@@ -72,11 +74,21 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-Testes nativos e builds de bancada passaram. A versão `0.1.1-bench` está
-instalada; o responsável confirmou o painel e o duplo toque na tela real.
-Sensores e operação no veículo continuam sem validação. Consulte os limites no
-relatório de bancada; não usar o projeto como indicação validada de condição
-segura do motor.
+A versão **0.2.0-race** foi instalada em bancada: tema preto/âmbar, RPM
+segmentado, instrumentos grandes, sete páginas de ajustes, perfis SD e
+Wi-Fi/BLE sob demanda. Os rádios começam desligados. A memória desta unidade
+limitou a ativação simultânea: usar um por vez; a interface informa recusa.
+
+Doze executáveis nativos, nove testes de fonte e três builds passaram.
+Medição própria sintética: **56,6 apresentações parciais/s**, p95 de **18,1 ms**;
+com busca Wi-Fi ou anúncio BLE separado, cerca de 56,5/s. Não são telas completas
+por segundo nem medição óptica. Relatório e limites em [validação](docs/validacao.md).
+Sensores, atuação e uso no veículo continuam sem validação.
+
+Renderizações do próprio código com LVGL em host; não são fotos da placa:
+
+![Menu NGK ECU, renderização headless](docs/images/menu.png)
+![Painel em demonstração sintética, renderização headless](docs/images/painel_demo.png)
 
 Teste sem hardware: `sh scripts/test-native.sh`.
 Compilação e operação: [guia do firmware](firmware/ecu/README.md).

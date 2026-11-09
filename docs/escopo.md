@@ -24,8 +24,8 @@ dedicada ao SD. Identificar capacidade/estado do cartão antes de apagar e testa
 escrita/leitura apenas com arquivo de teste próprio. Reinstalar firmware normal
 sem o comando de formatação. Uma falha de montagem nunca deve formatar sozinha.
 
-A falta atual de acesso serial é um bloqueio operacional, não falta de
-autorização. O comando temporário de ACL está no README.
+O acesso serial foi liberado pelo operador por ACL temporária específica.
+O cartão correto foi preparado e o painel anterior confirmado fisicamente.
 
 ## V1: instrumentação
 
@@ -52,12 +52,13 @@ O inventário de fábrica e as medições que exigem sensores adicionais estão 
 - Temperatura do bloco não equivale a temperatura do óleo ou do cabeçote.
   O ponto de montagem e o tipo do sensor fazem parte da calibração.
 
-## Organização proposta, ainda sem implementação
+## Organização implementada na bancada
 
 Separar aquisição e validade das medições, apresentação na tela e acesso ao
 cartão. Falha ou lentidão na tela/cartão não pode bloquear aquisição.
-Antes do firmware, comparar ESP-IDF e Arduino conforme o suporte da placa,
-drivers e requisitos de aquisição. Nenhum framework ou GPIO está fixado ainda.
+A bancada usa Arduino-ESP322.0.17, LVGL8.4 e LovyanGFX1.2.7. Tela, touch e
+SD têm perfil documentado; entradas do motor ainda não têm GPIO atribuído.
+A revisão automobilística acrescenta ajustes, perfis SD e Wi-Fi/BLE sob demanda.
 
 Para a etapa de atuação, avaliar controlador de motor dedicado comunicado com
 o painel, ou controle integrado com requisitos de temporização e falha explícitos.
@@ -77,8 +78,8 @@ transformar medições de painel em saídas de atuação sem revisar a arquitetu
 
 - Revisão exata da placa e esquema correspondente.
 - Origem do RPM e da velocidade; modelo e posição do sensor de temperatura.
-- Disponibilizar o acesso à serial já autorizado, por ACL temporária específica.
-- Identificação do cartão de 32 GB por firmware de manutenção conhecido.
+- Validação de alimentação e condicionamento no ambiente veicular.
+- Confirmação física da interface nova e ensaios com sensores reais.
 
 O pedido autoriza formatar o cartão indicado, mas não identifica um disco do
 computador como alvo. Nenhum disco deve ser escolhido somente pela capacidade.

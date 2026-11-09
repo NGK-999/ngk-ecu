@@ -36,11 +36,35 @@ Os leitores de
 e [dumps de flash](https://github.com/morluto/rea/blob/main/docs/esp-flash-image.md)
 não são drivers de USB/serial nem um mapeador automático dos GPIOs. Mesmo nessa
 documentação, inventário de segmentos não equivale a descompilação Xtensa.
-Nenhum binário da placa foi obtido ou analisado neste estágio.
+A análise desta revisão usou o ELF compilado do próprio projeto; o backup
+extraído da placa permanece privado e não foi usado como fonte do produto.
 
 Referência da versão instalada:
 [release rea-agents-6.8.0](https://github.com/morluto/rea/tree/rea-agents-6.8.0),
 commit `160d821ac9a0310afcb8d1fc427862dd6508add5`.
+
+## REA aplicado ao projeto
+
+REA 6.8.0 executou `inspect-with-objdump` com `section_headers` e
+`inspect-elf-notes` no ELF da base instrumentada própria. Resultado completo,
+exit code 0 e `artifact_changed=false`; ELF32 little-endian, máquina Xtensa.
+SHA-256 do ELF analisado:
+`beae4c6e760726d96b6ef8d84cfb696c82e6d94199e7991e179152b6c58f1299`.
+O tamanho do ELF com símbolos de debug não é o tamanho ocupado na flash.
+
+```sh
+sh tools/rea/run inspect-with-objdump \
+  firmware/ecu/.pio/build/ecu-normal/firmware.elf section_headers \
+  --format json \
+  --filter-output evidence_id,subject.digest,provider,parameters.operation,raw_result.exit_code,raw_result.artifact_changed,raw_result.completion_status
+```
+
+O fluxo `inspect-artifact` recusou a arquitetura; `inspect-binary-layout`
+exigia `pwntools`, não instalado. Não houve descompilação Xtensa. A inspeção
+foi complementada pelo map e ferramentas Xtensa do próprio toolchain: as cinco
+fontes completas somavam 174.994 bytes constantes. Isso orientou a redução da
+fonte dos instrumentos, com testes de equivalência dos glifos. Instalar REA
+não acelera o firmware; sua utilidade aqui foi inspecionar e fundamentar a mudança.
 
 ## esptool
 
@@ -89,11 +113,11 @@ ignorados. Publicar apenas conclusões sanitizadas e hashes apropriados.
 
 ## Verificações separadas
 
-| Área | Estado inicial |
-| --- | --- |
-| Sistema | USB e discos enumerados; serial sem acesso; SD não exposto |
-| REA | CLI 6.8.0 e ajuda executadas; sem análise de firmware ou provedores externos |
-| esptool | 5.6.0 instalada; identificação física bloqueada pelo acesso serial |
-| Firmware | Ainda não implementado; sem compilação ou testes |
-| Inspeção visual | Apenas foto traseira da placa; tela/touch não testados |
-| Hardware/veículo | Sem comunicação serial, formatação, gravação ou ensaio de motor |
+O estado inicial de falta de acesso serial foi resolvido pelo operador.
+A identificação USB, backup, manutenção SD e versão anterior estão registrados
+em [validacao.md](validacao.md). A revisão atual separa testes locais,
+inspeção visual, ensaio de desempenho na placa e operação no veículo.
+
+REA também repetiu `section_headers` no ELF final da revisão0.2.0:
+exit0,complete,artifact_changed=false; SHA-256
+`bea2ea9fccae4286641a0da865973496180948600237ca021435f3dec60d713c`.

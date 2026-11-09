@@ -1,10 +1,77 @@
 #pragma once
+#include "settings.hpp"
+#include <algorithm>
 #include <array>
 #include <cmath>
 #include <cstdio>
 #include <cstdint>
+#include <cstring>
 
 namespace ecu::ui {
+enum class SettingField : std::uint8_t { Brightness, Refresh, Motion, Speed, Temperature, RpmScale, Yellow, Red };
+class SettingsDraft {
+public:
+    UiSettings values{};
+    void load(const UiSettings& settings) { values = settings; saved_ = settings; }
+    void acknowledge(const UiSettings& settings) { saved_ = settings; }
+    bool dirty() const { return !(values == saved_); }
+    bool adjust(SettingField field, int direction) {
+        const auto before = values;
+        const int step = direction > 0 ? 1 : -1;
+        switch (field) {
+            case SettingField::Brightness: values.brightness = std::clamp(int(values.brightness) + step * 10, 10, 100); break;
+            case SettingField::Refresh: values.refreshMode = RefreshMode(std::clamp(int(values.refreshMode) + step, 0, 2)); break;
+            case SettingField::Motion: values.reducedMotion = direction > 0; break;
+            case SettingField::Speed: values.speedUnit = SpeedUnit(direction > 0 ? 1 : 0); break;
+            case SettingField::Temperature: values.tempUnit = TempUnit(direction > 0 ? 1 : 0); break;
+            case SettingField::RpmScale: values.rpmScale = std::clamp(int(values.rpmScale) + step * 500, 1000, 12000); break;
+            case SettingField::Yellow: values.rpmYellowPercent = std::clamp(int(values.rpmYellowPercent) + step * 5, 1, int(values.rpmRedPercent) - 1); break;
+            case SettingField::Red: values.rpmRedPercent = std::clamp(int(values.rpmRedPercent) + step * 5, int(values.rpmYellowPercent) + 1, 100); break;
+        }
+        return !(before == values);
+    }
+private:
+    UiSettings saved_{};
+};
+class LocalTextEntry {
+public:
+    void begin(bool secret, std::size_t maximum) { clear(); secret_ = secret; maximum_ = std::min(maximum, std::size_t(64)); }
+    bool append(char character) {
+        if (character < 32 || character > 126 || used_ == maximum_) return false;
+        bytes_[used_++] = character; bytes_[used_] = 0; return true;
+    }
+    void backspace() { if (used_) bytes_[--used_] = 0; }
+    void clear() {
+        auto* cursor = static_cast<volatile char*>(bytes_.data());
+        for (std::size_t index = 0; index < bytes_.size(); ++index) cursor[index] = 0;
+        used_ = 0;
+    }
+    const char* text() const { return bytes_.data(); }
+    std::size_t size() const { return used_; }
+    void preview(char* output, std::size_t capacity) const {
+        if (!capacity) return;
+        const auto count = std::min(used_, capacity - 1);
+        for (std::size_t index = 0; index < count; ++index) output[index] = secret_ ? '*' : bytes_[used_ - count + index];
+        output[count] = 0;
+    }
+    static char key(unsigned bank, unsigned index) {
+        const auto code = 32 + bank * 18 + index;
+        return bank < 6 && index < 18 && code <= 126 ? static_cast<char>(code) : 0;
+    }
+    bool validPassword() const {
+        if (used_ >= 8 && used_ <= 63) return true;
+        if (used_ != 64) return false;
+        for (std::size_t index = 0; index < used_; ++index) {
+            const auto byte = bytes_[index];
+            if (!((byte >= '0' && byte <= '9') || (byte >= 'a' && byte <= 'f') || (byte >= 'A' && byte <= 'F'))) return false;
+        }
+        return true;
+    }
+private:
+    std::array<char, 65> bytes_{};
+    std::size_t used_ = 0, maximum_ = 64;
+    bool secret_ = true;
+};
 struct Point { float x = 0; float y = 0; };
 struct Rect {
     int x, y, w, h;
@@ -20,11 +87,14 @@ inline constexpr std::array<Rect, 4> navigation{{
     {8, 38, 148, 88}, {164, 38, 148, 88}, {8, 134, 148, 88}, {164, 134, 148, 88}}};
 inline constexpr Rect content{8, 36, 304, 144};
 inline constexpr Rect menuReturn{8, 188, 304, 44};
-inline constexpr Rect speedCard{8, 34, 148, 126};
-inline constexpr Rect rpmCard{164, 34, 148, 126};
-inline constexpr Rect temperatureCard{8, 168, 148, 48};
-inline constexpr Rect oilStrip{164, 168, 148, 48};
+inline constexpr Rect rpmBar{8, 30, 304, 22};
+inline constexpr Rect speedCard{8, 60, 148, 118};
+inline constexpr Rect rpmCard{164, 60, 148, 118};
+inline constexpr Rect temperatureCard{8, 184, 148, 36};
+inline constexpr Rect oilStrip{164, 184, 148, 36};
 inline constexpr Rect dashboardHint{8, 222, 304, 16};
+inline constexpr std::array<Rect, 3> settingsRows{{{8, 40, 304, 44}, {8, 88, 304, 44}, {8, 136, 304, 44}}};
+inline constexpr Rect keyboardKey(unsigned index) { return {8 + int(index % 6) * 52, 46 + int(index / 6) * 48, 44, 44}; }
 inline constexpr std::array<Point, 5> calibrationTargets{{
     {26, 54}, {294, 54}, {294, 166}, {26, 166}, {160, 110}}};
 

@@ -31,7 +31,7 @@ Builds da base própria normal e de manutenção passaram com Arduino-ESP32
 
 Artefato normal final: **748.560 bytes**, SHA-256
 `761f211bef2c094b01bc84ac6ac135c3c7d852ceedde87e542821c6bee241834`.
-Gravação verificada pelo esptool. O linker reportou 58.336 bytes de RAM
+Gravação verificada pelo esptool. O linker reportou 58.336  bytes de RAM
 estática e 748.201 bytes de aplicação. Buffers DMA são alocados separadamente;
 isso não constitui medição de pico ou de folga do heap em execução.
 
@@ -98,3 +98,85 @@ Não houve teste de alimentação automotiva, ruído, transientes, vibração, s
 latência óptica ou ensaio no veículo. A ECU permanece uma base de instrumentação
 em bancada, sem injeção/ignição. O próximo levantamento é dos sensores/circuitos
 reais do 1300 carburado e das entradas adicionais de RPM, temperatura e velocidade.
+
+## Revisão automobilística 0.2.0-race
+
+Pedido explícito: tema inspirado nas fotos FuelTech, configurações ampliadas,
+Wi-Fi e Bluetooth nesta etapa. O cartão não foi reformatado. A bancada continua
+sem sensores/atuadores do motor.
+
+### Execução local e inspeção de código
+
+Doze executáveis nativos C++17 com ASan/UBSan cobrem também codec de ajustes,
+recuperação de perfil e escrita interrompida, preservação após erro de leitura,
+entrada local de senha, rascunho preservado após confirmação tardia, limites de
+credenciais/BLE, deadlines e montagem saudável estável. Nove testes Python da
+fonte reduzida verificam geração, estrutura e equivalência de pixels/métricas
+através dos callbacks reais do LVGL. Compilar não acessa USB.
+
+REA executado sobre ELF próprio, conforme [ferramentas.md](ferramentas.md).
+A fonte de dígitos economiza 92.084 bytes constantes; Wi-Fi/BLE acrescentam
+código e RAM à imagem integrada. Não confundir economia de um recurso com
+redução líquida do firmware ao adicionar funcionalidades.
+
+A revisão encontrou e corrigiu: símbolo inexistente no LVGL8.4, nomes dos
+botões cortados por alinhamento relativo ao centro, distinção entre perfil
+corrompido e erro de leitura, e memória disputada pelo teclado/modal BLE.
+Quando chega pedido BLE durante digitação, a entrada local é apagada e o
+teclado destruído antes de abrir a confirmação.
+
+### Inspeção visual headless
+
+Capturas renderizadas a partir do próprio ui.cpp e LVGL8.4 em host, com drivers
+stub e redes sintéticas; não são fotos da placa. Avaliação de menu, painel sem
+sinal, demonstração, ajustes, redes, teclado e confirmação. O host usa ponteiros
+de 64bits e não serve para inferir consumo exato no ESP32 de 32bits. Essa inspeção
+não valida precisão do touch, brilho físico ou latência óptica.
+
+### Desempenho de bancada
+
+Cena controlada:20 redesenhos completos e 10 s de alterações parciais solicitadas
+a cada 17 ms. Mesma rampa de valores nos ensaios; revisão nova acrescenta barra
+segmentada ao desenho. Fonte dos números [método](armazenamento-e-desempenho.md).
+Base instrumentada SHA-256:
+`f5f27fda755a09501c057b744e3d7c2bd9c6504c77d8e46a16f21aed37e53224`.
+
+| Cenário | Parciais/s | p95 parcial | p95 tela completa |
+| --- | ---: | ---: | ---: |
+| Base anterior, rádios off |53,1|21,126ms|64,987ms|
+| 0.2.0, rádios off |56,6|18,089ms|56,696ms|
+| 0.2.0, Wi-Fi com scan durante a cena |56,5|19,068ms|56,693ms|
+| 0.2.0, BLE anunciando presença |56,5|19,030ms|56,693ms|
+| 0.2.0, diagnósticos seriais contínuos |56,0|19,675 ms|53,581ms|
+
+O p95 parcial é uma janela dos últimos 256 tempos; não representa todas as
+amostras do ensaio. Contagem/máximo abrangem a fase parcial. Não há medição
+óptica nem validação de sensores, cargas ou comportamento no veículo.
+
+O primeiro protótipo novo havia regredido para 49,2/s e p95 de 26,117 ms.
+A revisão final usa segmentos retangulares, polling LVGL mais frequente e
+invalidação restrita à largura dos números. A cena nova também inclui barra
+segmentada, ausente na base. Não atribuir causalidade individual a cada ajuste
+sem ensaio isolado. Resultado final é comparação da aplicação como um todo,
+uma execução por cenário, sem afirmar distribuição estatística entre ensaios.
+
+No alvo: exportação de perfil completou, importação completou e confirmou
+persistência em NVS; SD continuou montado com 30.255MiB. Repetições de ativar e
+desligar Wi-Fi/BLE completaram. A tentativa de iniciar BLE com Wi-Fi ligado
+foi recusada com MemoryLow; não alegar teste simultâneo dos dois. Conexão Wi-Fi
+com senha e pareamento autenticado com cliente externo não foram ensaiados.
+
+Após reiniciar, a consulta confirmou perfil restaurado, modo normal, rádios
+off e SD montado; a rejeição do comando inválido de formato foi observada. A versão anterior
+teve painel/duplo toque confirmados fisicamente pelo responsável; a confirmação
+visual da revisão 0.2.0 pelo responsável permanece separada e pendente.
+
+Imagem normal final: **1393056 bytes**, SHA-256
+`b4b5b89f354111a66a655da2a7de7f6f3747af7a3d4647981f2f25e40c96e120`. Gravação conferida pelo esptool.
+Linker: 95.544 bytes de RAM estática e1.386.485 bytes de aplicação (70,5% do slot).
+Os números em execução não equivalem ao RAM estático do linker.
+
+Heap em `info`/`radios` usa MALLOC_CAP_INTERNAL; o benchmark usa 8BIT.
+Essas capacidades diferem, portanto não subtrair valores entre esses relatórios
+como se fossem a mesma métrica. Heap mínimo cobre todo o boot, inclusive
+ensaios de rádio anteriores; não é mínimo isolado de cada janela.

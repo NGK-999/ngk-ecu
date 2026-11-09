@@ -14,13 +14,13 @@ Menu inicial com botões Painel, Sensores, Ajustes e Sistema. O modo Painel
 dedica a tela aos instrumentos grandes; duplo toque retorna ao menu.
 As páginas secundárias têm botão Menu. A primeira inicialização
 pede calibração de cinco pontos. Toque e solte cada alvo; o ajuste é salvo em
-NVS próprio `ngk-touch`. Ajustes permite repetir a calibração. O firmware não
-ativa Wi-Fi ou Bluetooth.
+NVS próprio `ngk-touch`. Ajustes permite repetir a calibração. Wi-Fi e Bluetooth BLE começam desligados;
+a ativação é explícita nas páginas de ajustes.
 
 ## Ferramentas e compilação
 
 Arduino-ESP32 2.0.17, C++17, LVGL 8.4.0, LovyanGFX 1.2.7,
-PlatformIO 6.1.18. Use a `.venv` Python 3.12 e cache isolado deste projeto:
+NimBLE-Arduino 2.5.1 e PlatformIO 6.1.18. Use a `.venv` Python 3.12 e cache isolado deste projeto:
 
 ```sh
 PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run \
@@ -28,21 +28,58 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run 
 ```
 
 Compilar não abre porta USB nem grava a placa. Os testes nativos não usam
-hardware; execute os quatro arquivos de `tests/native` com C++17, avisos
-habilitados e ASan/UBSan conforme `docs/validacao.md`.
+hardware; execute `sh scripts/test-native.sh` (12 executáveis C++17 com avisos e
+ASan/UBSan). A fonte reduzida tem 9 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
+
+## Ajustes e conexões
+
+Sete páginas: Tela, Unidades, Escala RPM, Toque/DEMO, Perfis SD, Wi-Fi e
+Bluetooth. Brilho e cadência têm prévia imediata; Aplicar salva em NVS próprio.
+Outras alterações permanecem em rascunho até Aplicar. Importação do SD substitui
+ajustes/rascunho após confirmação. Faixas de RPM são visuais, sem corte de giro.
+DEMO é explicitamente sintético e não persiste após reiniciar.
+
+Wi-Fi usa modo estação, busca assíncrona e até seis redes no snapshot.
+SSID manual e senha ASCII são digitados na própria tela; a senha aparece
+mascarada e nunca é enviada à serial ou ao SD. O driver Arduino pode alocar
+resultados temporários de todos os APs durante a busca. Uma conexão explícita
+bem-sucedida salva o perfil em NVS privado. Não há conexão automática no boot.
+
+Bluetooth é BLE, não Bluetooth clássico/SPP. Ativar inicializa o periférico;
+Descobrir abre uma janela de 120 s. Pareamento exige Secure Connections,
+MITM e comparação numérica confirmada na ECU em até 30 s. O serviço NUS
+aceita somente `PING` e `INFO` de conexão autenticada/criptografada. Não há
+comando de formato, mapas ou atuação pelo rádio. O cliente precisa suportar
+esse tipo de pareamento. Apagar vínculos exige confirmação local.
+
+Os rádios têm limites de memória e falhas visíveis. A bancada recusou iniciar o segundo rádio por memória insuficiente: usar
+um por vez nesta unidade. Busca Wi-Fi e anúncio BLE separados foram medidos;
+guardas de heap não garantem toda alocação futura.
+Manutenção não inicializa rádios.
 
 ## Protocolo de diagnóstico
 
 A serial opera a 115200 baud. `info` seguido de LF fornece um objeto JSON
 com versão, modo de bancada, estado dos instrumentos desabilitados e SD.
-Não imprime MAC, CID, arquivos pessoais ou amostras de sensores.
+Não imprime MAC, CID, SSID, senhas, códigos de pareamento, arquivos pessoais
+ou amostras de sensores. `radios`/`status` mostram somente flags e memória.
 O parser rejeita NUL, controles, CR interno e linhas maiores que 95 bytes;
 CRLF final é aceito. Metadados do SD vêm de um snapshot único do worker.
+
+Comandos locais adicionais: `wifi-on`, `wifi-off`, `wifi-scan`, `ble-on`,
+`ble-off`, `ble-discover`, `profile-export`, `profile-import` e `sd-refresh`.
+São pedidos assíncronos; a resposta QUEUED não significa conclusão.
+`info` inclui revisão/estado de perfis. `bench` mede a cena sintética de 20
+redesenhos completos +10 s parciais e retorna ao menu; não envia leituras reais.
+Não há comando serial para informar senha ou aceitar pareamento.
 
 ## SD e manutenção
 
 O worker possui exclusivamente o SPI3 do cartão. Consultas de geometria e
-montagem não listam nem leem arquivos do usuário. Falha de montagem não
+montagem não listam arquivos do usuário. Perfis leem/escrevem somente nomes
+próprios em `/ngk-ecu`. Consulte [armazenamento e desempenho](../../docs/armazenamento-e-desempenho.md).
+No normal, cartão montado não é remontado a cada 5 s; use atualização explícita
+para troca de cartão. Falha/ausência de montagem tenta novamente a cada 5 s. Falha de montagem não
 formata automaticamente. CID é consultado somente na manutenção e seu
 fingerprint permanece apenas em RAM, fora da serial, de arquivos e de logs.
 

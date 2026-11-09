@@ -1,5 +1,5 @@
 {
-  "firmware": "0.1.1-bench",
+  "firmware": "0.2.0-race",
   "mode": "bench",
   "sources": {
     "include/board.hpp": "b66b3edae66fc1d11b8b77159873263eaf01099940d225b406a737891a257c93",
@@ -7,14 +7,28 @@
     "include/card_identity.hpp": "7d22927457842c1cb3a5d4e0e8ab61b817c543fff705c1d366eac31fffb90429",
     "include/card_probe.hpp": "07b6b85a42a912a22134f5ba7289c75e8a6cb4681ec837fba76e92462b54d6cf",
     "include/command_line.hpp": "3f47ff8cfdff82a08dfcac661e7dafa808344d188f70a568ead450e7c6936cf7",
-    "include/lv_conf.h": "402cebe30cf79c9777d12f30aff4e7311ac7cb89932517b9276c80d6b56d7572",
+    "include/config_codec.hpp": "9d85b316c31758d733b349a2505274c6f980c133ce46165ac493762417f34c02",
+    "include/digits_font.h": "db54547a28837f62839d6c492add348d649f303ec3f141f93e65806f24e767c6",
+    "include/lv_conf.h": "97638b641b117d008fd4a98e76f8496b5cbf3ff6a4c2f9c77fed26a57dcc6830",
     "include/maintenance_policy.hpp": "761d3893c3014c48cffd583a1fc0d93024a6e5e9f0462b8193b8adf74fbc50f6",
-    "include/ui.hpp": "b01d31679e1622d0ef29a64dfc6e08a2cdd1dddf6768f0fd9a14ff85631e1c7e",
-    "include/ui_layout.hpp": "e8a58ae11e4e20727f92814aeb939b93d11776023b82f0e476d4cef6e6e4582a",
+    "include/perf_stats.hpp": "635e68bcae561cdc753fe7cb3dcf8cf3477124fce9b121538ff16bb6cda18db7",
+    "include/profile_service.hpp": "ea9dc8f70cf6df2fb9c81aa0fbc749e4ec08333334e72900e122d196406b8ef9",
+    "include/profile_store.hpp": "1426a16a9b37d4dfe85020ea0ee3b7387e5fcb2b6f8924cd7aad544a12576bd7",
+    "include/radio.hpp": "abbdfe3ef08f53a66deda2812132dd0d05c254ae84a581611420b58f360001a4",
+    "include/radio_policy.hpp": "9de95f91aadb549419c1ee1a49ae5ab7dcf32e7d73add5445c06010b271e21d3",
+    "include/serial_tx.hpp": "bdb5e1e39e111820c8da8b85f95d5180d1305d69578f17d722934d558f9f9eef",
+    "include/settings.hpp": "7a041eaa99a6c3c874294d652f9c5635fea8e0290e2d9bedd2d85fdacdbde7e1",
+    "include/storage_schedule.hpp": "21efc07ee31c61bf34b9b4d7a4668708d704fa7801dc61467506eccbf423db94",
+    "include/ui.hpp": "755385f40f9bd8e6ca57da06fb63218d4654c488099bd3b3e228b542bbae1668",
+    "include/ui_layout.hpp": "6f897a1d46f2e1898a9c2f520b347e1b486961e895e49b2f7f623fc807f713b3",
     "partitions.csv": "8a79ebd0da99c195c2f223887be05f88b1f2c884317345d60a836a6b23fde83c",
-    "platformio.ini": "99c76cab630737f8bf30b15f9b98615eeb27fb6726227fe7c9768482dc686f02",
-    "src/main.cpp": "92d667198aaf7dfbaba75712cba9572e36b89b07d429c2e4dfd0a93ef7b884a0",
-    "src/ui.cpp": "ab02c15a3ee528496da7dc03645618f6c04fafdffb103b9e1891a5a26ee5765a"
+    "platformio.ini": "971a10e2f85a749c3225d2c702472581aaf2ee8d2f6275d088ae03ef07a5269c",
+    "src/main.cpp": "ce688e6309d506a5a4ab183b315a0f02ef35dfc48a01f0d775765391568164d1",
+    "src/ngk_digits_48.c": "5bafb4b6021c308dd6da53343eeb4c57ea2e56e086351f836678a47fc71cc1c7",
+    "src/profile_service.cpp": "be9f14ddba9626d76447e48fdcddb030f237d70625ee5759d72f74dc0a76eca7",
+    "src/radio.cpp": "82523bff5ff6f0421e1877c2cfd2bcc140a587d266ca35abbac708061685cbcf",
+    "src/ui.cpp": "897bfe8a6d65509b9928fee9df96051c65fff272de7ecfafa05056cadcfa3eae"
   },
-  "normal_image_sha256": "761f211bef2c094b01bc84ac6ac135c3c7d852ceedde87e542821c6bee241834"
+  "normal_image_sha256": "b4b5b89f354111a66a655da2a7de7f6f3747af7a3d4647981f2f25e40c96e120",
+  "normal_image_bytes": 1393056
 }

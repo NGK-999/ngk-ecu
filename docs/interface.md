@@ -17,29 +17,22 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Tema proposto para a ECU
+## Tema automobilístico atual
 
-| Elemento | Cor |
-| --- | --- |
-| Fundo | `#0B111C` |
-| Cartões | `#20242D` |
-| Botões | `#282D37` |
-| Texto principal | `#F5F5F7` |
-| Texto secundário | `#B4BAC6` |
-| Destaque | `#70ADFF` |
-| Bordas | `#424752` |
+O pedido posterior adotou as fotos FuelTech como referência de instrumentos,
+sem copiar logotipo ou acrescentar leituras inexistentes. A interface própria
+usa fundo `#050505`, cartões `#101010`, branco `#FFFFFF`, texto secundário
+`#A6A6A6`, destaque âmbar `#FFC400`, alerta vermelho `#FF453A` e borda `#353535`.
+Superfícies opacas com raios de 4–6 px, bordas finas e barra de RPM segmentada.
 
-Centralizar o tema num único módulo. Cartões opacos, bordas de 1 pixel, raios
-de referência de 14 nos botões, 16 nos cartões e 22 no dock. Fontes de referência:
-12 px para legendas, 14–16 px para textos e 20–28 px para valores, ajustando o
-instrumento principal à legibilidade real. Validar leitura sob sol, vibração
-e distância de condução; a captura de software não faz essa validação.
+Velocidade e RPM usam glifos de 48 px, reduzidos a números e pontuação para
+poupar flash. Legendas usam Montserrat 12/14/16/28 conforme a hierarquia.
+Não há marcha estimada, pressão de óleo numérica ou sonda inexistente.
 
-Interação por clique, alvos de pelo menos 44 pixels como ponto de partida,
-paginação e teclados por páginas; sem depender de arraste, slider ou swipe.
-Esse número é um requisito inicial desta referência, não equivalência física
-com pontos de interfaces Apple. Calibração de cinco pontos, filtro de ruído e
-estados de pressionar/soltar devem ser conferidos na unidade real.
+Interação por clique, alvos de pelo menos 44×44 px e páginas. Teclado local
+ASCII paginado, senha mascarada. Calibração de cinco pontos e filtro de ruído
+foram preservados. Leitura sob sol, vibração e distância de condução ainda
+exigem validação na unidade instalada.
 
 ## Organização proposta
 
@@ -75,8 +68,8 @@ SPI de 40 MHz, dois buffers DMA de 320×16 pixels (20 KiB no total), LVGL de
 32 KiB e transições locais de 160 ms com desaceleração. Esses valores não são
 resultados medidos pelo projeto NGK ECU e não fixam a revisão da placa atual.
 
-Manter a aquisição independente da GUI/SD. Wi-Fi e BLE não foram solicitados
-para esta V1; não importar automaticamente os serviços de rede da referência.
+Manter a aquisição independente da GUI/SD. O responsável solicitou explicitamente
+Wi-Fi e BLE nesta revisão; a implementação própria começa com ambos desligados.
 O firmware de manutenção do SD deve ser separado do firmware de operação.
 
 ## Métricas: referência versus validação própria

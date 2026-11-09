@@ -52,6 +52,21 @@ int main() {
               !temperatureCard.overlaps(speedCard) && !oilStrip.overlaps(temperatureCard) &&
               !oilStrip.overlaps(speedCard) && !oilStrip.overlaps(rpmCard),
           "all instruments remain separate");
+    check(!rpmBar.overlaps(speedCard) && !rpmBar.overlaps(rpmCard) &&
+              screen.contains(rpmBar.x + rpmBar.w - 1, rpmBar.y + rpmBar.h - 1),
+          "RPM band stays visible above the large instruments");
+    for (unsigned index = 0; index < 18; ++index) {
+        const auto current = keyboardKey(index);
+        check(current.w >= 44 && current.h >= 44 &&
+                  screen.contains(current.x + current.w - 1, current.y + current.h - 1),
+              "every keyboard character is finger sized and inside the screen");
+        for (unsigned other = index + 1; other < 18; ++other) {
+            check(!current.overlaps(keyboardKey(other)), "keyboard targets do not overlap");
+        }
+    }
+    for (const auto row : settingsRows) {
+        check(row.h >= 44 && !row.overlaps(menuReturn), "settings rows leave the footer accessible");
+    }
 
     TouchDebouncer touch;
     check(!touch.update(true, {20, 205}, 100), "a new contact is not immediately pressed");
