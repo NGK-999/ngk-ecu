@@ -17,7 +17,7 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Cockpit atual — 0.4.3
+## Cockpit atual — 0.4.5
 
 O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
 pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
@@ -42,9 +42,10 @@ em `ui_theme.hpp`; neutros conferidos após quantização RGB565.
 Sem imagem de fundo, transparência animada ou sombra.
 Cores de faixaRPM são referências visuais, não corte/proteção do motor.
 
-Barlow Condensed Bold foi convertida em NGK Cockpit64/72, com apenas 12 glifos:
-`-.0123456789`. As alturas de linha efetivas são 48/53 px; em 72, três dígitos
-ocupam até 105 px; em 64, cinco dígitos ocupam até 155 px. Fontes residentes na flash,
+Barlow Condensed Bold foi convertida em NGK Cockpit48/64/72, com apenas 12 glifos:
+`-.0123456789`. As alturas de linha efetivas são 34/48/53 px. O painel atual usa 48 para RPM
+e 72 para velocidade; cinco dígitos da 48 cabem em 115 px, três da 72 em 105 px.
+A fonte 64 permanece para reprodução/histórico e não é ligada ao normal atual. Fontes residentes na flash,
 4bpp sem compressão, sem carregamento do SD durante desenho. Licença e reprodução
 em [third_party/licenses](../third_party/licenses/README.md).
 Legendas continuam Montserrat12/14/16/28. Áreas numéricas usam largura do
@@ -83,6 +84,18 @@ Faixa de alerta em y218..239, com ícone20 px e texto Montserrat14. Fundo
 Ocupa o lugar da dica/TPS, preservando todos os instrumentos. Fonte SIM,
 prioridades, histerese e validade continuam iguais; perda de link também
 retira o contêiner inteiro. A faixa é estática enquanto o alerta não muda.
+
+## RPM compacto e rampa maior — 0.4.5
+
+Pedido baseado na nova imagem FuelTech: apertar o valor de RPM no topo e ampliar
+o gráfico. O número agora usa Barlow48 (34 px de linha, antes 48 px), em uma faixa
+120×34 no alto. RPM, estado da fonte e escala ficam compactos ao lado. A marca
+continua no menu; a faixa do painel é dedicada aos instrumentos.
+
+A rampa passou de 304×24 para 304×56 px, começando em y44 e terminando em y99.
+Isso aumenta a altura em 133%, preservando velocidade/marcha, bloco/óleo e alerta
+nas posições anteriores. Desenho por colunas sujas, borda Q8, fontes residentes
+na flash e buffers DMA continuam iguais. A referência numérica permanece fixa.
 
 ## Fluxos
 
@@ -127,7 +140,7 @@ limitador, incluindo superaquecimento quando outro alerta domina o rodapé.
 Calibração/modal opaco suspendem o desenho oculto e retomam com o dado atual.
 
 O menu anima somente seus quatro ícones por 4 px em 120 ms, mantendo os alvos
-fixos. A barra RPM é uma única rampa curva de 304×24 px: callback C++ visita
+fixos. A barra RPM é uma única rampa curva de 304×56 px na 0.4.5: callback C++ visita
 somente as colunas sujas e agrupa trechos iguais em retângulos sólidos. A cor
 RGB565 é calculada localmente, sem canvas, imagem ou buffer de gradiente.
 Escala/limiares/validade invalidam a rampa quando necessário; o avanço comum

@@ -51,11 +51,11 @@ constantes e 8 bytes de cache em BSS, contra 96.713 e 8 bytes da fonte completa.
 A diferença de 92.084 bytes refere-se aos objetos de fonte; o MAP do firmware
 integrado determina a economia final na flash. Essa redução não mede FPS.
 
-## NGK Cockpit 64 e 72 — Barlow Condensed Bold
+## NGK Cockpit 48, 64 e 72 — Barlow Condensed Bold
 
-`firmware/ecu/src/ngk_cockpit_64.c` e `ngk_cockpit_72.c` são subconjuntos
+`firmware/ecu/src/ngk_cockpit_48.c`, `ngk_cockpit_64.c` e `ngk_cockpit_72.c` são subconjuntos
 numéricos rasterizados da **Barlow Condensed Bold**, peso 700. O nome das
-versões derivadas é **NGK Cockpit 64/72**. Contêm somente `-.0123456789`,
+versões derivadas é **NGK Cockpit 48/64/72**. Contêm somente `-.0123456789`,
 4 bpp, sem compressão e sem kerning.
 
 Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow).
@@ -81,12 +81,17 @@ Bitmap, avanços, caixas, offsets e métricas verticais permanecem idênticos.
 O ensaio real falhou antes dessa normalização e passou depois, inclusive para
 a rejeição de `/` e dos demais caracteres ausentes.
 
-As métricas globais já são compactas: no tamanho nominal 64, `line_height=48`
-e `base_line=1`; no 72, `line_height=53` e `base_line=1`. Não foi necessário
-trim vertical. Cinco dígitos no tamanho 64 precisam de no máximo 155 px;
+As métricas globais já são compactas: no tamanho nominal 48, `line_height=34`
+e `base_line=0`; no 64, `line_height=48` e `base_line=1`; no 72,
+`line_height=53` e `base_line=1`. Não foi necessário trim vertical.
+O subconjunto 48 atende o RPM compacto: `12000` mede 101 px de avanço com
+espaçamento zero, e cinco dígitos precisam de no máximo 115 px.
+Cinco dígitos no tamanho 64 precisam de no máximo 155 px;
 três no tamanho 72, de no máximo 105 px, com espaçamento zero. Os dígitos são
 proporcionais; não presumir avanço tabular. Objetos Xtensa isolados mediram
-6.322 e 7.723 bytes constantes, mais 8 bytes BSS por fonte. Esses números não
+3.542, 6.322 e 7.723 bytes constantes, mais 8 bytes BSS por fonte.
+Substituir a fonte 64 pela 48 reduz 2.780 bytes nesses objetos; alinhamento e
+descarte de seções são determinados pelo link final. Esses números não
 substituem o tamanho do firmware linkado nem medem desempenho de desenho.
 
 ### Reprodução e testes sem hardware
@@ -100,13 +105,13 @@ substituem o tamanho do firmware linkado nem medem desempenho de desenho.
 `--prepare` é a etapa explícita com rede: baixa o TTF verificado e instala o
 conversor com `npm ci --ignore-scripts` no diretório local de ferramentas.
 `--check` e os testes não baixam arquivos nem instalam dependências. Sem
-`--check`, o gerador reproduz os dois C no diretório de fontes da aplicação;
+`--check`, o gerador reproduz os quatro C no diretório de fontes da aplicação;
 `--output-dir` permite escolher outro destino.
 
 Os testes compilam os callbacks reais LVGL 8.4 para verificar exatamente os
 doze caracteres e a ausência de margem vertical vazia. Quando os caches locais
 do conversor/TTF estão preparados, também regeneram os arquivos, verificam
-reprodução exata e comparam os 24 bitmaps/métricas com a saída oficial compilada
+reprodução exata e comparam os 36 bitmaps/métricas com a saída oficial compilada
 separadamente. Essa comparação é pulada explicitamente se os caches faltarem;
 nenhum teste pede rede. GCC e a dependência LVGL local são necessários para
 os ensaios de execução C.
@@ -119,7 +124,7 @@ SIL OFL 1.1, com o mesmo copyright dos autores. Usa 4 bpp, sem compressão ou
 kerning, mapa Unicode esparso nativo e altura efetiva de 34 px. Não inclui
 fontes, ícones ou logotipos da Apple ou FuelTech.
 
-O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os três arquivos;
+O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os quatro arquivos;
 não há novo download ou dependência. O ensaio `test_gear_font.py` regenera o C
 e usa os callbacks reais do LVGL para conferir N/R/dígitos, limites da célula
 e ausência dos demais caracteres, inclusive os buracos do mapa Unicode.

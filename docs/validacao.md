@@ -591,3 +591,44 @@ Linker normal: **96016 B RAM estática / 1413909 B flash**. Captura adicionou
 24 B RAM estática e 1380 B flash frente à 0.4.3; não há novo framebuffer, driver SVG
 ou fontes. Simulador reaberto/streaming após os ensaios; os padrões do produto
 Linux continuam offline ao iniciar e seu visual permanece igual.
+
+## RPM compacto e rampa maior — 0.4.5
+
+Pedido: valor RPM mais compacto no topo e gráfico de rotação maior, com nova
+imagem FuelTech como referência. RPM agora usa a fonte Barlow48 de 34 px efetivos
+(antes 48 px), com referência fixa numa área 120×34 em y2. Legendas/fonte/escala
+ficam ao lado, sem conflito; identificação SIM segue visível. A marca fica no
+menu. Gráfico 304×56 em y44..99, antes 304×24: altura aumentada 133%. Demais
+instrumentos, toque/gesto, alertas, captura e fonte SIM foram preservados.
+
+**Verificações sem hardware:** 16 executáveis nativos ASan/UBSan e 13 testes de
+fontes passaram. O teste de geometria falhou primeiro no cabeçalho antigo e
+na altura 24, depois passou com a nova composição. Gerador reproduziu 48/64/72 e
+Gear48 offline; bytes 64/72/Gear ficaram iguais. Fonte 48 tem linha 34/base 0,
+12000 ocupa 101 px e cinco dígitos até 115 px. Renderer real LVGL em host conferiu
+extremos/ausência, °C/°F, kmh/mph, todos os 10 alertas+normal, modais, captura e
+textos do cabeçalho inclusive MAX12000. Revisão independente sem achados.
+
+Três builds passaram. ELF normal contém 48/72 e descarta a fonte 64 por ausência
+de referência. Linker: RAM estática 96016 B (igual 0.4.4), flash 1411149 B, redução
+de 2760 B. Buffers DMA 20 KiB e pool LVGL 32 KiB não mudaram. Auditoria estática de
+pinos/hashes passou, mantendo os três avisos existentes. main mudou somente
+versão; GPIOs e barramentos permanecem iguais.
+
+**Bancada:** alvo normal 0.4.4 identificado antes. Normal 0.4.5 instalado só em
+app 0x10000, com hash de escrita conferido. Sem formato SD, NVS, partições ou
+permissões alteradas. Captura real dos pixels enviados pela placa recebida e
+inspecionada, payload 153600 B, CRC32 `64495377`, duração 13.363 s.
+A imagem usa dados SIM e está em [captura-tela.md](captura-tela.md).
+
+Com captura desligada e modo Suave: **598 apresentações parciais em
+10000 ms**, rampa 598, intervalo p95 superior da rampa
+21000 µs/máximo 35308 µs. Maior gap de consulta
+touch 24088 µs; ui::tick decorrido acumulado 3773423 µs,
+máximo 13642 µs. São eventos DMA/tempo decorrido, sem medição óptica,
+60 telas completas/s garantidos ou percentual de CPU/folga de aquisição certificada.
+
+Imagem normal **1417728 B**, SHA-256
+`45db589d0d26955b405ba711f2460a02d8b02cdf5d52761107ae95f60ac1cbd2`.
+O simulador Linux foi reaberto/streaming após os ensaios. Sensores/atuadores
+físicos continuam desabilitados; nenhum ensaio de motor/veículo.

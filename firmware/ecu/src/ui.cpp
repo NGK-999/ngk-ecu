@@ -35,7 +35,7 @@ using theme::accent;
 using theme::danger;
 using theme::border;
 using theme::warning;
-const lv_font_t* const rpmDigits = &ngk_cockpit_64;
+const lv_font_t* const rpmDigits = &ngk_cockpit_48;
 const lv_font_t* const speedDigits = &ngk_cockpit_72;
 constexpr const char* unknown = "--";
 constexpr const char* noSignal = "SEM SINAL";
@@ -676,18 +676,19 @@ void renderPage(Page next) {
         updateMenuStatus();
     } else if (page == Page::Panel) {
         auto* title = lv_obj_get_child(pageContent, 0);
-        setText(title, "NGK ECU");
-        lv_obj_set_y(title, 2);
+        setHidden(title, true);
         lv_obj_set_y(modeLabel, 4);
+        lv_obj_set_x(modeLabel, 216);
+        lv_obj_set_width(modeLabel, 96);
         auto* rpm = region(pageContent, rpmCard);
         rpmValue = label(rpm, unknown, 0, 0, 200, rpmDigits);
         lv_obj_set_width(rpmValue, LV_SIZE_CONTENT);
-        lv_obj_align(rpmValue, LV_ALIGN_TOP_RIGHT, -8, 0);
-        label(pageContent, "RPM", 224, 26, 88, &lv_font_montserrat_12, accent);
-        rpmSignal = label(pageContent, noSignal, 224, 44, 88, &lv_font_montserrat_12, secondary);
+        lv_obj_align(rpmValue, LV_ALIGN_TOP_RIGHT, 0, 0);
+        label(pageContent, "RPM", 136, 4, 44, &lv_font_montserrat_12, accent);
+        rpmSignal = label(pageContent, noSignal, 136, 23, 88, &lv_font_montserrat_12, secondary);
         char scale[32];
         std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
-        rpmScaleLabel = label(pageContent, scale, 224, 62, 88, &lv_font_montserrat_12, secondary);
+        rpmScaleLabel = label(pageContent, scale, 244, 23, 68, &lv_font_montserrat_12, secondary);
         gearLabel = label(pageContent, "MARCHA", gearCard.x, gearCard.y, gearCard.w,
                           &lv_font_montserrat_12, secondary);
         gearValue = label(pageContent, unknown, gearCard.x,

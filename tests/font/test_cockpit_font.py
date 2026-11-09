@@ -20,6 +20,7 @@ HARNESS = r'''
 #include <assert.h>
 #include <string.h>
 #ifdef COMPARE_ORIGINAL
+LV_FONT_DECLARE(ngk_cockpit_48_original);
 LV_FONT_DECLARE(ngk_cockpit_64_original);
 LV_FONT_DECLARE(ngk_cockpit_72_original);
 #endif
@@ -54,10 +55,13 @@ static void check_font(const lv_font_t* font, const lv_font_t* original) {
     if (original) assert(font->line_height == original->line_height && font->base_line == original->base_line);
 }
 int main(void) {
+    assert(ngk_cockpit_48.line_height <= 34);
 #ifdef COMPARE_ORIGINAL
+    check_font(&ngk_cockpit_48, &ngk_cockpit_48_original);
     check_font(&ngk_cockpit_64, &ngk_cockpit_64_original);
     check_font(&ngk_cockpit_72, &ngk_cockpit_72_original);
 #else
+    check_font(&ngk_cockpit_48, NULL);
     check_font(&ngk_cockpit_64, NULL);
     check_font(&ngk_cockpit_72, NULL);
 #endif
@@ -88,6 +92,7 @@ class CockpitFontTests(unittest.TestCase):
                 objects.append(str(output))
             flags.append("-DCOMPARE_ORIGINAL")
         self.run_command(["gcc", *flags, str(folder / "check.c"),
+                          str(ROOT / "firmware/ecu/src/ngk_cockpit_48.c"),
                           str(ROOT / "firmware/ecu/src/ngk_cockpit_64.c"),
                           str(ROOT / "firmware/ecu/src/ngk_cockpit_72.c"),
                           str(LVGL / "src/font/lv_font_fmt_txt.c"), str(LVGL / "src/misc/lv_utils.c"),
@@ -100,6 +105,7 @@ class CockpitFontTests(unittest.TestCase):
             self.compile_runtime(Path(temporary))
 
     def test_regeneration_and_pixels_match_pinned_official_converter(self) -> None:
+        self.assertIn(48, generator.SIZES, "The compact RPM font must reproduce offline")
         if not generator.dependencies_ready():
             self.skipTest("Run generate_cockpit.py --prepare for the optional offline conversion test")
         if not shutil.which("gcc") or not LVGL.is_dir():
@@ -107,7 +113,7 @@ class CockpitFontTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
             originals = {}
-            for size in generator.SIZES:
+            for size in (48, 64, 72):
                 raw, final = generator.generate(size, folder)
                 self.assertEqual(final.read_bytes(), (ROOT / f"firmware/ecu/src/ngk_cockpit_{size}.c").read_bytes())
                 originals[size] = raw

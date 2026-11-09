@@ -41,8 +41,12 @@ int main() {
           "secondary pages have a separate finger-sized Menu action");
     check(screen.contains(menuReturn.x + menuReturn.w - 1, menuReturn.y + menuReturn.h - 1),
           "Menu return action fits the screen");
-    check(speedCard.h >= 68 && speedCard.w >= 160 && rpmCard.w >= 200 && rpmCard.h >= 48,
-          "cockpit leaves room for large speed and five-digit RPM glyphs");
+    check(speedCard.h >= 68 && speedCard.w >= 160 && rpmCard.w >= 116 && rpmCard.h >= 34,
+          "cockpit leaves room for large speed and compact five-digit RPM glyphs");
+    check(rpmCard.y <= 4 && rpmCard.h <= 36,
+          "compact RPM value occupies the top strip");
+    check(rpmBar.h >= 48,
+          "RPM graph has at least twice the previous 24px height");
     check(gearCard.w >= 72 && gearCard.h >= 48 && gearCard.y == speedCard.y &&
               !gearCard.overlaps(speedCard),
           "SIM gear gets its own large area beside speed");

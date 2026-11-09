@@ -5,6 +5,7 @@
 #ifdef __cplusplus
 extern "C" {
 #endif
+extern const lv_font_t ngk_cockpit_48;
 extern const lv_font_t ngk_cockpit_64;
 extern const lv_font_t ngk_cockpit_72;
 #ifdef __cplusplus

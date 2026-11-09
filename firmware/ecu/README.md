@@ -85,7 +85,7 @@ Suave com movimento pelo serviço normal de perfis; preserva os outros campos.
 `info` inclui `refresh_mode` e `reduced_motion`. Nenhum desses comandos habilita
 sensores ou atuadores. Não há comando serial para informar senha ou aceitar pareamento.
 
-## Simulação USB — protocolo 1, normal 0.4.4
+## Simulação USB — protocolo 1, normal 0.4.5
 
 O appLinux está em [simulator/](../../simulator/README.md). Nenhuma porta é
 aberta ao iniciar o app; Conectar identifica o projeto e simulation_protocol1.

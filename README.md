@@ -44,7 +44,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.4-capture. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.5-cockpit. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -97,11 +97,12 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.4.4-capture** está instalada em bancada. Tela preta com laranja e
+A versão **0.4.5-cockpit** está instalada em bancada. Tela preta com laranja e
 vermelho, menu 2×2, instrumentos grandes e barra RPM contínua em rampa curva.
 O redesenho afeta somente a ESP32; o visual do simulador foi preservado.
 A revisão 0.4.3 acrescenta ícones Lucide consistentes, números ancorados pela
 direita com unidades fixas e faixa de alerta com símbolo e texto maior.
+A 0.4.5 compacta o RPM no topo e amplia a rampa de 24 para 56 px de altura.
 A barra usa interpolação com cadência alvo de 60 Hz; os números, cerca de
 30 Hz no modo Suave. Alarmes e perda de sinal têm prioridade imediata.
 
@@ -125,7 +126,7 @@ Capturas recebidas diretamente dos pixels enviados pela ESP32 ao LCD,
 com dados sintéticos; não são fotografias:
 
 ![Menu recebido da ESP32](docs/images/esp32-menu.png)
-![Painel SIM recebido da ESP32](docs/images/esp32-painel-alerta.png)
+![Painel com RPM compacto e rampa maior, recebido da ESP32](docs/images/esp32-painel-rpm-045.png)
 
 Prévia adicional renderizada com LVGL no host:
 

@@ -57,3 +57,10 @@ O painel usa valores sintéticos, identificados como SIM USB.
 
 ![Menu recebido da ESP32](images/esp32-menu.png)
 ![Painel SIM e alerta recebidos da ESP32](images/esp32-painel-alerta.png)
+
+## Painel com RPM compacto — 0.4.5
+
+Nova captura recebida da placa: RPM compacto e rampa de 56 px, com valores SIM.
+Payload 153600 B, CRC32 `64495377`, conferido antes de salvar PNG.
+
+![Painel 0.4.5 recebido da ESP32](images/esp32-painel-rpm-045.png)
