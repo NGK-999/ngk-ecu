@@ -32,6 +32,10 @@ bool startMotionBenchmark();
 bool takeMotionBenchmarkReport(MotionBenchmarkReport& report);
 std::uint8_t presentationRefreshMode();
 bool reducedMotionEnabled();
+// Explicit bench-only frozen redraw, mirrored from existing DMA tiles to UART.
+// Returns false before output when the page/state is unsafe. Once output starts,
+// only a complete byte count + CRC trailer denotes success (true can abort).
+bool captureScreen();
 // Explicit operator request: persist Smooth and enable motion, preserving other settings.
 bool requestSmoothPresentation();
 }

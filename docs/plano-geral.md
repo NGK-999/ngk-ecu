@@ -114,6 +114,10 @@ de animação.
 Não há percentual de CPU livre ou capacidade de aquisição real certificado
 sem ensaio específico.
 
-A entrega 0.4.3 está documentada em [validação](validacao.md#acabamento-dos-instrumentos--043).
+A entrega 0.4.4 está documentada em [validação](validacao.md#captura-direta-dos-pixels--044).
 Pendências marcadas na etapa 2 são trabalho no veículo, sensor/calibração e
 futura injeção; não são funcionalidades físicas habilitadas por este firmware.
+
+Pedido adicional concluído: [captura dos pixels enviados pela própria ESP32](captura-tela.md),
+com PNGs conferidos por CRC, sem framebuffer extra. A captura é um diagnóstico
+explícito e pausa a animação durante a transmissão; não é vídeo contínuo.

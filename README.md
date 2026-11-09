@@ -44,7 +44,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.3-cockpit. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.4-capture. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -97,7 +97,7 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.4.3-cockpit** está instalada em bancada. Tela preta com laranja e
+A versão **0.4.4-capture** está instalada em bancada. Tela preta com laranja e
 vermelho, menu 2×2, instrumentos grandes e barra RPM contínua em rampa curva.
 O redesenho afeta somente a ESP32; o visual do simulador foi preservado.
 A revisão 0.4.3 acrescenta ícones Lucide consistentes, números ancorados pela
@@ -105,8 +105,8 @@ direita com unidades fixas e faixa de alerta com símbolo e texto maior.
 A barra usa interpolação com cadência alvo de 60 Hz; os números, cerca de
 30 Hz no modo Suave. Alarmes e perda de sinal têm prioridade imediata.
 
-Quinze executáveis nativos, treze testes de fontes, dois testes de ícones,
-55 testes do simulador e três builds passaram. A bancada mediu aproximadamente **60 apresentações
+Dezesseis executáveis nativos, treze testes de fontes, dois testes de ícones,
+seis testes de captura, 55 testes do simulador e três builds passaram. A bancada mediu aproximadamente **60 apresentações
 parciais/s** no caminho SIM animado. Isso não representa 60 telas completas/s
 ou medição óptica; intervalos, consumo de memória e limites estão no
 [relatório de validação](docs/validacao.md#acabamento-dos-instrumentos--043).
@@ -121,11 +121,24 @@ A [skill ESP32](docs/ferramentas-esp32.md) foi instalada localmente e auditada;
 o [ESP-MCP e as alternativas de IA](docs/avaliacao-ferramentas-ia.md) foram
 avaliados sem acrescentar ML/API ao firmware sem uma função definida.
 
-Renderizações do próprio código com LVGL em host; não são fotos da placa:
+Capturas recebidas diretamente dos pixels enviados pela ESP32 ao LCD,
+com dados sintéticos; não são fotografias:
 
-![Menu NGK ECU, renderização headless](docs/images/menu.png)
-![Painel com barra RPM contínua, valores sintéticos, renderização LVGL em host](docs/images/painel_rampa.png)
+![Menu recebido da ESP32](docs/images/esp32-menu.png)
+![Painel SIM recebido da ESP32](docs/images/esp32-painel-alerta.png)
+
+Prévia adicional renderizada com LVGL no host:
+
 ![Categorias de ajustes, renderização headless](docs/images/ajustes.png)
+
+[Captura direta dos pixels da ESP32](docs/captura-tela.md), acionada pelo Linux:
+
+```sh
+.venv/bin/python tools/capture_screen.py --output artifacts/esp32-screen.png
+```
+
+Feche o simulador para liberar a porta. Durante a captura, a animação pausa
+para transferir os pixels; o PNG só é salvo após conferir tamanho e CRC.
 
 Teste sem hardware: `sh scripts/test-native.sh`.
 Compilação e operação: [guia do firmware](firmware/ecu/README.md).

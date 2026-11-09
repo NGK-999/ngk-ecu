@@ -28,7 +28,7 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run 
 ```
 
 Compilar não abre porta USB nem grava a placa. Os testes nativos não usam
-hardware; execute `sh scripts/test-native.sh` (15 executáveis C++17 com avisos e
+hardware; execute `sh scripts/test-native.sh` (16 executáveis C++17 com avisos e
 ASan/UBSan). As fontes têm 13 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
 
 Os ícones têm dois testes adicionais: `.venv/bin/python -m unittest discover -s tests/icons -v`.
@@ -85,7 +85,7 @@ Suave com movimento pelo serviço normal de perfis; preserva os outros campos.
 `info` inclui `refresh_mode` e `reduced_motion`. Nenhum desses comandos habilita
 sensores ou atuadores. Não há comando serial para informar senha ou aceitar pareamento.
 
-## Simulação USB — protocolo 1, normal 0.4.3
+## Simulação USB — protocolo 1, normal 0.4.4
 
 O appLinux está em [simulator/](../../simulator/README.md). Nenhuma porta é
 aberta ao iniciar o app; Conectar identifica o projeto e simulation_protocol1.
@@ -124,6 +124,15 @@ SIM USB mostra marcha/TPS e sinaliza texto/cor por validade. Ausência vira--,
 zero permanece valor. Os instrumentos arredondam velocidade/bloco para inteiros;
 os dados do protocolo mantêm décimos. USB é fonte sintética prioritária, sem
 misturar valores deDEMO ou sinais físicos.
+
+## Captura explícita da tela — 0.4.4
+
+`screen-capture` espelha os pixels enviados ao LCD e transmite RGB565_BE com
+contagem/CRC. Usa somente os tiles DMA existentes; não aloca uma tela completa.
+É diagnóstico de bancada: o quadro fica congelado durante a transferência,
+com timeout. Páginas/estados sensíveis são recusados antes do header.
+`info.screen_capture_protocol` é1 no normal e0 na manutenção.
+Cliente e instruções em [captura-tela](../../docs/captura-tela.md).
 
 ## SD e manutenção
 

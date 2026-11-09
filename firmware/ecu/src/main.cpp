@@ -4,6 +4,7 @@
 #include <cstring>
 #include <esp_heap_caps.h>
 #include <esp_system.h>
+#include <driver/uart.h>
 #include <sd_diskio.h>
 extern "C" {
 #include <ff.h>
@@ -25,7 +26,7 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
-constexpr const char* Version = "0.4.3-cockpit";
+constexpr const char* Version = "0.4.4-capture";
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
     uint32_t sectors = 0, type = 0;
@@ -263,8 +264,10 @@ void printInfo() {
     const auto simulation = ecu::simulation::snapshot();
 #ifdef NGK_SD_MAINTENANCE
     constexpr unsigned simulationProtocol = 0;
+    constexpr unsigned screenCaptureProtocol = 0;
 #else
     constexpr unsigned simulationProtocol = ecu::simulation::protocolVersion;
+    constexpr unsigned screenCaptureProtocol = 1;
 #endif
     queuePrintf("{\"project\":\"NGK ECU\",\"firmware\":\"%s\",\"build\":\"%s\","
         "\"mode\":\"bench\",\"sensor_inputs_enabled\":false,\"actuators_enabled\":false,"
@@ -276,7 +279,7 @@ void printInfo() {
         "\"ble_advertising\":%s,\"ble_connected\":%s,\"radio_memory_failure\":%s,"
         "\"profile_status\":%u,\"profile_revision\":%u,\"profile_persisted\":%s,"
         "\"simulation_protocol\":%u,\"simulation_enabled\":%s,\"simulation_live\":%s,"
-        "\"refresh_mode\":%u,\"reduced_motion\":%s"
+        "\"refresh_mode\":%u,\"reduced_motion\":%s,\"screen_capture_protocol\":%u"
 #ifdef NGK_SD_MAINTENANCE
         ",\"format_token\":%u"
 #endif
@@ -298,7 +301,8 @@ void printInfo() {
         radios.bleConnected ? "true" : "false", radios.memoryFailure ? "true" : "false",
         unsigned(profile.status), unsigned(profile.revision), profile.persisted ? "true" : "false",
         simulationProtocol, simulation.enabled ? "true" : "false", simulation.live ? "true" : "false",
-        unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false"
+        unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false",
+        screenCaptureProtocol
 #ifdef NGK_SD_MAINTENANCE
         , data.formatReady ? unsigned(bootToken) : 0U
 #endif
@@ -316,6 +320,16 @@ void printSimulationStatus() {
 
 void command(const char* line) {
 #ifndef NGK_SD_MAINTENANCE
+    if (!strcmp(line, "screen-capture")) {
+        // serialCommands accepts no next line while the bounded outbox is pending.
+        // Drain bytes already owned by UART before sending the binary header.
+        if (serialTx.pending() || uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(1000)) != ESP_OK) {
+            queueLine("{\"kind\":\"screen_capture\",\"error\":\"screen_capture_tx_busy\"}");
+        } else if (!ecu::ui::captureScreen()) {
+            queueLine("{\"kind\":\"screen_capture\",\"error\":\"screen_capture_blocked\"}");
+        }
+        return;
+    }
     if (!strcmp(line, "sim-start") || !strncmp(line, "sim-start ", 10)) {
         uint32_t token = 0;
         if (line[9] && !ecu::simulation::parseSessionToken(line + 10, token)) {

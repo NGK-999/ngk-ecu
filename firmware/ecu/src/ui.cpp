@@ -11,6 +11,7 @@
 #include "ngk_gear_48.h"
 #include "simulation_service.hpp"
 #include "simulation_view.hpp"
+#include "screen_capture.hpp"
 
 #include <Preferences.h>
 #include <algorithm>
@@ -164,6 +165,35 @@ std::uint32_t motionCaptureStarted = 0, motionCaptureLastFrame = 0, motionCaptur
 std::uint32_t motionCaptureTouchAt = 0;
 std::uint32_t motionRampAt = 0;
 std::array<std::uint16_t, 64> motionRampGapBins{};
+bool screenCaptureActive = false;
+ScreenCaptureFrame screenCaptureFrame;
+const char* screenCaptureError = nullptr;
+std::uint32_t screenCaptureStarted = 0;
+// Main allows at most 1 s to drain earlier UART TX, then capture has 24 s.
+// Reserve the final 500 ms for a best-effort error/success trailer.
+constexpr std::uint32_t screenCaptureTimeoutMs = 24000;
+
+std::size_t writeScreenCapture(const std::uint8_t* bytes, std::size_t count, bool trailer = false) {
+    return writeCaptureBytes(bytes, count, screenCaptureStarted,
+        screenCaptureTimeoutMs - (trailer ? 0U : 500U),
+        [] { return Serial.availableForWrite(); },
+        [](const std::uint8_t* data, std::size_t size) { return Serial.write(data, size); },
+        [] { return static_cast<std::uint32_t>(millis()); }, [] { delay(1); });
+}
+
+void captureTile(const lv_area_t* area, const lv_color_t* pixels) {
+    if (!screenCaptureActive || screenCaptureError) return;
+    if (!screenCaptureFrame.beginTile(area->x1, area->y1, area->x2, area->y2)) {
+        screenCaptureError = "geometry";
+        return;
+    }
+    const auto size = static_cast<std::size_t>(area->x2 - area->x1 + 1) *
+        (area->y2 - area->y1 + 1) * sizeof(lv_color_t);
+    const auto* bytes = reinterpret_cast<const std::uint8_t*>(pixels);
+    const auto sent = writeScreenCapture(bytes, size);
+    screenCaptureFrame.consume(bytes, sent);
+    if (sent != size) screenCaptureError = "timeout";
+}
 
 std::uint32_t clockUs() { return static_cast<std::uint32_t>(esp_timer_get_time()); }
 
@@ -227,6 +257,9 @@ void flushDisplay(lv_disp_drv_t* driver, const lv_area_t* area, lv_color_t* pixe
                          area->y2 - area->y1 + 1,
                          reinterpret_cast<lgfx::swap565_t*>(pixels));
     pendingFlush = driver;
+    // Both DMA and UART read the immutable LVGL tile. No flush_ready occurs
+    // until UART has finished reading and DMA has released it via completeFlush.
+    captureTile(area, pixels);
 }
 
 void waitFlush(lv_disp_drv_t*) {
@@ -1589,6 +1622,44 @@ bool benchmarkRunning() { return benchmarkPhase != BenchmarkPhase::Idle; }
 
 std::uint8_t presentationRefreshMode() { return static_cast<std::uint8_t>(settingsEditor.values.refreshMode); }
 bool reducedMotionEnabled() { return settingsEditor.values.reducedMotion; }
+
+bool captureScreen() {
+    radio::Snapshot latest;
+    if (radio::snapshot(latest)) radioView = latest;
+    const bool safePage = page == Page::Menu || page == Page::Panel ||
+        page == Page::Sensors || page == Page::SettingsHome;
+    if (!ready || !safePage || calibrating || calibrationRequested || pairOverlay ||
+        pairPendingBanner || radioView.blePairingPending || credentialActive ||
+        applyPending || importPending || pageChangeRequested || queuedAction ||
+        benchmarkPhase != BenchmarkPhase::Idle || motionCaptureActive || screenCaptureActive) return false;
+    // The UI task owns the whole redraw. No touch/service/animation tick runs
+    // during it. Existing USB TTL handling resumes immediately in the next tick.
+    display.waitDMA();
+    completeFlush();
+    screenCaptureFrame = {};
+    screenCaptureError = nullptr;
+    screenCaptureStarted = millis();
+    constexpr char header[] = "NGK_SCREEN RGB565_BE 320 240 153600\n";
+    if (writeScreenCapture(reinterpret_cast<const std::uint8_t*>(header), sizeof(header) - 1) !=
+        sizeof(header) - 1) screenCaptureError = "header_timeout";
+    if (!screenCaptureError) {
+        screenCaptureActive = true;
+        lv_obj_invalidate(lv_scr_act());
+        lv_refr_now(registeredDisplay);
+        display.waitDMA();
+        completeFlush();
+        screenCaptureActive = false;
+        if (!screenCaptureError && !screenCaptureFrame.complete()) screenCaptureError = "incomplete";
+    }
+    char trailer[96];
+    const auto length = screenCaptureError ?
+        std::snprintf(trailer, sizeof(trailer), "\nNGK_SCREEN_ERROR %u %s\n",
+            unsigned(screenCaptureFrame.bytes()), screenCaptureError) :
+        std::snprintf(trailer, sizeof(trailer), "\nNGK_SCREEN_END %u %08lx\n",
+            unsigned(screenCaptureFrame.bytes()), static_cast<unsigned long>(screenCaptureFrame.crc32()));
+    writeScreenCapture(reinterpret_cast<const std::uint8_t*>(trailer), std::size_t(length), true);
+    return true;
+}
 
 bool requestSmoothPresentation() {
     if (!ready || !settingsLoaded || calibrating || pairOverlay || credentialActive || applyPending ||

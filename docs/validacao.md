@@ -533,3 +533,61 @@ Imagem normal **1.419.104 B**, SHA-256
 Linker **95.992 B RAM estática** e **1.412.529 B flash**, crescimento de 8 B RAM
 estática e 2596 B flash frente à 0.4.2. Buffers DMA 20 KiB/pool LVGL 32 KiB mantidos.
 Ícones permanecem na flash e não há SVG/Qt/Flow embarcado ou framebuffer extra.
+
+## Captura direta dos pixels — 0.4.4
+
+Pedido adicional durante finalização: capturar a tela da própria ESP32.
+Implementado `screen-capture`, somente por comando explícito no firmware normal
+de bancada. Espelha os tiles enviados ao LCD, sem alocar snapshot de 153600 B;
+RGB565_BE ordenado com contagem/CRC32. Quadro congela durante transmissão e
+TTL/validade voltam a ser observados no próximo tick. Isso não é leitura de
+retorno físico ou fotografia do LCD.
+
+### Verificação sem hardware
+
+**16 executáveis nativos** ASan/UBSan passaram: inclui geometria de tiles,
+ordem/limites, CRC32 conhecido, escrita parcial, timeout e rollover. **6 testes
+do cliente** passaram com streams sintéticos: RGB565/PNG, bytes LF no payload,
+truncamento, CRC/geometry inválidos, recusa e timeout transitório.
+**55 testes do simulador** passaram com Qt offscreen e transporte em memória.
+Três builds PlatformIO passaram; auditoria de pinos/hashes passou com os três
+avisos preexistentes. Fontes/ícones são os mesmos já conferidos na 0.4.3.
+
+Renderer real LVGL em host conferiu que o payload completo corresponde byte a byte
+aos pixels enviados ao display fake, sem arquivo de serial bruto. Conferiu
+recusa antes de header nas páginas sensíveis/calibração e retomada de TTL após a
+captura. Os contratos anteriores de âncoras, alarmes, unidades e modal passaram.
+Revisão independente não encontrou defeitos de ownership, privacidade,
+ordenação ou integridade; sua revisão não abriu dispositivos físicos.
+
+### Bancada física separada
+
+Alvo normal 0.4.3 identificado antes da gravação. App normal 0.4.4 instalado em
+0x10000, hash de escrita conferido. Nenhum formato SD, NVS, partição ou permissão
+alterados. O cliente identificou NGK ECU e protocolo de captura 1 com entradas/
+atuadores desabilitados antes de solicitar imagens.
+
+| Captura recebida da placa | Pixels de payload | CRC32 | Duração |
+| --- | ---: | --- | ---: |
+| Menu | 153600 B | d93988db | 13.364 s |
+| Painel com alerta SIM | 153600 B | 8a17f27e | 13.357 s |
+
+Os dois CRCs conferiram no Linux antes de salvar PNG. PNGs inspecionados e
+publicados em [captura-tela.md](captura-tela.md); o painel usa somente dados
+sintéticos identificados. Nenhuma amostra/serial bruto foi guardada, só os PNGs
+pedidos e metadados agregados. LCD físico ainda requer observação própria para
+confirmar brilho/cores/toque; captura verifica os pixels produzidos pela ESP32.
+
+Com captura desligada, o caminho SIM foi medido novamente: **599
+apresentações parciais em 10000 ms**, rampa 599,
+p95 superior da rampa 22000 µs e máximo 34012 µs.
+Maior gap de consulta touch 27024 µs. São eventos DMA;
+não garantem 60 telas completas/s, latência óptica ou folga de CPU para aquisição.
+Os resultados do benchmark de 17 ms anterior continuam identificados como 0.4.3.
+
+Imagem normal **1420480 B**, SHA-256
+`f3156d574cf34801e85a0887495ab0ae3a6ff3049919609e536eb302d7265ff5`.
+Linker normal: **96016 B RAM estática / 1413909 B flash**. Captura adicionou
+24 B RAM estática e 1380 B flash frente à 0.4.3; não há novo framebuffer, driver SVG
+ou fontes. Simulador reaberto/streaming após os ensaios; os padrões do produto
+Linux continuam offline ao iniciar e seu visual permanece igual.
