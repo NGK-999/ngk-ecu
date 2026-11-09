@@ -63,8 +63,6 @@ lv_obj_t* speedValue = nullptr;
 lv_obj_t* rpmValue = nullptr;
 std::array<char, 16> rpmText{}, speedText{};
 lv_obj_t* speedSignal = nullptr;
-lv_obj_t* tpsTrack = nullptr;
-lv_obj_t* tpsFill = nullptr;
 lv_obj_t* rpmSignal = nullptr;
 lv_obj_t* modeLabel = nullptr;
 lv_obj_t* unitLabel = nullptr;
@@ -523,7 +521,7 @@ void updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
         dirty.x2 = static_cast<lv_coord_t>(dirty.x1 + lastColumn);
         dirty.x1 = static_cast<lv_coord_t>(dirty.x1 + ((std::min(previous, progress) >> 8) ? (std::min(previous, progress) >> 8) - 1 : 0));
         // Heights increase with x. This covers every changed column while
-        // excluding the empty space and independent TPS content above it.
+        // excluding the empty space above it.
         dirty.y1 = static_cast<lv_coord_t>(dirty.y2 - rpmColumnHeight(lastColumn) + 1);
         lv_obj_invalidate_area(rpmRampObject, &dirty);
     }
@@ -650,7 +648,6 @@ void renderPage(Page next) {
     }
     page = next;
     storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
-    tpsTrack = tpsFill = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
     temperatureValue = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
     dashboardHintLabel = faultFooterLabel = faultFooterPanel = sensorSourceLabel = nullptr;
@@ -742,14 +739,6 @@ void renderPage(Page next) {
         speedSignal = label(pageContent, demoEnabled ? "SIMULADO" : "", 8, 50, 120, &lv_font_montserrat_14);
         lv_obj_set_style_text_align(speedSignal, LV_TEXT_ALIGN_RIGHT, 0);
         setHidden(speedSignal, !demoEnabled);
-        tpsTrack = surface(pageContent, {8, 72, 120, 4}, theme::inactive, 1);
-        lv_obj_set_style_border_width(tpsTrack, 0, 0);
-        lv_obj_clear_flag(tpsTrack, LV_OBJ_FLAG_CLICKABLE);
-        tpsFill = surface(tpsTrack, {0, 0, 1, 4}, accent, 1);
-        lv_obj_set_style_border_width(tpsFill, 0, 0);
-        lv_obj_clear_flag(tpsFill, LV_OBJ_FLAG_CLICKABLE);
-        setHidden(tpsTrack, true);
-        setHidden(tpsFill, true);
         dashboardHintLabel = label(pageContent, "2 toques: menu", 8, dashboardHint.y, 304,
                            &lv_font_montserrat_12, secondary);
         lv_obj_set_style_text_align(dashboardHintLabel, LV_TEXT_ALIGN_RIGHT, 0);
@@ -1203,25 +1192,9 @@ void serviceUsbSimulation() {
         else if (view.gear == -1) setText(gearValue, "R");
         else if (view.gear == 0) setText(gearValue, "N");
         else setNumber(gearValue, true, view.gear);
-        char value[24];
-        if (source.enabled) {
-            if (view.tpsValid) std::snprintf(value, sizeof(value), "TPS %ld%%", static_cast<long>(view.tps));
-            else std::snprintf(value, sizeof(value), "TPS --");
-            setText(speedSignal, value);
-        } else {
-            setText(speedSignal, noSignal);
-            setText(rpmSignal, noSignal);
-        }
+        if (!source.enabled) setText(rpmSignal, noSignal);
         const bool alert = source.enabled && view.alert != simulation::Alert::None;
-        setHidden(speedSignal, !source.enabled);
-        setTextColor(speedSignal, view.tpsValid ? text : secondary);
-        setHidden(tpsTrack, !source.enabled);
-        const bool tpsVisible = source.enabled && view.tpsValid && view.tps > 0;
-        setHidden(tpsFill, !tpsVisible);
-        if (tpsVisible) {
-            const auto width = static_cast<lv_coord_t>(view.tps * 120 / 100);
-            if (lv_obj_get_width(tpsFill) != width) lv_obj_set_width(tpsFill, width);
-        }
+        setHidden(speedSignal, true);
         setHidden(dashboardHintLabel, alert);
         setHidden(faultFooterPanel, !alert);
         setHidden(faultFooterLabel, !alert);

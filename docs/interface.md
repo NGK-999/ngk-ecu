@@ -17,7 +17,7 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Cockpit atual — 0.4.6
+## Cockpit atual — 0.4.7
 
 O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
 pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
@@ -81,7 +81,7 @@ separados; temperatura exibe °C/°F. Não foram mudados valores ou conversões.
 
 Faixa de alerta em y218..239, com ícone20 px e texto Montserrat14. Fundo
 `#5C3200` para rotação alta e `#8F1D1D` para os demais alertas, com texto claro.
-Ocupa o lugar da dica/TPS, preservando todos os instrumentos. Fonte SIM,
+Ocupa o lugar da dica, preservando todos os instrumentos. Fonte SIM,
 prioridades, histerese e validade continuam iguais; perda de link também
 retira o contêiner inteiro. A faixa é estática enquanto o alerta não muda.
 
@@ -108,17 +108,26 @@ Bloco/óleo usam y180..215, reduzindo o vão de 8 para 4 px após os instrumento
 Temperatura usa a Barlow48 já residente (linha 34); estado do óleo, Montserrat14.
 Continuam acomodados -40°C/F,392°F e estados de ausência, sem pressão inventada.
 
-O TPS existente da fonte SIM foi levado ao espaço acima da curva à esquerda,
+Na 0.4.6, o TPS existente da fonte SIM foi levado ao espaço acima da curva à esquerda,
 com texto de 14 px e barra horizontal de 120×4 px. Não aparece em BANCADA; continua visível
 sob alertas sem esconder dados críticos. Inválido/stale mostra TPS --/barra vazia;
 zero válido é TPS 0%. DEMO interno indica SIMULADO sem inventar TPS. A escala máxima do gráfico
 é sempre visível e acompanha mudanças dos ajustes, inclusive com SIM ativo.
 
 O recorte incremental da rampa agora limita também a altura, usando a coluna
-mais alta entre as alteradas. Isso evita redesenhar a região do TPS em pequenas
+mais alta entre as alteradas. Isso evita redesenhar o vazio acima da curva em pequenas
 variações de giro. A fórmula de altura é compartilhada com o desenho; host
 comparou frames incrementais com redesenho completo para descidas/subidas,
 frações e extremos. Sem imagem de tela inteira, fonte completa ou SD por quadro.
+
+## Painel sem TPS — 0.4.7
+
+Texto e barra TPS removidos do cockpit por pedido explícito. RPM, rampa,
+velocidade, marcha, temperatura, óleo, escala e alertas preservam suas posições.
+O topo continua indicando SIM USB/SIM SEM LINK ou DEMO ATIVO; DEMO interno
+mantém a indicação SIMULADO. O acelerador e seu diagnóstico continuam no
+simulador/protocolo para ensaiar a resposta do motor. Sem novo desenho ou
+buffer; a UI deixa de criar os dois objetos da barra TPS e de atualizar seu texto.
 
 ## Fluxos
 

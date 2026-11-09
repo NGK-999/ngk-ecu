@@ -71,3 +71,10 @@ Captura recebida da ESP32, dados SIM, CRC32 `1e4507fe` conferido.
 Marcha e temperatura maiores; TPS/escala ocupam os espaços superiores.
 
 ![Painel 0.4.6 recebido da ESP32](images/esp32-painel-046.png)
+
+## Painel sem TPS — 0.4.7
+
+Texto e barra TPS removidos a pedido do responsável. Captura recebida da ESP32
+com dados SIM, 153600 B e CRC32 `eada1b33` conferido; 13.36 s.
+
+![Painel 0.4.7 sem TPS recebido da ESP32](images/esp32-painel-047.png)

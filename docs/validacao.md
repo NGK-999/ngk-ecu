@@ -676,3 +676,28 @@ Imagem normal **1420192 B**, SHA-256
 `1971be3deebe56a0388db032f483f604dda46a9e4bbe4144f9c322fadf2e7d04`.
 Simulador Linux reaberto/streaming após os ensaios; modelo/visual Linux intocados.
 Aquisição e atuação físicas continuam desabilitadas, sem teste veicular.
+
+## Remoção do TPS do cockpit — 0.4.7
+
+Pedido explícito: retirar TPS do painel. Removidos texto e barra; acelerador,
+codec e diagnóstico continuam no simulador/protocolo. RPM/rampa, velocidade,
+marcha, bloco, óleo, alertas e identificação SIM USB/DEMO preservados.
+
+**Sem hardware:** build normal passou; renderer real LVGL em host passou com
+fonte UI de produção copiada sem alterações e hooks locais. Contratos verificam
+ausência do indicador TPS no USB, incluindo alertas, além de stale/TTL, unidades,
+extremos, marcha N/R, captura e comparação incremental/completa da rampa.
+Revisão independente não encontrou problemas concretos. Auditoria estática:
+14 sinais, zero erros e os três avisos conhecidos de strapping.
+
+RAM estática 96016 B (menos 8 B), flash 1413097 B (menos 516 B frente à 0.4.6).
+Sem novo buffer ou alteração de cadência/animação. O benchmark de 0.4.6 permanece
+histórico; não houve nova medição de FPS/CPU nesta remoção.
+
+**Bancada:** NGK ECU normal 0.4.6 identificado antes da gravação. Instalado normal
+0.4.7 somente no aplicativo em 0x10000, hash verificado pelo esptool. Imagem
+1419680 B, SHA-256 `6023cc505923448e3a550709a3fb36eb534fe927d7e46a3e9ebd31398b01f3a6`. Sem formato SD, apagamento
+de NVS/calibração ou mudança de pinos/permissões. Captura real de pixels LCD
+inspecionada: 153600 B, CRC32 `eada1b33`, 13.36 s; fonte
+sintética identificada. Simulador Linux restaurado após a gravação/captura.
+Entradas e atuadores físicos seguem desabilitados; sem ensaio veicular.
