@@ -701,3 +701,73 @@ de NVS/calibração ou mudança de pinos/permissões. Captura real de pixels LCD
 inspecionada: 153600 B, CRC32 `eada1b33`, 13.36 s; fonte
 sintética identificada. Simulador Linux restaurado após a gravação/captura.
 Entradas e atuadores físicos seguem desabilitados; sem ensaio veicular.
+
+## Fluidez, graduação e falhas simultâneas — 0.4.8
+
+Cinco melhorias aprovadas: graduação estática do RPM; parada dos cálculos e
+formatação dos instrumentos estáveis; duração adaptativa da animação; comparação
+de regularidade com SD/rádios; indicação +N das outras falhas, preservando a
+prioridade. TPS continua ausente. Fonte/modelo/protocolo Linux preservados.
+
+**Sem hardware:** 16 executáveis nativos ASan/UBSan passaram. Novos contratos
+cobrem consulta de movimento, tempos adaptativos/extremos float/uint32, final
+exato/rollover/repetição, máscara/contagem e 10752 combinações de falhas/óleo/RPM,
+stale/disabled/TTL, além do timestamp de aceitação sem alterar o formato SIM1.
+Três builds e auditoria estática passaram: 14 sinais, zero erros, três avisos
+conhecidos de strapping. Nenhum GPIO mudou.
+
+Renderer real LVGL em host passou: 92 graduações nas 23 escalas, limites reais
+dos glifos, C/F e km/h/mph, N/R, alertas, ausência de TPS, valor final antes do
+repouso, amostras idênticas sem reiniciar trabalho, captura/TTL e igualdade entre
+redesenho incremental e completo. Regressão de latência conferida: um redraw
+antigo não pode contar uma amostra ainda aguardando cadência; só uma mudança
+visível arma a métrica. Timestamp acompanha o último tile DMA imutável.
+Revisões independentes de lógica/geometria e revisão final concluídas.
+
+**Bancada USB, dados sintéticos:** fonte de 20 Hz, modo Suave, dois segundos
+para estabilizar e dez segundos medidos por caso. Base 0.4.7 identificada antes
+da gravação; mesmos quatro casos repetidos na imagem final 0.4.8. SD: remount
+pontual com conclusão/status observados, sem exportar/importar perfis, formatar
+ou simular gravação contínua. Rádio: busca Wi-Fi ou anúncio BLE, um por vez,
+sem conexão/pareamento com terceiros. SIM e rádios foram restaurados após cada
+caso. Uma recusa temporária de iniciar o benchmark com DMA pendente foi tratada
+com repetição limitada e confirmação de fonte viva.
+
+| Cenário | Apresentações 0.4.7 / 0.4.8, ~10 s | Rampa p95 superior / máximo 0.4.8 | Maior intervalo touch | Amostra→primeira mudança p95 / máximo |
+| --- | --- | --- | --- | --- |
+| Movimento, rádios off | 601 / 599 | 23 / 34.561 ms | 25.237 ms | 22 / 31 ms |
+| Valores estáveis | 0 / 0 | — | 10.046 ms | — |
+| Movimento + SD + busca Wi-Fi | 601 / 600 | 23 / 34.473 ms | 25.232 ms | 22 / 31 ms |
+| Movimento + SD + anúncio BLE | 600 / 601 | 23 / 22.569 ms | 26.285 ms | 28 / 30 ms |
+
+Valores estáveis na 0.4.8: **zero passagens de rampa, zero formatações de números
+e zero passagens de detalhes**, com 9799 retornos em repouso e
+consulta de toque ativa. Zero apresentações neste caso é o resultado esperado,
+pois nenhum pixel mudou. Na base o texto já não era reenviado se igual, mas os
+cálculos/formatação periódicos continuavam.
+
+`ui_tick_total_us` estático: 569751 →
+323398 µs acumulados em ~10 s. Tempo de parede dentro do tick,
+não percentual real de CPU: inclui esperas/preempção. Os contadores comprovam
+trabalho de apresentação eliminado; não certificam folga sob aquisição real.
+Sem rádio, o tempo decorrido de tick em movimento foi
+3955111 → 4190458 µs.
+O ganho em repouso não demonstra economia global de CPU em movimento;
+regularidade e custo devem continuar sendo medidos no uso real.
+P95 de latência considera as 128 últimas primeiras mudanças visíveis dos
+instrumentos; relógio local em ms, aceitação SIM→conclusão do último DMA.
+Não mede chegada ao alvo, caminho completo do computador nem resposta óptica.
+Média de apresentações parciais não equivale a telas completas/s ou ausência
+universal de engasgos. Carga SD pontual e rádios de bancada não substituem veículo.
+
+RAM estática normal **96712 B** (+696 B frente à 0.4.7), flash **1416029 B**
+(+2932 B). Acréscimo principalmente de observação limitada/graduação; sem novo
+framebuffer, fonte ou dependência. DMA 20 KiB e pool LVGL 32 KiB mantidos.
+Imagem normal **1422608 B**, SHA-256 `6c8b4c327652e47f53f7a15e9e5ef6998a4dce217dc5987a0cdaee56c5f1052d`.
+Gravação somente app 0x10000 com hash verificado; NVS/calibração/partições e
+permissões preservadas. Entradas e atuadores físicos seguem desabilitados.
+
+Capturas reais dos pixels enviados ao LCD, conferidas e inspecionadas:
+normal CRC32 `bc04c979`, 13.363 s; múltiplas
+falhas CRC32 `b4c8e2d4`, 13.363 s; 153600 B cada.
+Simulador Linux restaurado após os ensaios. Sem teste veicular/óptico.

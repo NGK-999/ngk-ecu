@@ -103,6 +103,7 @@ int main() {
     check(!state.stop(0) && !state.stop(999) && state.snapshot(10).enabled,
           "wrong-token stop cannot terminate an active session");
     check(state.accept(first, 20) && state.snapshot(20).live, "first valid frame becomes live");
+    check(state.snapshot(21).acceptedAtMs == 20, "accepted timestamp tracks the frame, not snapshot polling");
     check(state.snapshot(769).live && !state.snapshot(770).live,
           "TTL is live through749ms and stale at750ms");
     status = state.snapshot(900);
@@ -132,6 +133,7 @@ int main() {
     check(!state.start(0, 1000) && state.snapshot(1000).frame.sequence == 2,
           "invalid start preserves an existing session");
     check(!state.snapshot(1650).live, "invalid input cannot extend a valid frame TTL");
+    check(state.snapshot(1650).acceptedAtMs == 900, "rejected/replayed data cannot refresh presentation latency metadata");
     check(state.start(456, 2000) && !state.snapshot(2000).live,
           "new token clears previous measurements and sequence watermark");
     next.session = 456;

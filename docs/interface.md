@@ -17,7 +17,7 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Cockpit atual — 0.4.7
+## Cockpit atual — 0.4.8
 
 O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
 pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
@@ -128,6 +128,31 @@ O topo continua indicando SIM USB/SIM SEM LINK ou DEMO ATIVO; DEMO interno
 mantém a indicação SIMULADO. O acelerador e seu diagnóstico continuam no
 simulador/protocolo para ensaiar a resposta do motor. Sem novo desenho ou
 buffer; a UI deixa de criar os dois objetos da barra TPS e de atualizar seu texto.
+
+## Graduação, repouso e resposta — 0.4.8
+
+A rampa mantém 304×56 px, com quatro referências estáticas: zero, 1/4, 1/2 e
+3/4 da escala. O máximo continua no topo. Texto Montserrat12 acima da curva,
+com posições/larguras e ticks pré-calculados quando muda a escala; sem objetos
+LVGL extras. Labels/ticks fora do recorte sujo são ignorados antes de preparar
+os descritores de desenho. As 23 escalas de 1000 a 12000 foram verificadas no host.
+
+RPM usa transição de 100 a 40 ms; velocidade, de 120 a 60 ms. Mudanças até 1%
+da faixa mantêm o tempo lento; a partir de 10%, usam o rápido. Entre ambos,
+interpolação linear; a trajetória continua cúbica sem ultrapassar o alvo.
+Alertas/validade/sessão continuam nos dados brutos e ignoram a suavização.
+
+Flags independentes mantêm a apresentação pendente até a rampa e os números
+consumirem o valor final, mesmo com cadências diferentes. Depois disso, valores
+repetidos não recalculam/formulam os instrumentos. Novos frames ainda atualizam
+validade/TTL; toque, serviços e alertas continuam ativos. Mudanças dos detalhes
+são comparadas antes de formatar temperatura, marcha e estado do óleo.
+
+O rodapé mantém a falha de maior prioridade e, se houver outras, mostra `+N`
+à direita, com espaço separado. Óleo por estado/bit conta uma vez; RPM alto e
+crítico são exclusivos; sem RPM não há alerta de giro inventado. Stale zera
+mensagem, máscara e contagem. O diagnóstico TPS permanece disponível no SIM,
+sem voltar como instrumento no painel.
 
 ## Fluxos
 

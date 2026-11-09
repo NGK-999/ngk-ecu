@@ -6,11 +6,18 @@
 
 namespace ecu::simulation {
 enum class Alert : std::uint8_t { None, LowOil, Overheat, TempShort, TempOpen, NoRpm, NoSpeed, TpsInvalid, GearInvalid, HighRpm, CriticalRpm };
+// None has no bit; concrete alerts follow their enum order from bit zero.
+inline constexpr std::uint16_t alertBit(Alert alert) {
+    return alert == Alert::None ? 0 : static_cast<std::uint16_t>(
+        1U << (static_cast<unsigned>(alert) - 1));
+}
 struct View {
     bool live = false, rpmValid = false, speedValid = false, temperatureValid = false;
     bool tpsValid = false, gearValid = false, oilValid = false;
     std::int32_t rpm = 0, speed = 0, temperature = 0, tps = 0, gear = 0, oil = 0;
     Alert alert = Alert::None;
+    std::uint8_t alertCount = 0;
+    std::uint16_t alertMask = 0;
     RpmWarning rpmWarning = RpmWarning::Normal;
 };
 inline View present(const Snapshot& source, SpeedUnit speedUnit, TempUnit tempUnit,
@@ -42,6 +49,22 @@ inline View present(const Snapshot& source, SpeedUnit speedUnit, TempUnit tempUn
     else if (frame.faults & NoSpeed) result.alert = Alert::NoSpeed;
     else if (frame.faults & TpsInvalid) result.alert = Alert::TpsInvalid;
     else if (frame.faults & GearInvalid) result.alert = Alert::GearInvalid;
+    // Count independent active causes without changing the primary priority above.
+    const auto include = [&result](bool active, Alert alert) {
+        if (!active) return;
+        result.alertMask |= alertBit(alert);
+        ++result.alertCount;
+    };
+    include((frame.faults & LowOil) || frame.oil == 1, Alert::LowOil);
+    include(frame.faults & Overheat, Alert::Overheat);
+    include(frame.faults & TempShort, Alert::TempShort);
+    include(frame.faults & TempOpen, Alert::TempOpen);
+    include(frame.faults & NoRpm, Alert::NoRpm);
+    include(frame.faults & NoSpeed, Alert::NoSpeed);
+    include(frame.faults & TpsInvalid, Alert::TpsInvalid);
+    include(frame.faults & GearInvalid, Alert::GearInvalid);
+    include(result.rpmWarning == RpmWarning::High, Alert::HighRpm);
+    include(result.rpmWarning == RpmWarning::Critical, Alert::CriticalRpm);
     return result;
 }
 inline const char* alertText(Alert alert) {

@@ -13,6 +13,8 @@ struct MotionBenchmarkReport {
     std::uint32_t maxPixels = 0, touchPollMaxGapUs = 0;
     std::uint32_t uiTickTotalUs = 0, uiTickMaxUs = 0;
     std::uint32_t rampUpdates = 0, rampGapP95UpperUs = 0, rampGapMaxUs = 0;
+    std::uint32_t instrumentPasses = 0, numberPasses = 0, detailPasses = 0, idleSkips = 0;
+    std::uint32_t samplePresentations = 0, sampleToPresentP95Ms = 0, sampleToPresentMaxMs = 0;
     bool interrupted = false;
 };
 // These functions belong exclusively to the main UI task.

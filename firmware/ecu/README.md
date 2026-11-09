@@ -85,7 +85,17 @@ Suave com movimento pelo serviço normal de perfis; preserva os outros campos.
 `info` inclui `refresh_mode` e `reduced_motion`. Nenhum desses comandos habilita
 sensores ou atuadores. Não há comando serial para informar senha ou aceitar pareamento.
 
-## Simulação USB — protocolo 1, normal 0.4.7
+A 0.4.8 também informa `instrument_passes`, `number_passes`, `detail_passes` e
+`idle_skips`: contadores de passagens na apresentação, sem amostras. Em repouso,
+não deve haver novas passagens de desenho/formatação depois de estabilizar.
+`sample_presentations` conta as primeiras mudanças visíveis de RPM/velocidade
+associadas a frames SIM aceitos; `sample_to_present_p95_ms`/`max_ms` usam o relógio
+local e a conclusão do último tile DMA. Não medem chegada ao alvo da animação,
+recepção óptica ou latência fim a fim do computador. P95 usa janela limitada de
+128 apresentações, máximo/contagem cobrem todo o ensaio. `ui_tick_total_us` é
+tempo decorrido dentro do tick, incluindo espera/preempção, não uso real de CPU.
+
+## Simulação USB — protocolo 1, normal 0.4.8
 
 O appLinux está em [simulator/](../../simulator/README.md). Nenhuma porta é
 aberta ao iniciar o app; Conectar identifica o projeto e simulation_protocol1.
@@ -118,9 +128,11 @@ TTL 750 ms contado da última amostra válida, com expiração observada fixada
 até novo frame ou nova sessão. Não revive frame antigo após voltar millis.
 Stale mostraSIM SEM LINK, remove valores/alertas antigos e mantém saída local
 emAjustes/Toque-DEMO/EncerrarSIM USB. Stop/reboot limpa a sessão; nenhum frame
-é persistido. Benchmark eDEMO recusados durante sessãoUSB.
+é persistido. Benchmark sintético e DEMO recusados durante sessão USB; `motion-bench`
+observa o caminho SIM ativo sem substituir sua fonte.
 
-SIM USB mostra marcha/TPS e sinaliza texto/cor por validade. Ausência vira--,
+SIM USB mostra marcha e sinaliza texto/cor por validade. TPS permanece no
+protocolo/simulador, sem instrumento no cockpit. Ausência vira--,
 zero permanece valor. Os instrumentos arredondam velocidade/bloco para inteiros;
 os dados do protocolo mantêm décimos. USB é fonte sintética prioritária, sem
 misturar valores deDEMO ou sinais físicos.

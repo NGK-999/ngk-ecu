@@ -54,6 +54,8 @@ lv_disp_t* registeredDisplay = nullptr;
 lv_disp_drv_t* pendingFlush = nullptr;
 bool pendingFlushLast = false;
 bool pendingRampFlush = false;
+bool pendingSampleFlush = false;
+std::uint32_t pendingSampleAcceptedMs = 0;
 lv_color_t* bufferA = nullptr;
 lv_color_t* bufferB = nullptr;
 lv_obj_t* pageContent = nullptr;
@@ -76,6 +78,7 @@ lv_obj_t* gearLabel = nullptr;
 lv_obj_t* gearValue = nullptr;
 lv_obj_t* dashboardHintLabel = nullptr;
 lv_obj_t* faultFooterLabel = nullptr;
+lv_obj_t* faultCountLabel = nullptr;
 lv_obj_t* faultFooterPanel = nullptr;
 lv_obj_t* sensorSourceLabel = nullptr;
 std::array<lv_obj_t*, 4> sensorValues{};
@@ -113,6 +116,7 @@ FrameClock instrumentClock, numberClock, menuClock, demoClock;
 simulation::View usbView{};
 bool usbViewReady = false, usbPaintPending = true, usbDetailsPending = true;
 bool usbSourceEnabled = false, usbSourceLive = false;
+bool usbRampPending = true, usbNumbersPending = true;
 std::uint32_t usbSourceSequence = 0;
 std::uint8_t usbSourceFaults = 0;
 SpeedUnit usbSpeedUnit = SpeedUnit::Kmh;
@@ -165,6 +169,14 @@ std::uint32_t motionCaptureStarted = 0, motionCaptureLastFrame = 0, motionCaptur
 std::uint32_t motionCaptureTouchAt = 0;
 std::uint32_t motionRampAt = 0;
 std::array<std::uint16_t, 64> motionRampGapBins{};
+PerfWindow<128> samplePresentationTimes;
+bool samplePresentationPending = false, sampleObservedPending = false;
+std::uint32_t sampleAcceptedAtMs = 0, sampleObservedAtMs = 0;
+struct RpmGraduation {
+    std::array<char, 8> caption{};
+    lv_coord_t x = 0, labelX = 0, labelY = 0, width = 0, tickY = 0;
+};
+std::array<RpmGraduation, 4> rpmGraduations{};
 bool screenCaptureActive = false;
 ScreenCaptureFrame screenCaptureFrame;
 const char* screenCaptureError = nullptr;
@@ -197,7 +209,7 @@ void captureTile(const lv_area_t* area, const lv_color_t* pixels) {
 
 std::uint32_t clockUs() { return static_cast<std::uint32_t>(esp_timer_get_time()); }
 
-void presentationCompleted() {
+void presentationCompleted(bool samplePresented, std::uint32_t acceptedAtMs) {
     if (!benchmarkAwaiting && !motionCaptureActive) return;
     const auto now = clockUs();
     if (motionCaptureActive) {
@@ -206,6 +218,10 @@ void presentationCompleted() {
         motionCaptureLastFrame = now;
         motionCaptureReport.maxPixels = std::max(motionCaptureReport.maxPixels, motionCapturePixels);
         motionCapturePixels = 0;
+        if (samplePresented) {
+            samplePresentationTimes.add(std::uint32_t(millis() - acceptedAtMs));
+            ++motionCaptureReport.samplePresentations;
+        }
     }
     if (!benchmarkAwaiting) return;
     const auto duration = elapsedUs(now, benchmarkRequestedAt);
@@ -220,6 +236,8 @@ void completeFlush() {
         display.endWrite();
         auto* completed = pendingFlush;
         const bool last = pendingFlushLast;
+        const bool sample = pendingSampleFlush;
+        const auto acceptedAtMs = pendingSampleAcceptedMs;
         if (motionCaptureActive && pendingRampFlush) {
             const auto now = clockUs();
             if (motionCaptureReport.rampUpdates) {
@@ -233,10 +251,10 @@ void completeFlush() {
         }
         pendingFlush = nullptr;
         pendingFlushLast = false;
-        pendingRampFlush = false;
+        pendingRampFlush = pendingSampleFlush = false;
         // LVGL may reuse a tile only after DMA no longer owns its memory.
         lv_disp_flush_ready(completed);
-        if (last) presentationCompleted();
+        if (last) presentationCompleted(sample, acceptedAtMs);
     }
 }
 
@@ -245,6 +263,13 @@ void flushDisplay(lv_disp_drv_t* driver, const lv_area_t* area, lv_color_t* pixe
     completeFlush();
     // lv_disp_flush_ready() clears this flag: capture it while LVGL owns it.
     pendingFlushLast = lv_disp_flush_is_last(driver);
+    // Attach timing to this immutable final DMA tile; a newer SIM sample must
+    // never relabel a transfer that was already submitted to the display.
+    pendingSampleFlush = pendingFlushLast && motionCaptureActive && samplePresentationPending;
+    if (pendingSampleFlush) {
+        pendingSampleAcceptedMs = sampleAcceptedAtMs;
+        samplePresentationPending = false;
+    }
     // LVGL expands/merges dirty areas. Count the tile containing the ramp's
     // bottom line even when its bounds extend beyond the original object.
     const auto rampBottom = rpmBar.y + rpmBar.h - 1;
@@ -267,7 +292,7 @@ void waitFlush(lv_disp_drv_t*) {
     taskYIELD();
 }
 
-void setText(lv_obj_t* object, const char* value) {
+bool setText(lv_obj_t* object, const char* value) {
     if (object && std::strcmp(lv_label_get_text(object), value) != 0) {
         if (object == rpmValue || object == speedValue) {
             auto& storage = object == rpmValue ? rpmText : speedText;
@@ -275,11 +300,13 @@ void setText(lv_obj_t* object, const char* value) {
             if (size <= storage.size()) {
                 std::memmove(storage.data(), value, size);
                 lv_label_set_text_static(object, storage.data());
-                return;
+                return true;
             }
         }
         lv_label_set_text(object, value);
+        return true;
     }
+    return false;
 }
 
 void setHidden(lv_obj_t* object, bool hidden) {
@@ -295,11 +322,11 @@ void setTextColor(lv_obj_t* object, std::uint32_t color) {
         lv_obj_set_style_text_color(object, wanted, 0);
 }
 
-void setNumber(lv_obj_t* object, bool valid, std::int32_t number) {
-    if (!valid) { setText(object, unknown); return; }
+bool setNumber(lv_obj_t* object, bool valid, std::int32_t number) {
+    if (!valid) return setText(object, unknown);
     char value[16];
     std::snprintf(value, sizeof(value), "%ld", static_cast<long>(number));
-    setText(object, value);
+    return setText(object, value);
 }
 
 void noScroll(lv_obj_t* object) {
@@ -430,14 +457,31 @@ lv_obj_t* actionButton(lv_obj_t* parent, const char* caption, Rect rect, unsigne
 
 void requestPage(Page next) { requestedPage = next; pageChangeRequested = true; }
 
+int rpmColumnHeight(int x);
+
 void refreshRpmScaleCaption() {
     if (!rpmScaleLabel) return;
     char scale[24];
     std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
     setText(rpmScaleLabel, scale);
+    for (unsigned index = 0; index < rpmGraduations.size(); ++index) {
+        auto& mark = rpmGraduations[index];
+        std::snprintf(mark.caption.data(), mark.caption.size(), "%u",
+                      unsigned(settingsEditor.values.rpmScale) * index / 4U);
+        lv_point_t measured{};
+        lv_txt_get_size(&measured, mark.caption.data(), &lv_font_montserrat_12, 0, 0,
+                        LV_COORD_MAX, LV_TEXT_FLAG_NONE);
+        mark.x = index * (rpmBar.w - 1) / 4;
+        mark.width = measured.x;
+        mark.labelX = std::clamp<int>(mark.x - mark.width / 2, 0, rpmBar.w - mark.width);
+        mark.tickY = rpmBar.h - 1 - rpmColumnHeight(mark.x);
+        mark.labelY = rpmBar.h - rpmColumnHeight(mark.labelX + mark.width - 1) -
+                      lv_font_montserrat_12.line_height - 3;
+    }
 }
 
 void applyPreview() {
+    usbPaintPending = true;
     refreshRpmScaleCaption();
     display.setBrightness(static_cast<std::uint8_t>(settingsEditor.values.brightness * 255U / 100U));
     if (registeredDisplay && benchmarkPhase == BenchmarkPhase::Idle) {
@@ -501,8 +545,48 @@ void drawRpmRamp(lv_event_t* event) {
     }
 }
 
-void updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
-    if (!rpmRampObject) return;
+void drawRpmGraduations(lv_event_t* event) {
+    auto* context = lv_event_get_draw_ctx(event);
+    lv_area_t bounds{};
+    lv_obj_get_coords(lv_event_get_target(event), &bounds);
+    const auto intersects = [&](const lv_area_t& area) {
+        const auto& clip = *context->clip_area;
+        return area.x1 <= clip.x2 && area.x2 >= clip.x1 &&
+               area.y1 <= clip.y2 && area.y2 >= clip.y1;
+    };
+    lv_draw_label_dsc_t caption;
+    lv_draw_rect_dsc_t tick;
+    bool captionReady = false, tickReady = false;
+    for (const auto& mark : rpmGraduations) {
+        const lv_area_t labelArea{lv_coord_t(bounds.x1 + mark.labelX), lv_coord_t(bounds.y1 + mark.labelY),
+            lv_coord_t(bounds.x1 + mark.labelX + mark.width - 1),
+            lv_coord_t(bounds.y1 + mark.labelY + lv_font_montserrat_12.line_height - 1)};
+        if (intersects(labelArea)) {
+            if (!captionReady) {
+                lv_draw_label_dsc_init(&caption);
+                caption.font = &lv_font_montserrat_12;
+                caption.color = lv_color_hex(secondary);
+                captionReady = true;
+            }
+            lv_draw_label(context, &caption, &labelArea, mark.caption.data(), nullptr);
+        }
+        const auto y = bounds.y1 + mark.tickY;
+        const lv_area_t line{lv_coord_t(bounds.x1 + mark.x), lv_coord_t(y - 1),
+                             lv_coord_t(bounds.x1 + mark.x), lv_coord_t(y)};
+        if (intersects(line)) {
+            if (!tickReady) {
+                lv_draw_rect_dsc_init(&tick);
+                tick.bg_opa = LV_OPA_COVER;
+                tick.bg_color = lv_color_hex(secondary);
+                tickReady = true;
+            }
+            lv_draw_rect(context, &tick, &line);
+        }
+    }
+}
+
+bool updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
+    if (!rpmRampObject) return false;
     const auto& settings = settingsEditor.values;
     if (rpmRampScale != settings.rpmScale) refreshRpmScaleCaption();
     const auto progress = valid ? static_cast<unsigned>(std::lround(
@@ -525,6 +609,7 @@ void updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
         dirty.y1 = static_cast<lv_coord_t>(dirty.y2 - rpmColumnHeight(lastColumn) + 1);
         lv_obj_invalidate_area(rpmRampObject, &dirty);
     }
+    return recolor || previous != progress;
 }
 
 void showNotice(const char* message, bool failure = true) {
@@ -650,13 +735,14 @@ void renderPage(Page next) {
     storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
     temperatureValue = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
-    dashboardHintLabel = faultFooterLabel = faultFooterPanel = sensorSourceLabel = nullptr;
+    dashboardHintLabel = faultFooterLabel = faultCountLabel = faultFooterPanel = sensorSourceLabel = nullptr;
     sensorValues.fill(nullptr);
     settingValues.fill(nullptr); networkLabels.fill(nullptr); networkButtons.fill(nullptr);
     keyLabels.fill(nullptr); keyButtons.fill(nullptr); rpmRampObject = nullptr;
     menuIcons.fill(nullptr);
     rpmMotion.reset(); speedMotion.reset(); instrumentClock.reset(); numberClock.reset(); demoClock.reset();
     menuIconMotion.reset(); menuClock.reset(); usbPaintPending = usbDetailsPending = true;
+    usbRampPending = usbNumbersPending = true;
     rpmRampPosition = 0; rpmRampValid = rpmRampSimulation = false; rpmRampScale = 0;
     dashboardGesture.reset(); debounce.reset(); gesturePosition = {};
     lv_obj_clean(pageContent);
@@ -703,6 +789,7 @@ void renderPage(Page next) {
         char scale[32];
         std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
         rpmScaleLabel = label(pageContent, scale, 244, 23, 68, &lv_font_montserrat_12, secondary);
+        refreshRpmScaleCaption();
         gearLabel = label(pageContent, "MARCHA", gearCard.x, gearCard.y, gearCard.w,
                           &lv_font_montserrat_12, secondary);
         gearValue = label(pageContent, unknown, gearCard.x,
@@ -715,6 +802,7 @@ void renderPage(Page next) {
         lv_obj_set_style_bg_opa(rpmRampObject, LV_OPA_TRANSP, 0);
         lv_obj_clear_flag(rpmRampObject, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(rpmRampObject, drawRpmRamp, LV_EVENT_DRAW_MAIN, nullptr);
+        lv_obj_add_event_cb(rpmRampObject, drawRpmGraduations, LV_EVENT_DRAW_MAIN, nullptr);
         auto* divider = surface(pageContent, {196, speedCard.y, 1, speedCard.h}, border, 0);
         lv_obj_set_style_border_width(divider, 0, 0);
         auto* speed = region(pageContent, speedCard);
@@ -747,6 +835,9 @@ void renderPage(Page next) {
         lv_obj_clear_flag(faultFooterPanel, LV_OBJ_FLAG_CLICKABLE);
         iconImage(faultFooterPanel, &ngk_icon_alert_20, 8, 1, text);
         faultFooterLabel = label(faultFooterPanel, "", 34, 3, 278, &lv_font_montserrat_14, text);
+        faultCountLabel = label(faultFooterPanel, "", 280, 3, 32, &lv_font_montserrat_14, text);
+        lv_obj_set_style_text_align(faultCountLabel, LV_TEXT_ALIGN_RIGHT, 0);
+        setHidden(faultCountLabel, true);
         setHidden(faultFooterPanel, true);
         setHidden(faultFooterLabel, true);
     } else if (page == Page::SettingsHome) {
@@ -1116,9 +1207,8 @@ void serviceUsbSimulation() {
         source.enabled != usbSourceEnabled || source.live != usbSourceLive ||
         source.frame.sequence != usbSourceSequence ||
         usbSpeedUnit != settingsEditor.values.speedUnit || usbTempUnit != settingsEditor.values.tempUnit;
-    bool urgent = false;
+    bool urgent = false, rpmChanged = false, speedChanged = false;
     if (rawChanged) {
-        usbDetailsPending = true;
         const auto previous = usbView;
         if (!source.enabled || generationChanged) usbRpmWarning = RpmWarning::Normal;
         usbView = simulation::present(source, settingsEditor.values.speedUnit,
@@ -1130,6 +1220,15 @@ void serviceUsbSimulation() {
             previous.tpsValid != usbView.tpsValid || previous.gearValid != usbView.gearValid ||
             previous.alert != usbView.alert || previous.rpmWarning != usbView.rpmWarning ||
             source.frame.faults != usbSourceFaults;
+        rpmChanged = urgent || previous.rpm != usbView.rpm;
+        speedChanged = urgent || previous.speed != usbView.speed;
+        usbDetailsPending = usbDetailsPending || urgent ||
+            previous.temperature != usbView.temperature || previous.oil != usbView.oil ||
+            previous.gear != usbView.gear || previous.alertMask != usbView.alertMask;
+        if (motionCaptureActive && source.live && (rpmChanged || speedChanged)) {
+            sampleObservedPending = true;
+            sampleObservedAtMs = source.acceptedAtMs;
+        }
         usbRpmSession = source.enabled ? source.frame.session : 0;
         usbSourceSequence = source.frame.sequence;
         usbSourceFaults = source.frame.faults;
@@ -1145,12 +1244,28 @@ void serviceUsbSimulation() {
         return;
     }
     if (page == Page::Panel) {
-        if (rawChanged || usbPaintPending || settingsEditor.values.reducedMotion) {
+        if (rawChanged || usbPaintPending) {
             const MotionOptions options{source.frame.session, true, settingsEditor.values.reducedMotion, urgent};
-            auto rpmOptions = options; rpmOptions.valid = view.rpmValid;
-            auto speedOptions = options; speedOptions.valid = view.speedValid;
-            rpmMotion.retarget(float(view.rpm), now, 100, rpmOptions);
-            speedMotion.retarget(float(view.speed), now, 120, speedOptions);
+            if (rpmChanged || usbPaintPending) {
+                auto rpmOptions = options; rpmOptions.valid = view.rpmValid;
+                const auto delta = float(view.rpm) - rpmMotion.value(now);
+                rpmMotion.retarget(float(view.rpm), now,
+                    adaptiveMotionDuration(delta, float(settingsEditor.values.rpmScale), 100, 40), rpmOptions);
+                usbRampPending = usbNumbersPending = true;
+            }
+            if (speedChanged || usbPaintPending) {
+                auto speedOptions = options; speedOptions.valid = view.speedValid;
+                const auto delta = float(view.speed) - speedMotion.value(now);
+                speedMotion.retarget(float(view.speed), now,
+                    adaptiveMotionDuration(delta, speedDisplay(250.0F, settingsEditor.values.speedUnit), 120, 60), speedOptions);
+                usbNumbersPending = true;
+            }
+        }
+        // Pending flags survive the end of easing until the final ramp AND
+        // slower numeric presentation have each consumed the exact target.
+        if (!usbPaintPending && !usbDetailsPending && !usbRampPending && !usbNumbersPending) {
+            if (motionCaptureActive) ++motionCaptureReport.idleSkips;
+            return;
         }
         const bool due = instrumentClock.due(now, settingsEditor.values.refreshMode);
         if (!urgent && !usbPaintPending && !due) return;
@@ -1167,18 +1282,31 @@ void serviceUsbSimulation() {
         setTextColor(modeLabel, source.enabled ? warning : accent);
     }
     if (page == Page::Panel) {
-        const auto shownRpm = rpmMotion.value(now);
-        // Queue the tiny moving edge first; labels are intentionally refreshed
-        // at 30 Hz in Smooth, preserving bus/CPU budget for acquisition.
-        updateRpmBar(shownRpm, view.rpmValid, source.enabled);
+        bool instrumentChanged = false;
+        // Queue only an active moving edge; static instruments do no further
+        // interpolation/formatting, while source TTL and touch keep running.
+        if (usbRampPending) {
+            instrumentChanged = updateRpmBar(rpmMotion.value(now), view.rpmValid, source.enabled);
+            usbRampPending = rpmMotion.animating(now);
+            if (motionCaptureActive) ++motionCaptureReport.instrumentPasses;
+        }
         const auto numericMode = settingsEditor.values.refreshMode == RefreshMode::Smooth ?
             RefreshMode::Balanced : settingsEditor.values.refreshMode;
-        const bool numbersDue = numberClock.due(now, numericMode);
-        if (paintNumbers || numbersDue) {
-            setNumber(rpmValue, view.rpmValid, static_cast<std::int32_t>(std::lround(shownRpm)));
-            setNumber(speedValue, view.speedValid, static_cast<std::int32_t>(std::lround(speedMotion.value(now))));
+        if (usbNumbersPending && (paintNumbers || numberClock.due(now, numericMode))) {
+            instrumentChanged |= setNumber(rpmValue, view.rpmValid, static_cast<std::int32_t>(std::lround(rpmMotion.value(now))));
+            instrumentChanged |= setNumber(speedValue, view.speedValid, static_cast<std::int32_t>(std::lround(speedMotion.value(now))));
+            usbNumbersPending = rpmMotion.animating(now) || speedMotion.animating(now);
+            if (motionCaptureActive) ++motionCaptureReport.numberPasses;
+        }
+        // Only painted, changed instruments can arm a presentation sample.
+        // A raw observation held by the frame clock cannot tag older dirty work.
+        if (motionCaptureActive && sampleObservedPending && instrumentChanged) {
+            samplePresentationPending = true;
+            sampleAcceptedAtMs = sampleObservedAtMs;
+            sampleObservedPending = false;
         }
         if (!paintDetails) return;
+        if (motionCaptureActive) ++motionCaptureReport.detailPasses;
         setHidden(gearLabel, !source.enabled); setHidden(gearValue, !source.enabled);
         setHidden(rpmSignal, source.enabled);
         setNumber(temperatureValue, view.temperatureValid, view.temperature);
@@ -1199,6 +1327,15 @@ void serviceUsbSimulation() {
         setHidden(faultFooterPanel, !alert);
         setHidden(faultFooterLabel, !alert);
         setText(faultFooterLabel, simulation::alertText(view.alert));
+        const bool multiple = alert && view.alertCount > 1;
+        setHidden(faultCountLabel, !multiple);
+        const auto width = multiple ? 242 : 278;
+        if (lv_obj_get_width(faultFooterLabel) != width) lv_obj_set_width(faultFooterLabel, width);
+        if (multiple) {
+            char count[8];
+            std::snprintf(count, sizeof(count), "+%u", unsigned(view.alertCount - 1));
+            setText(faultCountLabel, count);
+        }
         const auto alertBackground = lv_color_hex(view.alert == simulation::Alert::HighRpm ?
             theme::alertWarningBackground : theme::alertCriticalBackground);
         if (lv_obj_get_style_bg_color(faultFooterPanel, 0).full != alertBackground.full)
@@ -1254,6 +1391,9 @@ void finishMotionBenchmark(bool interrupted) {
             }
         }
     }
+    motionCaptureReport.sampleToPresentP95Ms = samplePresentationTimes.p95();
+    motionCaptureReport.sampleToPresentMaxMs = samplePresentationTimes.max();
+    samplePresentationPending = sampleObservedPending = false;
     motionCaptureActive = false;
     motionCaptureReady = true;
 }
@@ -1691,6 +1831,7 @@ bool startMotionBenchmark() {
         !source.enabled || !source.live) return false;
     partialTimes = {};
     motionCaptureReport = {};
+    samplePresentationTimes = {}; samplePresentationPending = sampleObservedPending = false;
     motionCaptureStarted = clockUs();
     motionCaptureLastFrame = motionCapturePixels = motionCaptureTouchAt = 0;
     motionRampAt = 0; motionRampGapBins.fill(0);

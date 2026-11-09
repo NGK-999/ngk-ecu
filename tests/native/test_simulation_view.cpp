@@ -41,6 +41,64 @@ int main() {
         check(rpmWarning(fixture.rpm, fixture.valid, fixture.previous) == fixture.expected,
               "absolute RPM thresholds and 150 RPM descending hysteresis are respected");
     }
+    // Detect lost simultaneous causes, oil duplication, RPM overlap and priority changes.
+    const Alert alerts[]{Alert::LowOil, Alert::Overheat, Alert::TempShort, Alert::TempOpen,
+                         Alert::NoRpm, Alert::NoSpeed, Alert::TpsInvalid, Alert::GearInvalid,
+                         Alert::HighRpm, Alert::CriticalRpm};
+    check(alertBit(Alert::None) == 0, "None never occupies a mask bit");
+    for (std::size_t index = 0; index < sizeof(alerts) / sizeof(alerts[0]); ++index) {
+        check(alertBit(alerts[index]) == (1U << index),
+              "each concrete alert has its own contiguous mask bit");
+    }
+    struct FaultBit { std::uint8_t fault; std::uint16_t mask; };
+    const FaultBit faultBits[]{{LowOil, 1}, {Overheat, 2}, {TempShort, 4}, {TempOpen, 8},
+                              {NoRpm, 16}, {NoSpeed, 32}, {TpsInvalid, 64}, {GearInvalid, 128}};
+    // Footer priority differs from enum order: rotation precedes speed/TPS/gear.
+    const Alert primaryOrder[]{Alert::LowOil, Alert::Overheat, Alert::TempShort, Alert::TempOpen,
+                               Alert::NoRpm, Alert::CriticalRpm, Alert::HighRpm,
+                               Alert::NoSpeed, Alert::TpsInvalid, Alert::GearInvalid};
+    for (unsigned flags = 0; flags <= 255; ++flags) {
+        for (int oil = 0; oil <= 2; ++oil) {
+            for (const auto fixture : rpmCases) {
+                if (!fixture.valid) continue;
+                Snapshot simultaneous{true, true,
+                    Frame{99, 1, fixture.rpm, 0, 850, 0, 0, oil, static_cast<std::uint8_t>(flags)}};
+                std::uint16_t expectedMask = 0;
+                std::uint8_t expectedCount = 0;
+                for (const auto bit : faultBits) {
+                    if (flags & bit.fault) { expectedMask |= bit.mask; ++expectedCount; }
+                }
+                if (oil == 1 && !(flags & LowOil)) { expectedMask |= 1; ++expectedCount; }
+                if (!(flags & NoRpm) && fixture.expected != RpmWarning::Normal) {
+                    expectedMask |= fixture.expected == RpmWarning::Critical ? 512 : 256;
+                    ++expectedCount;
+                }
+                Alert expectedPrimary = Alert::None;
+                for (const auto candidate : primaryOrder) {
+                    if (expectedMask & (1U << (static_cast<unsigned>(candidate) - 1))) {
+                        expectedPrimary = candidate;
+                        break;
+                    }
+                }
+                const auto combined = present(simultaneous, SpeedUnit::Kmh, TempUnit::Celsius,
+                                              fixture.previous);
+                check(combined.alertMask == expectedMask && combined.alertCount == expectedCount,
+                      "all fault combinations count distinct causes including both temperature bits");
+                check(combined.alert == expectedPrimary,
+                      "all fault combinations preserve the original primary priority");
+                simultaneous.live = false;
+                auto cleared = present(simultaneous, SpeedUnit::Kmh, TempUnit::Celsius,
+                                       fixture.previous);
+                check(cleared.alertMask == 0 && cleared.alertCount == 0 && cleared.alert == Alert::None,
+                      "stale clears every simultaneous cause and hysteretic RPM warning");
+                simultaneous.enabled = false;
+                simultaneous.live = true;
+                cleared = present(simultaneous, SpeedUnit::Kmh, TempUnit::Celsius, fixture.previous);
+                check(cleared.alertMask == 0 && cleared.alertCount == 0 && cleared.alert == Alert::None,
+                      "disabled clears every simultaneous cause and hysteretic RPM warning");
+            }
+        }
+    }
     Snapshot source{true, true, Frame{99, 1, 1250, 123, 855, 355, -1, 0, None}};
     auto view = present(source, SpeedUnit::Kmh, TempUnit::Celsius);
     check(view.live && view.rpmValid && view.speedValid && view.temperatureValid && view.tpsValid &&
@@ -169,7 +227,8 @@ int main() {
     check(view.rpmWarning == RpmWarning::Critical && view.alert == Alert::CriticalRpm,
           "valid critical frame remains visible before the 750 ms TTL");
     view = present(timed.snapshot(850), SpeedUnit::Kmh, TempUnit::Celsius, view.rpmWarning);
-    check(view.rpmWarning == RpmWarning::Normal && view.alert == Alert::None && !view.rpmValid,
+    check(view.rpmWarning == RpmWarning::Normal && view.alert == Alert::None && !view.rpmValid &&
+              view.alertCount == 0 && view.alertMask == 0,
           "TTL expiration clears critical warning exactly at 750 ms");
     source.frame.rpm = 4400;
     source.frame.sequence = 4;

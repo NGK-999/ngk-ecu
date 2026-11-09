@@ -14,6 +14,92 @@ bool near(float actual, float expected) { return std::fabs(actual - expected) < 
 int main() {
     using namespace ecu;
     using namespace ecu::ui;
+    check(adaptiveMotionDuration(0, 10000, 100, 40) == 100 &&
+              adaptiveMotionDuration(100, 10000, 100, 40) == 100,
+          "zero and one-percent changes retain the slow duration");
+    check(adaptiveMotionDuration(550, 10000, 100, 40) == 70 &&
+              adaptiveMotionDuration(-550, 10000, 100, 40) == 70,
+          "midrange change interpolates duration independently of direction");
+    check(adaptiveMotionDuration(1000, 10000, 100, 40) == 40 &&
+              adaptiveMotionDuration(20000, 10000, 100, 40) == 40,
+          "ten-percent and larger changes use the bounded fast duration");
+    check(adaptiveMotionDuration(1, 100, 120, 60) == 120 &&
+              adaptiveMotionDuration(10, 100, 120, 60) == 60,
+          "the speed profile retains its explicit 120-to-60ms limits");
+    const auto nan = std::numeric_limits<float>::quiet_NaN();
+    const auto inf = std::numeric_limits<float>::infinity();
+    check(adaptiveMotionDuration(nan, 100, 100, 40) == 100 &&
+              adaptiveMotionDuration(inf, 100, 100, 40) == 100 &&
+              adaptiveMotionDuration(10, nan, 100, 40) == 100 &&
+              adaptiveMotionDuration(10, inf, 100, 40) == 100,
+          "nonfinite input falls back to the bounded slow duration");
+    check(adaptiveMotionDuration(10, 0, 100, 40) == 100 &&
+              adaptiveMotionDuration(10, -100, 100, 40) == 100,
+          "a nonpositive scale cannot create an invalid normalized delta");
+    check(adaptiveMotionDuration(550, 10000, 40, 100) == 70 &&
+              adaptiveMotionDuration(0, 100, 40, 100) == 100 &&
+              adaptiveMotionDuration(10, 100, 40, 100) == 40,
+          "reversed limits are ordered to keep small changes slower");
+    check(adaptiveMotionDuration(5, 100, 0, 0) == 0 &&
+              adaptiveMotionDuration(5, 100, 60, 60) == 60 &&
+              adaptiveMotionDuration(0, 100, 0xffffffffU, 0) == 0xffffffffU &&
+              adaptiveMotionDuration(550, 10000, 0xffffffffU, 0) == 0x80000000U &&
+              adaptiveMotionDuration(10, 100, 0xffffffffU, 0) == 0,
+          "equal, zero and full uint32 limits remain representable");
+    check(adaptiveMotionDuration(std::numeric_limits<float>::max(),
+                                 std::numeric_limits<float>::min(), 100, 40) == 40,
+          "finite extreme changes cannot overflow normalization");
+    check(adaptiveMotionDuration(0, std::numeric_limits<float>::denorm_min(), 100, 40) == 100 &&
+              adaptiveMotionDuration(std::numeric_limits<float>::denorm_min(),
+                                     std::numeric_limits<float>::denorm_min(), 100, 40) == 40,
+          "subnormal scales preserve zero as slow and a full-scale change as fast");
+    check(adaptiveMotionDuration(std::numeric_limits<float>::max() * 0.055F,
+                                 std::numeric_limits<float>::max(), 100, 40) == 70 &&
+              adaptiveMotionDuration(std::numeric_limits<float>::min() * 0.055F,
+                                     std::numeric_limits<float>::min(), 100, 40) == 70,
+          "midrange ratios remain usable at huge and subnormal delta magnitudes");
+    check(adaptiveMotionDuration(550, 10000, 0x00ffffffU, 0) == 0x00800000U &&
+              adaptiveMotionDuration(550, 10000, 0x01000000U, 0) == 0x00800000U,
+          "float-to-wide duration transition preserves safe rounding and conversion");
+    ScalarMotion state;
+    const ScalarMotion& stateQuery = state;
+    check(!stateQuery.animating(0), "an uninitialized presentation is resting");
+    state.snap(0);
+    check(!stateQuery.animating(0), "a snapped presentation is resting");
+    state.retarget(100, 10, 100);
+    check(stateQuery.animating(10) && stateQuery.animating(109) &&
+              !stateQuery.animating(110) && !stateQuery.animating(10000),
+          "motion is active until the exact end timestamp, even before sampling value");
+    check(stateQuery.animating(60) && near(state.value(60), 87.5F),
+          "a const future-state query cannot settle or mutate the trajectory");
+    state.retarget(100, 60, 40);
+    check(stateQuery.animating(109) && !stateQuery.animating(110),
+          "repeated targets with a different duration do not postpone or shorten motion");
+    check(state.value(110) == 100 && !stateQuery.animating(111),
+          "the final value remains available after animating becomes false");
+    state.retarget(200, 120, 100);
+    state.reset();
+    check(!stateQuery.animating(121), "reset discards active motion");
+    state.snap(0);
+    state.retarget(100, 0xfffffff0U, 100);
+    check(stateQuery.animating(0xfffffff0U) && stateQuery.animating(0x53U) &&
+              !stateQuery.animating(0x54U) && state.value(0x54U) == 100,
+          "active-state query survives rollover and settles at the exact wrapped timestamp");
+    for (unsigned mode = 0; mode < 5; ++mode) {
+        state.snap(0);
+        state.retarget(100, 0, 100);
+        MotionOptions stop;
+        if (mode == 0) stop.valid = false;
+        if (mode == 1) stop.generation = 1;
+        if (mode == 2) stop.reducedMotion = true;
+        if (mode == 3) stop.urgent = true;
+        state.retarget(200, 20, mode == 4 ? 0 : 100, stop);
+        check(!stateQuery.animating(20),
+              "stale, new generation, reduced motion, urgency and zero duration stop motion");
+    }
+    state.snap(0);
+    state.retarget(nan, 0);
+    check(!stateQuery.animating(0), "nonfinite targets cannot leave active motion");
     ScalarMotion motion;
     check(!motion.valid(), "uninitialized presentation has no valid numeric value");
     motion.retarget(800, 0);
@@ -101,5 +187,6 @@ int main() {
     clock.reset();
     check(clock.due(0xfffffff0U) && !clock.due(0) && clock.due(1) && clock.due(18),
           "frame cadence handles uint32 wrap without catching up or stalling");
-    std::puts("UI motion: bounded cubic interpolation, validity resets and rational cadence PASS");
+    std::puts("UI motion: adaptive duration, pure active-state query, bounded cubic interpolation, "
+              "validity resets and rational cadence PASS");
 }

@@ -5,6 +5,33 @@
 #include <cstdint>
 
 namespace ecu::ui {
+// Presentation only: <=1% of full scale retains slowMs, >=10% uses fastMs.
+// Interpolate linearly between those thresholds, rounding to the nearest ms.
+// Reversed limits are ordered; invalid delta/scale falls back to the slow limit.
+// Zero durations are allowed. No allocation or state changes are performed.
+inline std::uint32_t adaptiveMotionDuration(float delta, float fullScale,
+                                          std::uint32_t slowMs, std::uint32_t fastMs) {
+    const auto slow = std::max(slowMs, fastMs);
+    const auto fast = std::min(slowMs, fastMs);
+    if (!std::isfinite(delta) || !std::isfinite(fullScale) || fullScale <= 0) return slow;
+    const float magnitude = std::fabs(delta);
+    // Classify before division: even float extremes cannot overflow the ratio.
+    // Check zero/small first because subnormal scales can round both bounds to zero.
+    if (magnitude <= fullScale * 0.01F) return slow;
+    if (magnitude >= fullScale * 0.10F) return fast;
+    if (slow <= 0x00ffffffU) {
+        // Normal UI durations stay in float; double is emulated on classic ESP32.
+        const float progress = (magnitude / fullScale - 0.01F) / 0.09F;
+        const float duration = float(slow) - progress * float(slow - fast);
+        return static_cast<std::uint32_t>(std::clamp(std::round(duration),
+                                                   float(fast), float(slow)));
+    }
+    // Rare oversized durations need exact uint32 bounds before converting back.
+    const double progress = (double(magnitude) / double(fullScale) - 0.01) / 0.09;
+    const double duration = double(slow) - progress * double(slow - fast);
+    return static_cast<std::uint32_t>(std::clamp(std::floor(duration + 0.5),
+                                               double(fast), double(slow)));
+}
 struct MotionOptions {
     std::uint32_t generation = 0;
     bool valid = true, reducedMotion = false, urgent = false;
@@ -51,6 +78,11 @@ public:
     }
     void reset() { *this = ScalarMotion{}; }
     bool valid() const { return valid_; }
+    // Query only: callers must still present value(now) once when motion ends.
+    // Unsigned subtraction supports the same millisecond rollover as value().
+    bool animating(std::uint32_t now) const {
+        return valid_ && duration_ && std::uint32_t(now - startedAt_) < duration_;
+    }
 private:
     float start_ = 0, target_ = 0;
     std::uint32_t generation_ = 0, startedAt_ = 0, duration_ = 0;

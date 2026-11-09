@@ -24,6 +24,7 @@ struct Snapshot {
     bool enabled = false;
     bool live = false;
     Frame frame{};
+    std::uint32_t acceptedAtMs = 0;  // Local timing metadata, never part of SIM1 wire data.
 };
 
 namespace detail {
@@ -158,7 +159,7 @@ public:
         // Latch observed expiration so a complete millis cycle cannot revive
         // an old frame. The single owner observes this clock continuously.
         if (enabled_ && received_ && std::uint32_t(now - receivedAt_) >= ttlMs) expired_ = true;
-        return {enabled_, enabled_ && received_ && !expired_, frame_};
+        return {enabled_, enabled_ && received_ && !expired_, frame_, receivedAt_};
     }
 
 private:

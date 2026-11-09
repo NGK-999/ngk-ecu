@@ -26,7 +26,7 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
-constexpr const char* Version = "0.4.7-cockpit";
+constexpr const char* Version = "0.4.8-cockpit";
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
     uint32_t sectors = 0, type = 0;
@@ -489,12 +489,17 @@ void loop() {
             "\"max_pixels\":%u,\"touch_poll_max_gap_us\":%u,"
             "\"ui_tick_total_us\":%u,\"ui_tick_max_us\":%u,\"refresh_mode\":%u,"
             "\"reduced_motion\":%s,\"ramp_updates\":%u,\"ramp_gap_p95_upper_us\":%u,"
-            "\"ramp_gap_max_us\":%u,\"interrupted\":%s}\n",
+            "\"ramp_gap_max_us\":%u,\"instrument_passes\":%u,\"number_passes\":%u,"
+            "\"detail_passes\":%u,\"idle_skips\":%u,\"sample_presentations\":%u,"
+            "\"sample_to_present_p95_ms\":%u,\"sample_to_present_max_ms\":%u,\"interrupted\":%s}\n",
             motionReport.durationMs, motionReport.presentations, motionReport.intervalP95Us,
             motionReport.intervalMaxUs, motionReport.maxPixels, motionReport.touchPollMaxGapUs,
             motionReport.uiTickTotalUs, motionReport.uiTickMaxUs,
             unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false",
             motionReport.rampUpdates, motionReport.rampGapP95UpperUs, motionReport.rampGapMaxUs,
+            motionReport.instrumentPasses, motionReport.numberPasses, motionReport.detailPasses,
+            motionReport.idleSkips, motionReport.samplePresentations,
+            motionReport.sampleToPresentP95Ms, motionReport.sampleToPresentMaxMs,
             motionReport.interrupted ? "true" : "false")) motionReportPending = false;
     }
     static int lastFormatState = 0;

@@ -78,3 +78,12 @@ Texto e barra TPS removidos a pedido do responsável. Captura recebida da ESP32
 com dados SIM, 153600 B e CRC32 `eada1b33` conferido; 13.36 s.
 
 ![Painel 0.4.7 sem TPS recebido da ESP32](images/esp32-painel-047.png)
+
+## Graduação e contador de falhas — 0.4.8
+
+Duas capturas recebidas da própria ESP32, fonte sintética claramente identificada;
+153600 B cada e CRC32 conferido. Normal `bc04c979`; falhas simultâneas
+`b4c8e2d4`. TPS ausente, instrumentos e curva preservados.
+
+![Painel 0.4.8 com graduação recebido da ESP32](images/esp32-painel-048.png)
+![Painel 0.4.8 com três alertas e contador +2](images/esp32-painel-falhas-048.png)
