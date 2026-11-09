@@ -1,0 +1,124 @@
+{
+  "_source": "Existing firmware/ecu/include/board_profile.hpp; audit snapshot only, not a wiring proposal.",
+  "_module_model": "WROOM means classic ESP32 flash-only constraint model, not a new PCB revision identification.",
+  "_bus_limit": "Device names document ownership; upstream does not validate SPI host allocation or software SPI.",
+  "_unused": "lcdMiso=-1 intentionally omitted: disabled LCD read signal, not a GPIO assignment.",
+  "platform": "esp32",
+  "variant": "esp32",
+  "module": "WROOM",
+  "wifi_enabled": false,
+  "pins": [
+    {
+      "gpio": 14,
+      "function": "LCD_SCLK",
+      "protocol_bus": "spi",
+      "device": "LCD_SPI2",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 13,
+      "function": "LCD_MOSI",
+      "protocol_bus": "spi",
+      "device": "LCD_SPI2",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 15,
+      "function": "LCD_CS",
+      "protocol_bus": "spi",
+      "device": "LCD_SPI2",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 2,
+      "function": "LCD_DC",
+      "protocol_bus": "gpio",
+      "device": "LCD_SPI2",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 21,
+      "function": "BACKLIGHT_PWM",
+      "protocol_bus": "pwm",
+      "device": "LCD",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 25,
+      "function": "TOUCH_SCLK",
+      "protocol_bus": "spi",
+      "device": "XPT2046_SOFTWARE_SPI",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 32,
+      "function": "TOUCH_MOSI",
+      "protocol_bus": "spi",
+      "device": "XPT2046_SOFTWARE_SPI",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 39,
+      "function": "TOUCH_MISO",
+      "protocol_bus": "spi",
+      "device": "XPT2046_SOFTWARE_SPI",
+      "direction": "input",
+      "pull": "none"
+    },
+    {
+      "gpio": 33,
+      "function": "TOUCH_CS",
+      "protocol_bus": "spi",
+      "device": "XPT2046_SOFTWARE_SPI",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 36,
+      "function": "TOUCH_IRQ",
+      "protocol_bus": "gpio",
+      "device": "XPT2046_SOFTWARE_SPI",
+      "direction": "input",
+      "pull": "none"
+    },
+    {
+      "gpio": 18,
+      "function": "SD_SCLK",
+      "protocol_bus": "spi",
+      "device": "SD_VSPI",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 19,
+      "function": "SD_MISO",
+      "protocol_bus": "spi",
+      "device": "SD_VSPI",
+      "direction": "input",
+      "pull": "none"
+    },
+    {
+      "gpio": 23,
+      "function": "SD_MOSI",
+      "protocol_bus": "spi",
+      "device": "SD_VSPI",
+      "direction": "output",
+      "pull": "none"
+    },
+    {
+      "gpio": 5,
+      "function": "SD_CS",
+      "protocol_bus": "spi",
+      "device": "SD_VSPI",
+      "direction": "output",
+      "pull": "none"
+    }
+  ]
+}

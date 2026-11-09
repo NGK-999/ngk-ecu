@@ -8,7 +8,10 @@ A tabela de partições preservada reserva dois slots de aplicação de 1.966.08
 bytes para atualizações. Não houve reparticionamento ou overclock nesta etapa.
 
 O cartão preparado reporta 30.255 MiB e FAT32. Ele não foi reformatado para a
-revisão da interface.
+revisão da interface. Na 0.4.2, a montagem assíncrona voltou a confirmar
+30.255 MiB; exportação e importação do perfil Suave concluíram pela placa.
+A consulta inicial antes da carga dos serviços pode indicar ausência; aguardar
+o estado final antes de diagnosticar falha ou solicitar uma ação.
 
 ## Usos do cartão
 
@@ -53,7 +56,7 @@ parciais e dois buffers para sobrepor desenho e transferência DMA.
 
 ## Otimizações desta revisão
 
-- Instrumentos e barra persistem na página; textos e segmentos mudam somente
+- Instrumentos e barra persistem na página; textos e preenchimento mudam somente
   quando o conteúdo muda. Rótulos dos números têm largura do conteúdo e
   permanecem centralizados ao mudar o número de dígitos. Não reconstruir a
   página a cada atualização.
@@ -77,8 +80,10 @@ bytes, portanto carregar essa fonte inteira no pool não seria uma solução.
 O comando local `bench` executa uma cena **DEMO TESTE**, sem entradas do motor:
 20 redesenhos completos, depois 10 segundos de alterações parciais solicitadas
 a cada 17 ms. A base usava timer LVGL de 16ms; a revisão usa 5ms, mantendo
-a cadência do produtor. Nos modos normais, produtor 17/33/50ms e polling LVGL
-5/11/16ms; o timer pausa sem regiões sujas. O teste termina e restaura o menu. Não escreve estatística por
+a cadência do produtor. Na 0.4.2 normal, FrameClock limita a barra a 60 Hz racionais/33/50 ms;
+os números em Suave têm cadência de cerca de 30 Hz. O refresher LVGL usa
+1/5/10 ms e pausa sem regiões sujas. O benchmark mantém seu timer de 5 ms e
+produtor de 17 ms para preservar a comparação. O teste termina e restaura o menu. Não escreve estatística por
 quadro nem registra amostras de sensores.
 
 Conta uma apresentação somente quando termina o último DMA daquela atualização,
@@ -89,12 +94,24 @@ latência óptica ou ensaio do motor/veículo.
 
 Resultados próprios e limites de validação ficam em [validacao.md](validacao.md).
 
-## Fontes do cockpit 0.3.0
+## Fontes do cockpit
 
-A composição atual usa NGK Cockpit64/72 derivadas de Barlow Condensed Bold,
+A composição introduzida na 0.3.0 usa NGK Cockpit64/72 derivadas de Barlow Condensed Bold,
 com 12 glifos por fonte e alturas efetivas 48/53 px. Os dois objetos somam14.045 B
 constantes, mais 8 B de cache por fonte. São fontes maiores que a antiga
 NGK Digits48; o objetivo é a legibilidade mantendo desenho parcial eficiente.
-A imagem integrada normal tem 1.404.240 B, ainda dentro do slot 1.966.080 B.
+A imagem normal 0.3.0 tinha 1.404.240 B. A 0.4.2 adiciona NGK Gear48 com
+somente `-NR01234`, sem habilitar Montserrat48 completa. Tamanho e hash atuais
+estão em [validação](validacao.md); o slot continua 1.966.080 B.
 A fonte anterior e seu gerador continuam no histórico/repositório, mas não
 são usados no desenho do cockpit atual. Licença/geração estão documentadas.
+
+## Movimento na 0.4.2
+
+Barra única com desenho somente nas colunas sujas; sem canvas ou framebuffer
+completo extra. Dois buffers fixos de texto evitam realocação dos números
+principais. Cache de View evita conversões repetidas quando a fonte não muda;
+TTL e alarmes continuam observados em cada tick. Não há leitura SD por quadro.
+`motion-bench` mede separadamente o caminho de interpolação com fonte USB de
+20 Hz. Tempo decorrido de `ui::tick` inclui espera/preempção e não permite
+declarar percentual de CPU livre ou orçamento garantido para aquisição real.

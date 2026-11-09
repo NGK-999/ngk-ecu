@@ -33,17 +33,20 @@ int main() {
         }
     }
     check(navigation.size() == 4, "all four pages remain accessible");
-    check(navigation[0].w > navigation[1].w * 2 &&
-              navigation[1].y == navigation[2].y && navigation[2].y == navigation[3].y &&
-              navigation[1].y >= navigation[0].y + navigation[0].h,
-          "menu prioritizes driving with one primary action and three secondary actions");
+    check(navigation[0].y == navigation[1].y && navigation[2].y == navigation[3].y &&
+              navigation[2].y >= navigation[0].y + navigation[0].h + 8 &&
+              navigation[0].w == navigation[1].w && navigation[2].w == navigation[3].w,
+          "menu exposes four balanced targets on two spaced rows");
     check(menuReturn.w >= 44 && menuReturn.h >= 44 && !menuReturn.overlaps(content),
           "secondary pages have a separate finger-sized Menu action");
     check(screen.contains(menuReturn.x + menuReturn.w - 1, menuReturn.y + menuReturn.h - 1),
           "Menu return action fits the screen");
-    check(speedCard.h >= 90 && speedCard.w >= 140 && rpmCard.w >= 200 && rpmCard.h >= 48,
-          "asymmetric cockpit reserves large speed area and wide five-digit RPM area");
-    for (const auto instrument : {speedCard, rpmCard, temperatureCard, oilStrip}) {
+    check(speedCard.h >= 68 && speedCard.w >= 160 && rpmCard.w >= 200 && rpmCard.h >= 48,
+          "cockpit leaves room for large speed and five-digit RPM glyphs");
+    check(gearCard.w >= 72 && gearCard.h >= 48 && gearCard.y == speedCard.y &&
+              !gearCard.overlaps(speedCard),
+          "SIM gear gets its own large area beside speed");
+    for (const auto instrument : {speedCard, gearCard, rpmCard, temperatureCard, oilStrip}) {
         check(screen.contains(instrument.x, instrument.y) &&
                   screen.contains(instrument.x + instrument.w - 1, instrument.y + instrument.h - 1),
               "dashboard instrument remains inside the screen");
@@ -53,6 +56,15 @@ int main() {
               !temperatureCard.overlaps(speedCard) && !oilStrip.overlaps(temperatureCard) &&
               !oilStrip.overlaps(speedCard) && !oilStrip.overlaps(rpmCard),
           "all instruments remain separate");
+    check(!gearCard.overlaps(rpmCard) && !gearCard.overlaps(temperatureCard) &&
+              !gearCard.overlaps(oilStrip) && !gearCard.overlaps(rpmBar),
+          "SIM gear cannot cover another instrument");
+    check(temperatureCard.y == oilStrip.y &&
+              temperatureCard.y >= speedCard.y + speedCard.h + 8 &&
+              temperatureCard.y + temperatureCard.h + 8 <= dashboardHint.y &&
+              screen.contains(dashboardHint.x + dashboardHint.w - 1,
+                              dashboardHint.y + dashboardHint.h - 1),
+          "temperature and oil share a base row separated from values and footer");
     check(!rpmBar.overlaps(speedCard) && !rpmBar.overlaps(rpmCard) &&
               rpmBar.y >= rpmCard.y + rpmCard.h &&
               screen.contains(rpmBar.x + rpmBar.w - 1, rpmBar.y + rpmBar.h - 1),

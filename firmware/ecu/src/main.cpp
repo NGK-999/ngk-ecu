@@ -25,7 +25,7 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
-constexpr const char* Version = "0.4.1-simulator";
+constexpr const char* Version = "0.4.2-cockpit";
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
     uint32_t sectors = 0, type = 0;
@@ -275,7 +275,8 @@ void printInfo() {
         "\"wifi_enabled\":%s,\"wifi_connected\":%s,\"ble_enabled\":%s,"
         "\"ble_advertising\":%s,\"ble_connected\":%s,\"radio_memory_failure\":%s,"
         "\"profile_status\":%u,\"profile_revision\":%u,\"profile_persisted\":%s,"
-        "\"simulation_protocol\":%u,\"simulation_enabled\":%s,\"simulation_live\":%s"
+        "\"simulation_protocol\":%u,\"simulation_enabled\":%s,\"simulation_live\":%s,"
+        "\"refresh_mode\":%u,\"reduced_motion\":%s"
 #ifdef NGK_SD_MAINTENANCE
         ",\"format_token\":%u"
 #endif
@@ -296,7 +297,8 @@ void printInfo() {
         radios.bleEnabled ? "true" : "false", radios.bleAdvertising ? "true" : "false",
         radios.bleConnected ? "true" : "false", radios.memoryFailure ? "true" : "false",
         unsigned(profile.status), unsigned(profile.revision), profile.persisted ? "true" : "false",
-        simulationProtocol, simulation.enabled ? "true" : "false", simulation.live ? "true" : "false"
+        simulationProtocol, simulation.enabled ? "true" : "false", simulation.live ? "true" : "false",
+        unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false"
 #ifdef NGK_SD_MAINTENANCE
         , data.formatReady ? unsigned(bootToken) : 0U
 #endif
@@ -354,6 +356,14 @@ void command(const char* line) {
     if (!strcmp(line, "radios") || !strcmp(line, "status")) { printRadios(); return; }
     if (!strcmp(line, "bench")) {
         queueLine(ecu::ui::startBenchmark() ? "BENCH_STARTED DEMO" : "BENCH_REFUSED");
+        return;
+    }
+    if (!strcmp(line, "motion-bench")) {
+        queueLine(ecu::ui::startMotionBenchmark() ? "MOTION_BENCH_STARTED" : "MOTION_BENCH_REFUSED");
+        return;
+    }
+    if (!strcmp(line, "ui-smooth")) {
+        queueLine(ecu::ui::requestSmoothPresentation() ? "UI_SMOOTH_QUEUED" : "UI_SMOOTH_REFUSED");
         return;
     }
     if (!strcmp(line, "profile-export")) {
@@ -455,6 +465,23 @@ void loop() {
             report.touchMaxGapUs, report.fullP95Us, report.heapFree, report.heapMin,
             report.heapLargest, report.lvglUsedPercent, report.lvglFragPercent);
         if (queued) reportPending = false;
+    }
+    static ecu::ui::MotionBenchmarkReport motionReport{};
+    static bool motionReportPending = false;
+    if (!motionReportPending) motionReportPending = ecu::ui::takeMotionBenchmarkReport(motionReport);
+    if (motionReportPending) {
+        if (queuePrintf("{\"kind\":\"ui_motion_benchmark\",\"synthetic\":true,\"duration_ms\":%u,"
+            "\"presentations\":%u,\"interval_p95_us\":%u,\"interval_max_us\":%u,"
+            "\"max_pixels\":%u,\"touch_poll_max_gap_us\":%u,"
+            "\"ui_tick_total_us\":%u,\"ui_tick_max_us\":%u,\"refresh_mode\":%u,"
+            "\"reduced_motion\":%s,\"ramp_updates\":%u,\"ramp_gap_p95_upper_us\":%u,"
+            "\"ramp_gap_max_us\":%u,\"interrupted\":%s}\n",
+            motionReport.durationMs, motionReport.presentations, motionReport.intervalP95Us,
+            motionReport.intervalMaxUs, motionReport.maxPixels, motionReport.touchPollMaxGapUs,
+            motionReport.uiTickTotalUs, motionReport.uiTickMaxUs,
+            unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false",
+            motionReport.rampUpdates, motionReport.rampGapP95UpperUs, motionReport.rampGapMaxUs,
+            motionReport.interrupted ? "true" : "false")) motionReportPending = false;
     }
     static int lastFormatState = 0;
     if (view.formatState != lastFormatState) {

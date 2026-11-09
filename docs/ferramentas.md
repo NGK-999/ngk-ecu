@@ -125,3 +125,19 @@ exit0,complete,artifact_changed=false; SHA-256
 Na revisão 0.3.0, section_headers foi repetido no ELF próprio final, com
 SHA-256 `c24dbe35e1c7d8745bdef3c7f0eb4a9969b1050af614b2bd8deb24607fecb70e`.
 Resultado completo, exit 0,artifact_changed=false; nenhum binário extraído publicado.
+
+## Apoio ESP32 solicitado posteriormente
+
+- [Skill ESP32 local, proveniência e auditoria de pinos](ferramentas-esp32.md).
+- [Avaliação dos quatro repositórios e runtime local ESP-MCP](avaliacao-ferramentas-ia.md).
+
+A integração atual continua Arduino/PlatformIO. O ESP-MCP exige ESP-IDF completo
+para operar `idf.py`; seu ensaio local validou stdio e sete schemas, sem chamar
+ferramentas físicas. TinyML e cliente de APIs não acrescentam uma função definida
+à instrumentação atual e não foram incluídos no firmware.
+
+Na revisão 0.4.2, REA repetiu `section_headers` no ELF próprio final:
+exit 0, `completion_status=complete`, `artifact_changed=false`; SHA-256
+`b09b855a81055a79e8e304ca426cb1b2a02f745ffa5ed53e80be24cb8c7cbf80`.
+A inspeção de seções não mede utilização de CPU ou latência da tela; essas
+evidências estão separadas no [relatório de bancada](validacao.md).

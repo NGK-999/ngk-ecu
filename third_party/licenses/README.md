@@ -110,3 +110,16 @@ reprodução exata e comparam os 24 bitmaps/métricas com a saída oficial compi
 separadamente. Essa comparação é pulada explicitamente se os caches faltarem;
 nenhum teste pede rede. GCC e a dependência LVGL local são necessários para
 os ensaios de execução C.
+
+## NGK Gear 48 — subconjunto para marcha
+
+`firmware/ecu/src/ngk_gear_48.c` deriva da mesma Barlow Condensed Bold fixada
+acima, com o nome **NGK Gear 48** e os oito caracteres `-NR01234`. Permanece sob
+SIL OFL 1.1, com o mesmo copyright dos autores. Usa 4 bpp, sem compressão ou
+kerning, mapa Unicode esparso nativo e altura efetiva de 34 px. Não inclui
+fontes, ícones ou logotipos da Apple ou FuelTech.
+
+O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os três arquivos;
+não há novo download ou dependência. O ensaio `test_gear_font.py` regenera o C
+e usa os callbacks reais do LVGL para conferir N/R/dígitos, limites da célula
+e ausência dos demais caracteres, inclusive os buracos do mapa Unicode.

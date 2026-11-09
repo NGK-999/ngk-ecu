@@ -8,6 +8,13 @@ struct BenchmarkReport {
     std::uint32_t heapFree = 0, heapMin = 0, heapLargest = 0;
     std::uint32_t lvglUsedPercent = 0, lvglFragPercent = 0;
 };
+struct MotionBenchmarkReport {
+    std::uint32_t durationMs = 0, presentations = 0, intervalP95Us = 0, intervalMaxUs = 0;
+    std::uint32_t maxPixels = 0, touchPollMaxGapUs = 0;
+    std::uint32_t uiTickTotalUs = 0, uiTickMaxUs = 0;
+    std::uint32_t rampUpdates = 0, rampGapP95UpperUs = 0, rampGapMaxUs = 0;
+    bool interrupted = false;
+};
 // These functions belong exclusively to the main UI task.
 bool begin();
 // Check readiness and schedule the cockpit before main begins a USB session.
@@ -19,4 +26,12 @@ void setStorage(bool mounted, std::uint32_t capacityMiB);
 bool startBenchmark();
 bool takeBenchmarkReport(BenchmarkReport& report);
 bool benchmarkRunning();
+// Explicit, bounded metadata-only observation of the real SIM presentation path.
+// Keeps the 17 ms synthetic benchmark separate and does not disable touch.
+bool startMotionBenchmark();
+bool takeMotionBenchmarkReport(MotionBenchmarkReport& report);
+std::uint8_t presentationRefreshMode();
+bool reducedMotionEnabled();
+// Explicit operator request: persist Smooth and enable motion, preserving other settings.
+bool requestSmoothPresentation();
 }

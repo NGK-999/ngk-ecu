@@ -1,0 +1,5 @@
+ab7959bf4d31c78b55fa059da9c75cda41a609b2a371a50d792a28774aa6fb72  firmware/ecu/include/board_profile.hpp
+b66b3edae66fc1d11b8b77159873263eaf01099940d225b406a737891a257c93  firmware/ecu/include/board.hpp
+7c59d3999fb1775261d34473ccbbaf237dba947f97302959b9a542425c0c5d64  firmware/ecu/platformio.ini
+e7e598d380d478c5a4a4c47d0d2c034ca9343d92d5d3cbf989008a66439490a6  firmware/ecu/src/main.cpp
+9d754bcbddf941112c0ccd645fd18177c97191ae97be3b0a98f1c3d231084b50  tools/esp32-audit-board.json

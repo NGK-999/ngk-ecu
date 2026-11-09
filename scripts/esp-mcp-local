@@ -1,0 +1,116 @@
+#!/bin/sh
+# Local transport audit and optional upstream ESP-IDF server. No global config.
+set -eu
+
+usage() {
+    cat <<'USAGE'
+Uso: sh scripts/esp-mcp-local [--check|--stdio|--help]
+  --check  Inicializa MCP por stdio e lista schemas; nao chama ferramentas.
+  --stdio  Inicia servidor upstream; exige ESP-IDF completo em IDF_PATH.
+USAGE
+}
+
+mode=${1:---check}
+if [ "$#" -gt 1 ]; then usage >&2; exit 2; fi
+case "$mode" in
+    --help) usage; exit 0 ;;
+    --check|--stdio) ;;
+    *) usage >&2; exit 2 ;;
+esac
+
+project_root=$(CDPATH= cd -- "$(dirname -- "$0")/.." && pwd)
+tool_root="$project_root/.tools/ai-tools"
+source_root="$tool_root/sources/esp-mcp"
+runtime="$tool_root/esp-mcp-venv/bin/python"
+expected_commit=28afddf9ff41ada117bb45fd49b526d3bf89749e
+
+if [ ! -x "$runtime" ] || [ ! -f "$source_root/main.py" ]; then
+    echo 'Runtime local ausente. Consulte docs/avaliacao-ferramentas-ia.md.' >&2
+    exit 2
+fi
+if [ "$(git -C "$source_root" rev-parse HEAD)" != "$expected_commit" ] ||
+   ! git -C "$source_root" diff --quiet HEAD -- main.py esp_utils.py pyproject.toml uv.lock; then
+    echo 'Fonte esp-mcp difere do commit auditado; revise antes de iniciar.' >&2
+    exit 2
+fi
+
+export PYTHONDONTWRITEBYTECODE=1 PYTHONNOUSERSITE=1
+if [ "$mode" = --stdio ]; then
+    if [ -z "${IDF_PATH:-}" ] || [ ! -f "$IDF_PATH/export.sh" ] ||
+       [ ! -f "$IDF_PATH/tools/idf.py" ]; then
+        echo 'ESP-IDF completo nao configurado: IDF_PATH precisa de export.sh e tools/idf.py.' >&2
+        echo 'O SDK precompilado Arduino/PlatformIO nao substitui esse ambiente.' >&2
+        exit 2
+    fi
+    IDF_PATH=$(CDPATH= cd -- "$IDF_PATH" && pwd -P)
+    export IDF_PATH
+    mkdir -p "$tool_root/work"
+    cd "$tool_root/work"
+    PATH="$(dirname -- "$runtime"):$PATH"
+    export PATH
+    exec "$runtime" -E -s -B "$source_root/main.py"
+fi
+
+# Isolated client ignores PYTHONPATH/PYTHONHOME, user site and the invoking cwd.
+# The server retains only its audited script directory for esp_utils imports.
+exec "$runtime" -I -B - "$tool_root" "$source_root" "$expected_commit" <<'PY'
+import asyncio
+from datetime import timedelta
+from importlib.metadata import version
+import json
+from pathlib import Path
+import sys
+
+from mcp import ClientSession, StdioServerParameters
+from mcp.client.stdio import stdio_client
+
+tool_root, source_root = map(Path, sys.argv[1:3])
+expected_commit = sys.argv[3]
+expected_tools = {
+    "build_esp_project", "setup_project_esp_target", "create_esp_project",
+    "flash_esp_project", "list_esp_serial_ports", "run_esp_idf_install", "run_pytest",
+}
+
+
+async def check():
+    work = tool_root / "work"
+    work.mkdir(exist_ok=True)
+    parameters = StdioServerParameters(
+        command=sys.executable,
+        args=["-E", "-s", "-B", str(source_root / "main.py")],
+        cwd=str(work),
+        env={
+            "PATH": str(Path(sys.executable).parent) + ":/usr/bin:/bin",
+            "PYTHONDONTWRITEBYTECODE": "1",
+            "PYTHONNOUSERSITE": "1",
+        },
+    )
+    async with stdio_client(parameters) as (reader, writer):
+        async with ClientSession(reader, writer, read_timeout_seconds=timedelta(seconds=15)) as session:
+            initialization = await session.initialize()
+            advertised = await session.list_tools()
+    tools = {tool.name: tool for tool in advertised.tools}
+    if set(tools) != expected_tools:
+        raise RuntimeError("Lista de ferramentas difere da revisao auditada")
+    if "project_path" not in tools["build_esp_project"].inputSchema.get("required", []):
+        raise RuntimeError("Schema de build inesperado")
+    if not all(isinstance(tool.inputSchema, dict) for tool in tools.values()):
+        raise RuntimeError("Schema MCP invalido")
+    result = {
+        "source_commit": expected_commit,
+        "python": ".".join(map(str, sys.version_info[:3])),
+        "mcp": version("mcp"),
+        "transport": "stdio",
+        "protocol": initialization.protocolVersion,
+        "tools": sorted(tools),
+        "tool_calls": 0,
+        "hardware_access": False,
+        "api_requests": 0,
+        "idf_build_tested": False,
+    }
+    (tool_root / "esp-mcp-validation.json").write_text(json.dumps(result, indent=2) + "\n")
+    print(json.dumps(result, indent=2))
+
+
+asyncio.run(check())
+PY

@@ -44,7 +44,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.1-simulator. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.2-cockpit. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -64,6 +64,7 @@ sem gravar amostras. Atalho local: **NGK ECU Simulador**.
 
 ## Documentação
 
+- [Todos os pedidos organizados em cinco etapas](docs/plano-geral.md)
 - [Escopo e próximos marcos](docs/escopo.md)
 - [Inventário de hardware e pendências](docs/hardware.md)
 - [Ferramentas e REA](docs/ferramentas.md)
@@ -96,22 +97,32 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-O cockpit **0.3.0**, preservado no firmware **0.4.1-simulator**, foi instalado em bancada: cockpit assimétrico, RPM
-em barra crescente, números condensados grandes, índice de ajustes, perfis SD e
-Wi-Fi/BLE sob demanda. Os rádios começam desligados. A memória desta unidade
-limitou a ativação simultânea: usar um por vez; a interface informa recusa.
+A versão **0.4.2-cockpit** está instalada em bancada. Tela preta com laranja e
+vermelho, menu 2×2, instrumentos grandes e barra RPM contínua em rampa curva.
+O redesenho afeta somente a ESP32; o visual do simulador foi preservado.
+A barra usa interpolação com cadência alvo de 60 Hz; os números, cerca de
+30 Hz no modo Suave. Alarmes e perda de sinal têm prioridade imediata.
 
-Quatorze executáveis nativos, doze testes de fonte, 55 testes do simulador
-e três builds passaram. A métrica abaixo foi medida no cockpit 0.3.0:
-Medição própria sintética: **57,6 apresentações parciais/s**, p95 de **17,1 ms**;
-com busca Wi-Fi ou anúncio BLE separado, cerca de 57,5–57,6/s. Não são telas completas
-por segundo nem medição óptica. Relatório e limites em [validação](docs/validacao.md).
+Quinze executáveis nativos, treze testes de fontes, 55 testes do simulador e
+três builds passaram. A bancada mediu aproximadamente **60 apresentações
+parciais/s** no caminho SIM animado. Isso não representa 60 telas completas/s
+ou medição óptica; intervalos, consumo de memória e limites estão no
+[relatório de validação](docs/validacao.md#cockpit-preto-e-rampa-contínua--042).
 Sensores, atuação e uso no veículo continuam sem validação.
+
+Wi-Fi e BLE estão disponíveis sob demanda e começam desligados. Nesta unidade,
+a proteção de memória recusou ambos simultaneamente: usar um por vez.
+O SD guarda perfis visuais; não substitui RAM nem buffers DMA.
+
+Todos os pedidos estão organizados em [cinco etapas](docs/plano-geral.md).
+A [skill ESP32](docs/ferramentas-esp32.md) foi instalada localmente e auditada;
+o [ESP-MCP e as alternativas de IA](docs/avaliacao-ferramentas-ia.md) foram
+avaliados sem acrescentar ML/API ao firmware sem uma função definida.
 
 Renderizações do próprio código com LVGL em host; não são fotos da placa:
 
 ![Menu NGK ECU, renderização headless](docs/images/menu.png)
-![Painel em demonstração sintética, renderização headless](docs/images/painel_demo.png)
+![Painel com barra RPM contínua, valores sintéticos, renderização LVGL em host](docs/images/painel_rampa.png)
 ![Categorias de ajustes, renderização headless](docs/images/ajustes.png)
 
 Teste sem hardware: `sh scripts/test-native.sh`.

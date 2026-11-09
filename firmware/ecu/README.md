@@ -10,7 +10,7 @@ RPM, temperatura do bloco, velocidade e estado do óleo começam como
 `-- / SEM SINAL`. Ainda não existem circuitos/sensores ligados e validados.
 Nenhum GPIO de aquisição do motor ou saída de injeção/ignição é habilitado.
 
-Menu inicial com Painel em destaque e botões Sensores, Ajustes e Sistema. O modo Painel
+Menu inicial 2×2 com Painel, Sensores, Ajustes e Sistema. O modo Painel
 dedica a tela aos instrumentos grandes; duplo toque retorna ao menu.
 As páginas secundárias têm botão Menu. A primeira inicialização
 pede calibração de cinco pontos. Toque e solte cada alvo; o ajuste é salvo em
@@ -28,8 +28,8 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run 
 ```
 
 Compilar não abre porta USB nem grava a placa. Os testes nativos não usam
-hardware; execute `sh scripts/test-native.sh` (14 executáveis C++17 com avisos e
-ASan/UBSan). As fontes têm 12 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
+hardware; execute `sh scripts/test-native.sh` (15 executáveis C++17 com avisos e
+ASan/UBSan). As fontes têm 13 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
 
 ## Ajustes e conexões
 
@@ -72,9 +72,15 @@ Comandos locais adicionais: `wifi-on`, `wifi-off`, `wifi-scan`, `ble-on`,
 São pedidos assíncronos; a resposta QUEUED não significa conclusão.
 `info` inclui revisão/estado de perfis. `bench` mede a cena sintética de 20
 redesenhos completos +10 s parciais e retorna ao menu; não envia leituras reais.
-Não há comando serial para informar senha ou aceitar pareamento.
+`motion-bench` observa por 10 s as apresentações do caminho SIM ativo no
+Painel, sem desligar o touch. Nova sessão, perda de link, troca de página ou
+modal interrompem a captura. É uma observação de software/DMA, sem amostras
+persistidas, não um teste óptico ou veicular. `ui-smooth` solicita e salva modo
+Suave com movimento pelo serviço normal de perfis; preserva os outros campos.
+`info` inclui `refresh_mode` e `reduced_motion`. Nenhum desses comandos habilita
+sensores ou atuadores. Não há comando serial para informar senha ou aceitar pareamento.
 
-## Simulação USB — normal 0.4.0
+## Simulação USB — protocolo 1, normal 0.4.2
 
 O appLinux está em [simulator/](../../simulator/README.md). Nenhuma porta é
 aberta ao iniciar o app; Conectar identifica o projeto e simulation_protocol1.

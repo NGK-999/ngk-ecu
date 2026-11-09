@@ -341,3 +341,115 @@ Imagem normal: **1.409.520 B**, SHA-256
 `c6dbf2ce1972a78732027478bba78edfd97231ac325e4a54108bf5957ee373d8`.
 Referências e limites de interpretação em
 [motor e simulação](referencias-motor-e-simulacao.md).
+
+## Cockpit preto e rampa contínua — 0.4.2
+
+Pedido: redesenhar **somente ESP32**, preservando o funcionamento aprovado e o
+simulador Linux. Preto/laranja/vermelho, referências FuelTech/Apple e rampa
+RPM sólida curva, sem blocos. Firmware normal instalado em `0x10000`, hash de
+escrita conferido pelo esptool. Não houve erase_flash integral, formato SD ou escrita de
+bootloader/tabela de partições. Modo Suave foi aplicado pelo serviço normal e
+salvo em NVS; não houve apagamento de calibração ou credenciais.
+
+### Testes sem hardware e revisão
+
+- `sh scripts/test-native.sh`: **15 executáveis** C++17, Wall/Wextra/Werror,
+  ASan/UBSan. Inclui interpolação limitada, retarget, validade/sessão, urgência,
+  redução de movimento, relógio racional sem backlog e rollover.
+- `.venv/bin/python -m unittest discover -s tests/font -v`: **13 testes**.
+  Fonte Gear48 somente `-NR01234`, mapa esparso validado com callbacks reais
+  LVGL e geração reproduzível offline; fontes Cockpit anteriores preservadas.
+- `sh scripts/test-simulator.sh`: **55 testes**, Qt offscreen/transporte em
+  memória. Nenhum deles abre serial física. Modelo, protocolo e visual Linux
+  não foram alterados nesta revisão.
+- Builds normal/manutenção/benchmark passaram no PlatformIO isolado. Auditoria
+  ESP32: 14 sinais, zero erros, três avisos existentes GPIO2/5/15; hash de
+  `main.cpp` também protege os pinos SD contra divergência do snapshot.
+- ESP-MCP local: stdio, sete schemas, zero tool calls/API/hardware. Runtime e
+  fontes fixados, sem registro global ou compilação fictícia via ESP-IDF.
+
+Renderer local com código de produção LVGL 8.4 em host conferiu menu, painel,
+extremos 12.000/250/200, N/R, perda de sinal, óleo baixo/superaquecimento e modal.
+Testes de integração observaram RED/GREEN para fonte/sessão, urgência, rampa sem
+gaps, recoloração após mudar escala e contador DMA aceitando as áreas ampliadas
+pela LVGL. Capturas publicadas são desse renderer, com valores sintéticos;
+não são fotografias da placa. No host 64 bits, painel usou 51% e modal 62% do pool
+32 KiB, sem OOM; esses percentuais não representam o heap do ESP32.
+
+### Bancada física: comparação do benchmark preservado
+
+Antes: firmware 0.4.1, rádios desligados. Depois: 0.4.2, mesmos buffers/DMA,
+SPI 40 MHz e benchmark com produtor 17 ms e refresher 5 ms. O método conta somente
+a conclusão do último DMA por apresentação; o p95 parcial representa tempo do
+pedido à conclusão, nos últimos 256 registros. Não mede luz emitida pelo LCD.
+
+| Medida | Antes 0.4.1 | Depois 0.4.2 |
+| --- | ---: | ---: |
+| Apresentações / duração | 576 / 10.000 ms | 574 / 10.007 ms |
+| Taxa parcial | 57,6/s | 57,36/s |
+| p95 pedido→último DMA parcial | 17.108 µs | 17.097 µs |
+| p95 tela inteira | 52.979 µs | 45.778 µs |
+| Maior intervalo de consulta touch, incluindo tela inteira | 68.072 µs | 56.079 µs |
+| Heap livre / mínimo do boot | 109.900 / 108.136 B | 109.564 / 107.744 B |
+| Maior bloco de heap livre | 94.196 B | 94.196 B |
+| Pool LVGL usado / fragmentação | 30% / 1% | 28% / 1% |
+
+A cena mudou de composição, fontes e objetos; comparação da aplicação completa,
+sem atribuir o ganho de tela inteira a uma única técnica. A fase parcial tem
+teto próximo de 58,8/s pelo produtor 17 ms; não demonstra por si só animação 60 Hz.
+
+### Bancada física: caminho SIM com interpolação
+
+`motion-bench` observou 10 s com fonte USB sintética a 20 Hz alvo, painel ativo,
+modo Suave (`refresh_mode=0`), movimento habilitado e rádios desligados.
+Barra tem alvo 60 Hz; números cerca de 30 Hz, detalhes acompanham a fonte 20 Hz.
+Não houve touch desabilitado, persistência de amostras ou comandos de atuação.
+
+| Medida | Resultado |
+| --- | ---: |
+| Duração / apresentações parciais | 10.000 ms / 600 |
+| Taxa de apresentações parciais | 60,0/s |
+| Transferências contendo a última linha da rampa | 600 |
+| Intervalo da rampa, limite superior p95 / máximo | 22.000 / 22.484 µs |
+| Intervalo entre apresentações, p95 / máximo | 31.941 / 33.429 µs |
+| Maior quantidade de pixels numa apresentação | 15.436 |
+| Maior intervalo de consulta touch | 27.021 µs |
+| Tempo decorrido acumulado em ui::tick / maior chamada | 4.949.462 / 17.197 µs |
+
+A contagem da rampa marca a conclusão do tile DMA que contém sua linha inferior,
+mesmo quando LVGL amplia/junta áreas. Seu p95 usa histograma de 1 ms de toda a
+captura; no último bucket, usa o máximo observado como limite conservador.
+O intervalo das apresentações usa os últimos 256 registros e mistura números
+maiores a 30 Hz com a borda pequena a 60 Hz. Os indicadores medem eventos
+diferentes; nenhum equivale a latência óptica ou 60 telas completas/s garantidas.
+`ui::tick` inclui espera/preempção; seu tempo decorrido não é utilização de CPU
+nem certifica folga para aquisição física. O ensaio não cobre tráfego de rádio,
+interrupções reais de motor ou jitter elétrico veicular.
+
+O redesenho mantém dois buffers DMA 320×16 RGB565 (20 KiB), pool LVGL 32 KiB e
+nenhum framebuffer extra. RPM usa um objeto de desenho com colunas sujas,
+cobertura Q8 e trechos sólidos; números têm buffers estáticos, conversões de
+View são cacheadas e não há SD por quadro. Alarmes, TTL e validade continuam
+baseados nos dados brutos e ultrapassam o limitador de apresentação.
+
+### SD, sistema e limites físicos
+
+SD montado com **30.255 MiB** após inicialização assíncrona. Exportação e
+importação do perfil Suave concluíram com estados Exported/Imported; nenhum
+formato nesta revisão. Esse ensaio não é um novo teste de manutenção integral
+do cartão nem expande RAM. A falha inicial de consulta ocorreu antes de carregar
+perfil/montagem; aguardar o worker resolveu a observação.
+
+Simulador nativo Wayland reaberto após os ensaios; a construção padrão permanece
+offline. A ação explícita do agente restaurou cenário marcha lenta e conexão
+para o operador experimentar, sem alterar o código do produto Linux.
+Firmware conferiu `sensor_inputs_enabled=false` e `actuators_enabled=false`.
+Não há ensaio no veículo, sensores reais, limite térmico do bloco calibrado,
+controle de combustível/ignição ou medição óptica. Confirmação estética do
+responsável para a nova composição ainda é uma observação separada.
+
+Imagem normal: **1.416.512 B**, SHA-256
+`985e139abed17f6a9855218088e02ca53bc865ae5a4be37f91b9e6a208dfb72e`.
+Linker: **95.984 B RAM estática**, **1.409.933 B flash** (71,7% do slot 1.966.080 B).
+RAM estática cresceu 336 B frente à 0.4.1; isso não é medição de heap máximo.
+Planos e pendências físicas em [plano-geral.md](plano-geral.md).

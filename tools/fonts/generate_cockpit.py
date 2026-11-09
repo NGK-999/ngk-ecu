@@ -112,6 +112,20 @@ def generate(size: int, output: Path) -> tuple[Path, Path]:
     return raw, target
 
 
+def generate_gear(output: Path) -> Path:
+    """Only gear symbols, with the converter's native sparse Unicode map."""
+    if not dependencies_ready():
+        raise RuntimeError("Run tools/fonts/generate_cockpit.py --prepare first")
+    output.mkdir(parents=True, exist_ok=True)
+    shutil.copy2(FONT, output / FONT.name)
+    target = output / "ngk_gear_48.c"
+    run([NODE, CONVERTER, "--font", FONT.name, "--symbols=-NR01234",
+         "--size", "48", "--bpp", "4", "--format", "lvgl", "--no-compress",
+         "--no-kerning", "--lv-font-name", "ngk_gear_48", "--lv-include", "ngk_gear_48.h",
+         "--output", target.name], output)
+    return target
+
+
 def main() -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     mode = parser.add_mutually_exclusive_group()
@@ -130,6 +144,7 @@ def main() -> int:
         temporary_root.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="cockpit-font-", dir=temporary_root) as temporary:
             results = [generate(size, Path(temporary)) for size in SIZES]
+            results.append((None, generate_gear(Path(temporary))))
             for _, generated in results:
                 target = arguments.output_dir / generated.name
                 if arguments.check:
@@ -138,7 +153,7 @@ def main() -> int:
                 else:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(generated.read_bytes())
-        print("Checked" if arguments.check else "Generated", "NGK Cockpit 64/72, 12 glyphs each")
+        print("Checked" if arguments.check else "Generated", "NGK Cockpit 64/72 and Gear 48")
         return 0
     except (OSError, ValueError, RuntimeError) as error:
         print(f"cockpit fonts: {error}", file=sys.stderr)

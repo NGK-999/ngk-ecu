@@ -17,7 +17,7 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Cockpit atual — 0.3.0
+## Cockpit atual — 0.4.2
 
 O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
 pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
@@ -29,15 +29,17 @@ As medidas e decisões visuais são próprias; nenhum ativo dessas marcas foi co
 
 | Região | Tratamento |
 | --- | --- |
-| RPM superior | Número condensado, barra crescente e cinco marcas de escala |
-| Velocidade inferior direita | Número maior, unidade separada e alinhamento estável |
-| Bloco e óleo à esquerda | Temperatura legível e estado binário, sem pressão inventada |
-| Menu | Painel em destaque; Sensores, Ajustes e Sistema como ações secundárias |
+| RPM superior | Número condensado e barra sólida em rampa, com graduação de cor |
+| Velocidade e marcha no centro | Número maior à esquerda; marcha grande à direita somente em SIM; unidades separadas |
+| Bloco e óleo na base | Temperatura legível e estado binário alinhados, sem pressão inventada |
+| Menu | Quatro cartões 2×2: Painel, Sensores, Ajustes e Sistema |
 | Ajustes | Seis categorias diretas; abas Unidades/RPM dentro de Instrumentos |
 
-Fundo `#06090D`, superfícies `#101820`, botões `#131E28`, texto branco,
-secundário `#8F9DAA`, ciano `#35D9D0`, âmbar `#FFC857`, vermelho `#FF4D5A`
-e divisórias `#283642`. Sem imagem de fundo, transparência animada ou sombra.
+Na revisão 0.4.2, solicitada somente para ESP32: fundo `#000000`, superfícies
+e botões `#101010`, texto `#F5F5F5`, secundário `#A0A0A0`, laranja `#FF6A00`,
+atenção `#FF9B32`, crítico `#FF3B30` e divisórias `#212121`. Tema centralizado
+em `ui_theme.hpp`; neutros conferidos após quantização RGB565.
+Sem imagem de fundo, transparência animada ou sombra.
 Cores de faixaRPM são referências visuais, não corte/proteção do motor.
 
 Barlow Condensed Bold foi convertida em NGK Cockpit64/72, com apenas 12 glifos:
@@ -47,6 +49,16 @@ ocupam até 105 px; em 64, cinco dígitos ocupam até 155 px. Fontes residentes 
 em [third_party/licenses](../third_party/licenses/README.md).
 Legendas continuam Montserrat12/14/16/28. Áreas numéricas usam largura do
 conteúdo, preservando alinhamento e invalidando regiões antigas/novas.
+Marcha usa NGK Gear48, oito glifos `-NR01234`, altura efetiva 34 px; não foi
+habilitada uma fonte Montserrat48 completa. Proveniência e reprodução no mesmo
+documento de licenças. A identidade do simulador Linux foi preservada.
+
+Referências conferidas nesta revisão: [manual oficial FuelTech, página 20](https://files.fueltech.com.br/manual/Portugues/FT450_FT550_FT600.pdf#page=20),
+[Apple HIG Layout](https://developer.apple.com/design/human-interface-guidelines/layout),
+[Color](https://developer.apple.com/design/human-interface-guidelines/color) e
+[Gauges](https://developer.apple.com/design/human-interface-guidelines/gauges).
+FuelTech orienta a hierarquia de instrumentos; Apple, agrupamento/alinhamento
+e semântica de cor. A composição e o código são próprios.
 
 ## Fluxos
 
@@ -75,6 +87,47 @@ Somente uma tarefa acessa LVGL. Aquisição e armazenamento passam snapshots ou
 filas limitadas. Atualizar texto apenas quando mudar e limitar animações a
 pequenas regiões. Animação de valor é apresentação; alarmes e dados registrados
 usam o valor adquirido e sua validade, sem atraso introduzido pelo efeito visual.
+
+## Movimento e orçamento de processamento — 0.4.2
+
+`ui_motion.hpp` mantém duas curvas escalares de apresentação e um relógio
+racional próximo de 60 Hz. RPM usa ease-out de 100 ms e velocidade, 120 ms;
+novo alvo parte do valor interpolado atual, sem fila ou salto. Primeiro valor,
+nova sessão, urgência e redução de movimento fazem snap; invalidez limpa a
+curva. Não há suavização do protocolo, da validade ou do cálculo de alarmes.
+
+O snapshot observa TTL em cada tick. Conversões do View são refeitas somente
+quando mudam sequência, sessão, validade ou unidades; formatação e desenho
+comuns seguem a cadência escolhida. Mudanças de falha/urgência passam antes do
+limitador, incluindo superaquecimento quando outro alerta domina o rodapé.
+Calibração/modal opaco suspendem o desenho oculto e retomam com o dado atual.
+
+O menu anima somente seus quatro ícones por 4 px em 120 ms, mantendo os alvos
+fixos. A barra RPM é uma única rampa curva de 304×24 px: callback C++ visita
+somente as colunas sujas e agrupa trechos iguais em retângulos sólidos. A cor
+RGB565 é calculada localmente, sem canvas, imagem ou buffer de gradiente.
+Escala/limiares/validade invalidam a rampa quando necessário; o avanço comum
+invalida só a faixa entre a posição anterior e a nova. A borda usa cobertura
+fracionária Q8, misturada em RGB565, para reduzir saltos visuais de um pixel.
+A barra evolui com cadência alvo de 60 Hz no modo Suave; números, cerca de
+30 Hz, e detalhes acompanham o produtor USB de 20 Hz. Isso reduz redesenho de
+glifos sem atrasar falhas/validade. Os números principais
+usam dois buffers fixos de 16 bytes com `lv_label_set_text_static`, evitando
+realocações de texto por quadro. Não há framebuffer completo extra.
+Modos 33/50 ms e Reduzir movimento continuam disponíveis. Quadros atrasados
+são descartados; não há recuperação acumulada que bloqueie o trabalho atual.
+O modo Suave foi ativado e salvo após a bancada identificar modo Econômico
+persistido. `ui-smooth` solicita essa mudança pelo serviço normal de ajustes,
+preservando brilho, unidades e referências RPM; `info` informa os modos ativos.
+O refresher LVGL em Suave acorda em 1 ms quando há região inválida, enquanto o
+FrameClock limita a evolução dos instrumentos a 60 Hz; isso não gera 1.000
+quadros/s. O LVGL pausa seu timer de refresh quando não há novo desenho.
+
+O SPI de 40 MHz exige teoricamente 30,72 ms para os 153.600 bytes de uma tela
+inteira RGB565, antes dos demais custos. A meta próxima de 60 Hz depende de
+regiões parciais pequenas; não significa 60 telas completas/s. Métricas da
+bancada e distinção entre apresentação, tempo decorrido da tarefa e FPS óptico
+constam em [validação](validacao.md).
 
 ## Base técnica de referência, sujeita a validação no novo firmware
 

@@ -45,6 +45,16 @@ segredos, caminhos pessoais ou identificadores de hardware.
 Publicação deste novo repositório e documentação inicial foi solicitada.
 Não publicar dumps ou resultados experimentais não revisados junto com código.
 
+Ferramentas de apoio solicitadas posteriormente: skill local
+`.agents/skills/esp32/SKILL.md` e `sh scripts/validate-esp32.sh`; ler a skill e
+as referências pertinentes antes de aplicar suas orientações. Validadores são
+heurísticos, não substituem o perfil conferido, o SDK e evidências do hardware.
+`sh scripts/esp-mcp-local --check` audita stdio/schemas sem chamar ferramentas;
+`--stdio` exige ESP-IDF completo e não substitui Arduino/PlatformIO. Dependências
+e configuração continuam locais. Avaliações dos quatro repositórios pedidos
+estão em `docs/avaliacao-ferramentas-ia.md`; não adicionar ML/API embarcada sem
+uma função definida pelo responsável.
+
 ## Interface
 
 Referência de tema e interação em `docs/interface.md`, baseada na orientação e

@@ -84,15 +84,16 @@ struct Rect {
     }
 };
 inline constexpr std::array<Rect, 4> navigation{{
-    {8, 42, 304, 72}, {8, 126, 96, 82}, {112, 126, 96, 82}, {216, 126, 96, 82}}};
+    {8, 40, 148, 84}, {164, 40, 148, 84}, {8, 132, 148, 84}, {164, 132, 148, 84}}};
 inline constexpr Rect content{8, 36, 304, 144};
 inline constexpr Rect menuReturn{8, 188, 304, 44};
-inline constexpr Rect rpmCard{8, 27, 208, 49};
-inline constexpr Rect rpmBar{8, 84, 304, 24};
-inline constexpr Rect speedCard{164, 133, 148, 90};
-inline constexpr Rect temperatureCard{8, 133, 148, 53};
-inline constexpr Rect oilStrip{8, 193, 148, 30};
-inline constexpr Rect dashboardHint{8, 226, 304, 14};
+inline constexpr Rect rpmCard{8, 24, 208, 48};
+inline constexpr Rect rpmBar{8, 76, 304, 24};
+inline constexpr Rect speedCard{8, 104, 208, 72};
+inline constexpr Rect gearCard{224, 104, 88, 72};
+inline constexpr Rect temperatureCard{8, 184, 148, 32};
+inline constexpr Rect oilStrip{164, 184, 148, 32};
+inline constexpr Rect dashboardHint{8, 224, 304, 16};
 inline constexpr std::array<Rect, 3> settingsRows{{{8, 40, 304, 44}, {8, 88, 304, 44}, {8, 136, 304, 44}}};
 inline constexpr std::array<Rect, 6> settingsCategories{{
     {8, 40, 148, 44}, {164, 40, 148, 44}, {8, 88, 148, 44},
