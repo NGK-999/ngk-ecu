@@ -85,9 +85,10 @@ A referência externa vale somente como identidade visual. O firmware próprio
 contém apenas o domínio da ECU: RPM, velocidade, temperatura e óleo, com dados
 indisponíveis até instalar os sensores. Sem telas de turno/produção industrial.
 
-A confirmação do fluxo novo — menu, instrumentos grandes e duplo toque — e
-a calibração física do touch devem ser registradas separadamente de testes
-nativos. A captura de software ou o build não comprovam essas interações reais.
+O responsável confirmou fisicamente, na versão `0.1.1-bench`, o painel com
+instrumentos grandes e o duplo toque retornando ao menu. Essa confirmação
+valida o fluxo de interação observado nesta unidade, separadamente dos testes
+nativos. Não houve medição de precisão do touch ou latência óptica.
 As métricas de 59 apresentações parciais/s da referência não são medições da ECU.
 
 ## Motor, veículo e próximos ensaios

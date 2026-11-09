@@ -72,11 +72,11 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-Testes nativos e builds de bancada passaram. A imagem do firmware temporário
-com perfil ST7789 foi confirmada legível pelo responsável; isso não valida a
-interface nova, o toque, sensores ou operação no veículo. Estado da instalação
-e do cartão deve ser conferido no relatório de validação. Não usar este projeto
-como indicação validada de condição segura do motor.
+Testes nativos e builds de bancada passaram. A versão `0.1.1-bench` está
+instalada; o responsável confirmou o painel e o duplo toque na tela real.
+Sensores e operação no veículo continuam sem validação. Consulte os limites no
+relatório de bancada; não usar o projeto como indicação validada de condição
+segura do motor.
 
 Teste sem hardware: `sh scripts/test-native.sh`.
 Compilação e operação: [guia do firmware](firmware/ecu/README.md).

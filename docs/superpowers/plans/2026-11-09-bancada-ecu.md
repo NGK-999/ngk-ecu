@@ -56,4 +56,4 @@ PlatformIO6.1.18 isolado.
 - [x] Menu inicial 2×2 e painel sem dock, com números grandes.
 - [x] Duplo toque retorna ao menu; rejeita arraste/toque longo e trata wrap de tempo.
 - [x] Cinco executáveis nativos, builds e gravação da versão 0.1.1-bench verificados.
-- [ ] Confirmar visualmente e testar o gesto na tela real com o responsável.
+- [x] Confirmar visualmente e testar o gesto na tela real com o responsável.
