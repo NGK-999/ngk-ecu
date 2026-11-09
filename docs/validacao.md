@@ -296,3 +296,48 @@ completo0.4.0. O produtorUSB tem cadência alvo20 Hz; isso não é FPSóptico.
 
 Imagem normal 0.4.0: **1409104 bytes**, SHA-256
 `fbcf02892fda613158f27ab20cd1cb879a9df7e32474ea2892a6f7a9564c7bc6`. Linker95.648 B RAMestática/1.402.525Bflash (71,3% do slot).
+
+## Simulação de motor e alertas — 0.4.1
+
+### Testes e compilação
+
+`sh scripts/test-simulator.sh`: **55 testes passaram**, com Qt offscreen e
+transporte em memória. Cobrem limiares e histerese, RPM ausente, valor manual
+9.000, temperatura manual 200 exata, partida fria, lenta variável, inércia,
+motor desligado, envelope de marcha e estado térmico. Os testes não abrem
+porta física. `sh scripts/test-native.sh`: **14 executáveis passaram** com
+ASan/UBSan, incluindo validade, prioridade, TTL e alertas de RPM.
+
+Compilação dos ambientes normal, manutenção e benchmark passou. RAM estática
+normal: **95.648 B**; flash: **1.402.945 B** (71,4% do slot). Classificação dos
+alertas não adiciona buffers de tela; atualizações preservam o desenho parcial.
+Não foi feito novo ensaio de FPS ou medição óptica nesta versão.
+
+### Inspeção da aplicação
+
+Capturas do Qt offscreen conferidas em 1120×760 e no mínimo de 980×680: controles
+visíveis, RPM 9.000 integral em vermelho e texto de giro crítico. A aplicação
+nativa foi reaberta no Linux após a atualização; começa offline e prioriza a
+porta USB. Isso não substitui confirmação visual do responsável na ESP32.
+
+### Bancada física separada
+
+Alvo identificado como NGK ECU normal 0.4.0 antes da escrita. Aplicação normal
+**0.4.1-simulator** instalada em 0x10000, hash conferido pelo esptool; não houve
+escrita de bootloader, tabela de partições, NVS ou formato do SD.
+
+Firmware/protocolo conferidos após reiniciar. O SerialLink real transmitiu
+9.000 RPM, transições de giro e RPM inválido; o receptor confirmou sessão live,
+vencimento por pausa e retomada. As cores/alertas são verificados pelo código
+puro e pela captura Qt; a bancada não mede opticamente o LCD nem comprova que
+o usuário viu os avisos. Encerramento devolveu o link ao estado offline.
+
+`sensor_inputs_enabled=false` e `actuators_enabled=false` conferidos. O SD
+reportava **não montado antes e depois** desta atualização; não foi formatado
+nem houve tentativa de recuperação, pois isso não era necessário para a
+simulação. Nenhuma amostra ou serial bruto foi persistido.
+
+Imagem normal: **1.409.520 B**, SHA-256
+`c6dbf2ce1972a78732027478bba78edfd97231ac325e4a54108bf5957ee373d8`.
+Referências e limites de interpretação em
+[motor e simulação](referencias-motor-e-simulacao.md).

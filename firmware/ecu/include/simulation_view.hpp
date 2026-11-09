@@ -1,22 +1,26 @@
 #pragma once
 #include "simulation.hpp"
 #include "settings.hpp"
+#include "engine_alerts.hpp"
 #include <cmath>
 
 namespace ecu::simulation {
-enum class Alert : std::uint8_t { None, LowOil, Overheat, TempShort, TempOpen, NoRpm, NoSpeed, TpsInvalid, GearInvalid };
+enum class Alert : std::uint8_t { None, LowOil, Overheat, TempShort, TempOpen, NoRpm, NoSpeed, TpsInvalid, GearInvalid, HighRpm, CriticalRpm };
 struct View {
     bool live = false, rpmValid = false, speedValid = false, temperatureValid = false;
     bool tpsValid = false, gearValid = false, oilValid = false;
     std::int32_t rpm = 0, speed = 0, temperature = 0, tps = 0, gear = 0, oil = 0;
     Alert alert = Alert::None;
+    RpmWarning rpmWarning = RpmWarning::Normal;
 };
-inline View present(const Snapshot& source, SpeedUnit speedUnit, TempUnit tempUnit) {
+inline View present(const Snapshot& source, SpeedUnit speedUnit, TempUnit tempUnit,
+                    RpmWarning previous = RpmWarning::Normal) {
     View result;
     if (!source.enabled || !source.live) return result;
     const auto& frame = source.frame;
     result.live = true;
     result.rpmValid = !(frame.faults & NoRpm);
+    result.rpmWarning = ecu::rpmWarning(frame.rpm, result.rpmValid, previous);
     result.speedValid = !(frame.faults & NoSpeed);
     result.temperatureValid = !(frame.faults & (TempOpen | TempShort));
     result.tpsValid = !(frame.faults & TpsInvalid);
@@ -33,6 +37,8 @@ inline View present(const Snapshot& source, SpeedUnit speedUnit, TempUnit tempUn
     else if (frame.faults & TempShort) result.alert = Alert::TempShort;
     else if (frame.faults & TempOpen) result.alert = Alert::TempOpen;
     else if (frame.faults & NoRpm) result.alert = Alert::NoRpm;
+    else if (result.rpmWarning == RpmWarning::Critical) result.alert = Alert::CriticalRpm;
+    else if (result.rpmWarning == RpmWarning::High) result.alert = Alert::HighRpm;
     else if (frame.faults & NoSpeed) result.alert = Alert::NoSpeed;
     else if (frame.faults & TpsInvalid) result.alert = Alert::TpsInvalid;
     else if (frame.faults & GearInvalid) result.alert = Alert::GearInvalid;
@@ -49,6 +55,8 @@ inline const char* alertText(Alert alert) {
     case Alert::NoSpeed: return "SIM: SEM VELOCIDADE";
     case Alert::TpsInvalid: return "SIM: TPS INVALIDO";
     case Alert::GearInvalid: return "SIM: MARCHA INVALIDA";
+    case Alert::HighRpm: return "SIM: ROTACAO ALTA";
+    case Alert::CriticalRpm: return "SIM: GIRO CRITICO";
     }
     return "SIM: FALHA";
 }

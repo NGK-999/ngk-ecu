@@ -25,7 +25,7 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
-constexpr const char* Version = "0.4.0-simulator";
+constexpr const char* Version = "0.4.1-simulator";
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
     uint32_t sectors = 0, type = 0;

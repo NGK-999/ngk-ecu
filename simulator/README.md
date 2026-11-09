@@ -42,7 +42,21 @@ Em **Modo manual**, ajuste RPM e velocidade independentemente da dinâmica.
 Acelerador/TPS, marcha e temperatura continuam editáveis. RPM zero é um valor
 válido; para ausência de leitura, use a falha **Sem RPM**.
 
-Cenários rápidos: marcha lenta, cruzeiro em 3ª, motor quente e falha RPM.
+O automático usa um perfil ilustrativo: lenta quente perto de 700 RPM com
+pequenas oscilações, lenta fria mais alta e inércia na resposta ao acelerador.
+Seu teto de 5.000 RPM é uma escolha do modelo, não limite mecânico homologado.
+Para testar **9.000 RPM**, marque Modo manual e ajuste Rotação. A barra do Linux
+termina em 6.000 RPM, mas o número e a transmissão mantêm até 12.000 RPM.
+
+**Temperatura automática** aquece/resfria gradualmente conforme carga e
+velocidade. Desmarque para editar a temperatura diretamente; o modo manual
+sempre aceita o valor exato. O campo desabilitado é a temperatura inicial,
+enquanto o instrumento mostra a temperatura simulada atual. A superfície do
+bloco real ainda exige escolha do ponto e calibração. **200 °C é um extremo de
+teste manual, não uma referência normal.**
+
+Cenários rápidos incluem lenta quente, partida fria, cruzeiro, giro alto,
+superaquecimento explícito e falha RPM.
 Aplicar cenário substitui os controles/falhas pelo cenário escolhido.
 O histórico RPM retém até10 s somente em memória e é ocultado em janelas menores.
 Nenhuma amostra ou conteúdo serial é gravado em arquivo/log.
@@ -59,6 +73,15 @@ Nenhuma amostra ou conteúdo serial é gravado em arquivo/log.
 A pausa USB é um teste separado: desmarque **Simular perda USB** para retomar.
 A falha de superaquecimento eleva o valor gerado a pelo menos 150 °C, de propósito;
 não representa um limite de proteção calibrado para o motor real.
+
+O aviso de giro é calculado a partir da leitura válida: amarelo a partir de
+4.000 RPM e vermelho a partir de 4.500 RPM, com histerese de 150 RPM para
+liberação. Não muda a rotação nem corta ignição. Esses limiares são
+**referências de bancada** independentes da escala, não limites certificados
+do motor. No ESP32 exigem firmware **0.4.1-simulator**; óleo/temperatura têm
+prioridade no rodapé. Consulte as [fontes e limites do modelo](../docs/referencias-motor-e-simulacao.md).
+
+![Teste sintético de 9.000 RPM com alerta crítico no Qt](../docs/images/simulator-high-rpm.png)
 
 ## Testar a placa
 

@@ -44,9 +44,14 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.0-simulator. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.1-simulator. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
+
+Lenta com oscilação suave, partida fria e temperatura automática; avisos de giro
+a 4.000/4.500 RPM com histerese. São referências de bancada, sem corte de motor.
+O modo manual aceita 9.000 RPM para ensaiar alertas. Consulte as
+[referências do motor e limites do modelo](docs/referencias-motor-e-simulacao.md).
 
 ```sh
 ./scripts/simulator
@@ -91,12 +96,12 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-O cockpit **0.3.0**, preservado no firmware **0.4.0-simulator**, foi instalado em bancada: cockpit assimétrico, RPM
+O cockpit **0.3.0**, preservado no firmware **0.4.1-simulator**, foi instalado em bancada: cockpit assimétrico, RPM
 em barra crescente, números condensados grandes, índice de ajustes, perfis SD e
 Wi-Fi/BLE sob demanda. Os rádios começam desligados. A memória desta unidade
 limitou a ativação simultânea: usar um por vez; a interface informa recusa.
 
-Quatorze executáveis nativos, doze testes de fonte, 35 testes do simulador
+Quatorze executáveis nativos, doze testes de fonte, 55 testes do simulador
 e três builds passaram. A métrica abaixo foi medida no cockpit 0.3.0:
 Medição própria sintética: **57,6 apresentações parciais/s**, p95 de **17,1 ms**;
 com busca Wi-Fi ou anúncio BLE separado, cerca de 57,5–57,6/s. Não são telas completas

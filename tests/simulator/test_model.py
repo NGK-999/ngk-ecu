@@ -170,6 +170,165 @@ class ModelTests(unittest.TestCase):
         self.assertGreaterEqual(sample.speed_kph, 0)
         self.assertLessEqual(sample.speed_kph, 250)
 
+    def test_warm_idle_varies_smoothly_around_700_without_drift(self):
+        controls = Controls(engine_on=True, block_c=85)
+        model = VehicleModel()
+        run_for(model, controls, 15)
+        rpm = [model.step(controls, 0.05).rpm for _ in range(1200)]
+        self.assertGreater(min(rpm), 670)
+        self.assertLess(max(rpm), 730)
+        self.assertGreater(max(rpm) - min(rpm), 12)
+        self.assertLess(max(abs(right - left) for left, right in zip(rpm, rpm[1:])), 3)
+        self.assertLess(abs(sum(rpm[:200]) / 200 - sum(rpm[-200:]) / 200), 25)
+
+    def test_cold_idle_is_higher_than_warm_idle(self):
+        cold = run_for(VehicleModel(), Controls(engine_on=True, block_c=25), 20)
+        warm = run_for(VehicleModel(), Controls(engine_on=True, block_c=85), 20)
+        self.assertGreater(cold.rpm, 950)
+        self.assertLess(cold.rpm, 1050)
+        self.assertGreater(cold.rpm - warm.rpm, 200)
+
+    def test_rpm_has_inertia_and_a_model_ceiling_with_exact_manual_override(self):
+        model = VehicleModel()
+        controls = Controls(engine_on=True)
+        idle = run_for(model, controls, 10)
+        controls.throttle_pct = 100
+        rising = model.step(controls, 0.05)
+        self.assertGreater(rising.rpm, idle.rpm)
+        self.assertLess(rising.rpm, 2000)
+        revved = run_for(model, controls, 30)
+        self.assertGreater(revved.rpm, 4500)
+        self.assertLessEqual(revved.rpm, 5000)
+        controls.throttle_pct = 0
+        falling = model.step(controls, 0.05)
+        self.assertLess(falling.rpm, revved.rpm)
+        self.assertGreater(falling.rpm, 3000)
+        controls.manual = True
+        controls.manual_rpm = 9000
+        self.assertEqual(model.step(controls, 0.05).rpm, 9000)
+        controls.manual_rpm = 12000
+        self.assertEqual(model.step(controls, 0.05).rpm, 12000)
+
+    def test_engaged_gears_do_not_accelerate_indefinitely(self):
+        limits = {-1: 50, 1: 50, 2: 80, 3: 115, 4: 155}
+        speeds = {}
+        for gear, ceiling in limits.items():
+            model = VehicleModel()
+            controls = Controls(engine_on=True, throttle_pct=100, gear=gear)
+            sample = run_for(model, controls, 180, 0.1)
+            with self.subTest(gear=gear):
+                self.assertGreater(sample.speed_kph, 0)
+                self.assertLess(sample.speed_kph, ceiling)
+                self.assertLessEqual(sample.rpm, 5000)
+            speeds[gear] = sample.speed_kph
+        self.assertGreater(speeds[4], speeds[1])
+
+    def test_stopped_engine_reaches_exact_zero_and_does_not_idle_oscillate(self):
+        model = VehicleModel()
+        controls = Controls(engine_on=True, throttle_pct=100)
+        run_for(model, controls, 10)
+        controls.engine_on = False
+        run_for(model, controls, 10)
+        self.assertEqual([model.step(controls, 0.05).rpm for _ in range(100)], [0] * 100)
+
+    def test_reset_repeats_the_entire_idle_oscillation(self):
+        controls = Controls(engine_on=True, block_c=25, thermal_auto=True)
+        model = VehicleModel()
+        first = [model.step(controls, 0.05) for _ in range(500)]
+        model.reset()
+        self.assertEqual([model.step(controls, 0.05) for _ in range(500)], first)
+
+    def test_automatic_surface_temperature_warms_and_cools_gradually(self):
+        controls = Controls(engine_on=True, block_c=25, thermal_auto=True)
+        model = VehicleModel()
+        self.assertEqual(model.step(controls, 0).block_c, 25)
+        first = model.step(controls, 0.05)
+        self.assertGreater(first.block_c, 25)
+        self.assertLess(first.block_c, 25.2)
+        warm = run_for(model, controls, 30)
+        self.assertGreater(warm.block_c, first.block_c + 1)
+        self.assertLess(warm.block_c, 85)
+        controls.engine_on = False
+        cooling = model.step(controls, 0.05)
+        self.assertLess(cooling.block_c, warm.block_c)
+        self.assertGreater(cooling.block_c, warm.block_c - 0.2)
+        cooled = run_for(model, controls, 30)
+        self.assertGreater(cooled.block_c, 25)
+        self.assertLess(cooled.block_c, cooling.block_c)
+
+    def test_automatic_temperature_has_synthetic_load_and_airflow_effects(self):
+        idle = Controls(engine_on=True, block_c=85, thermal_auto=True)
+        loaded = replace(idle, throttle_pct=100, gear=4)
+        self.assertGreater(run_for(VehicleModel(), loaded, 30).block_c,
+                           run_for(VehicleModel(), idle, 30).block_c)
+        slow, fast = VehicleModel(), VehicleModel()
+        seed = replace(loaded, manual=True, manual_speed_kph=100, manual_rpm=3000)
+        fast.step(seed, 0.05)
+        self.assertLess(run_for(fast, loaded, 5).block_c,
+                        run_for(slow, loaded, 5).block_c)
+        sample = run_for(VehicleModel(), loaded, 600, 0.1)
+        self.assertGreaterEqual(sample.block_c, 85)
+        self.assertLessEqual(sample.block_c, 110)
+
+    def test_thermal_state_is_held_at_zero_dt_and_reseeded_by_explicit_input(self):
+        controls = Controls(engine_on=True, block_c=25, thermal_auto=True)
+        model = VehicleModel()
+        warm = run_for(model, controls, 30)
+        self.assertEqual(model.step(controls, 0), warm)
+        controls.block_c = 80
+        self.assertEqual(model.step(controls, 0).block_c, 80)
+        after = model.step(controls, 0.1)
+        self.assertGreater(after.block_c, 80)
+        self.assertLess(after.block_c, 80.2)
+        controls.thermal_auto = False
+        self.assertEqual(model.step(controls, 0.1).block_c, 80)
+
+    def test_manual_temperature_stays_exact_and_can_reseed_automatic_mode(self):
+        model = VehicleModel()
+        controls = Controls(engine_on=True, block_c=200, thermal_auto=True,
+                            manual=True, manual_rpm=9000, manual_speed_kph=100)
+        self.assertEqual(run_for(model, controls, 5).block_c, 200)
+        controls.block_c = 30
+        self.assertEqual(model.step(controls, 0.1).block_c, 30)
+        controls.manual = False
+        self.assertEqual(model.step(controls, 0).block_c, 30)
+        self.assertGreater(model.step(controls, 0.1).block_c, 30)
+
+    def test_overheat_output_does_not_leave_the_automatic_thermal_state_hot(self):
+        controls = Controls(engine_on=True, block_c=85, thermal_auto=True, faults=Fault.OVERHEAT)
+        model = VehicleModel()
+        self.assertGreaterEqual(model.step(controls, 0.05).block_c, 150)
+        controls.faults = Fault.NONE
+        self.assertLess(model.step(controls, 0.05).block_c, 110)
+
+    def test_thermal_auto_is_boolean_and_invalid_input_preserves_dynamics(self):
+        self.assertFalse(Controls().thermal_auto)
+        controls = Controls(engine_on=True, block_c=25, thermal_auto=True)
+        model, reference = VehicleModel(), VehicleModel()
+        model.step(controls, 0.1)
+        reference.step(controls, 0.1)
+        for invalid in (None, 1, "sim"):
+            controls.thermal_auto = invalid
+            with self.subTest(value=invalid), self.assertRaises(ValueError):
+                model.step(controls, 0.1)
+        controls.thermal_auto = True
+        self.assertEqual(model.step(controls, 0.1), reference.step(controls, 0.1))
+
+    def test_a_long_pause_cannot_jump_the_automatic_surface_temperature(self):
+        controls = Controls(engine_on=True, throttle_pct=100, gear=1,
+                            block_c=25, thermal_auto=True)
+        self.assertEqual(VehicleModel().step(controls, 900), VehicleModel().step(controls, 0.1))
+
+    def test_leaving_high_manual_rpm_decays_with_inertia_instead_of_a_cut(self):
+        controls = Controls(engine_on=True, manual=True, manual_rpm=9000)
+        model = VehicleModel()
+        model.step(controls, 0.05)
+        controls.manual = False
+        first = model.step(controls, 0.05)
+        self.assertGreater(first.rpm, 5000)
+        self.assertLess(first.rpm, 9000)
+        self.assertLess(run_for(model, controls, 20).rpm, 5000)
+
 
 if __name__ == "__main__":
     unittest.main()

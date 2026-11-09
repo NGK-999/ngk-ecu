@@ -94,6 +94,8 @@ std::uint32_t localNoticeAt = 0;
 bool localNoticeActive = false, localNoticeFailure = false;
 bool demoEnabled = false, keyboardForSsid = false, credentialActive = false;
 bool usbWasEnabled = false;
+RpmWarning usbRpmWarning = RpmWarning::Normal;
+std::uint32_t usbRpmSession = 0;
 std::uint32_t demoStartedAt = 0, demoUpdatedAt = 0, lastServicesAt = 0;
 unsigned settingsGroup = 0, networkPage = 0, keyboardBank = 0;
 LocalTextEntry textEntry;
@@ -330,16 +332,27 @@ void applyPreview() {
     }
 }
 
-void updateRpmBar(unsigned rpm, bool valid) {
+std::uint32_t rpmWarningColor(RpmWarning state, std::uint32_t normal = text) {
+    if (state == RpmWarning::Critical) return danger;
+    if (state == RpmWarning::High) return warning;
+    return normal;
+}
+
+void updateRpmBar(unsigned rpm, bool valid, bool simulationMode = false) {
     const auto& settings = settingsEditor.values;
     const auto filled = std::min(20U, rpm * 20U / settings.rpmScale);
     for (unsigned index = 0; index < rpmSegments.size(); ++index) {
         if (!rpmSegments[index]) continue;
         std::uint32_t color = 0x202020;
         if (valid && index < filled) {
-            const auto percent = (index + 1) * 5;
-            color = percent >= settings.rpmRedPercent ? danger :
-                (percent >= settings.rpmYellowPercent ? warning : accent);
+            if (simulationMode) {
+                const auto segmentRpm = static_cast<std::int32_t>((index + 1) * settings.rpmScale / 20U);
+                color = rpmWarningColor(ecu::rpmWarning(segmentRpm, true), accent);
+            } else {
+                const auto percent = (index + 1) * 5;
+                color = percent >= settings.rpmRedPercent ? danger :
+                    (percent >= settings.rpmYellowPercent ? warning : accent);
+            }
         }
         if (segmentColors[index] != color) {
             segmentColors[index] = color;
@@ -917,9 +930,13 @@ void pollServices(bool force = false) {
 
 void serviceUsbSimulation() {
     const auto source = simulation::snapshot();
+    if (!source.enabled || source.frame.session != usbRpmSession) usbRpmWarning = RpmWarning::Normal;
+    usbRpmSession = source.enabled ? source.frame.session : 0;
+    const auto view = simulation::present(source, settingsEditor.values.speedUnit,
+                                          settingsEditor.values.tempUnit, usbRpmWarning);
+    usbRpmWarning = view.rpmWarning;
     if (calibrating) return;  // Observe TTL even while the calibration overlay owns the UI.
     if (!source.enabled && !usbWasEnabled) return;
-    const auto view = simulation::present(source, settingsEditor.values.speedUnit, settingsEditor.values.tempUnit);
     if (!source.enabled) demoEnabled = false;
     usbWasEnabled = source.enabled;
     const bool dataPage = page == Page::Panel || page == Page::Sensors || page == Page::Menu;
@@ -934,7 +951,7 @@ void serviceUsbSimulation() {
         setNumber(rpmValue, view.rpmValid, view.rpm);
         setNumber(speedValue, view.speedValid, view.speed);
         setNumber(temperatureValue, view.temperatureValid, view.temperature);
-        setTextColor(rpmValue, source.enabled && !view.rpmValid ? secondary : text);
+        setTextColor(rpmValue, source.enabled && !view.rpmValid ? secondary : rpmWarningColor(view.rpmWarning));
         setTextColor(speedValue, source.enabled && !view.speedValid ? secondary : text);
         const bool hot = view.live && (source.frame.faults & simulation::Overheat);
         setTextColor(temperatureValue, hot ? danger : text);
@@ -944,7 +961,7 @@ void serviceUsbSimulation() {
         else if (view.gear == -1) setText(gearValue, "R");
         else if (view.gear == 0) setText(gearValue, "N");
         else setNumber(gearValue, true, view.gear);
-        updateRpmBar(static_cast<unsigned>(view.rpm), view.rpmValid);
+        updateRpmBar(static_cast<unsigned>(view.rpm), view.rpmValid, source.enabled);
         char value[24];
         if (source.enabled) {
             if (view.tpsValid) std::snprintf(value, sizeof(value), "TPS %ld%%", static_cast<long>(view.tps));
@@ -958,6 +975,8 @@ void serviceUsbSimulation() {
         setHidden(speedSignal, alert); setHidden(dashboardHintLabel, alert);
         setHidden(faultFooterLabel, !alert);
         setText(faultFooterLabel, simulation::alertText(view.alert));
+        setTextColor(faultFooterLabel, !alert ? secondary :
+            (view.alert == simulation::Alert::HighRpm ? warning : danger));
     } else if (page == Page::Sensors) {
         const bool valid[]{view.rpmValid, view.temperatureValid, view.speedValid, view.oilValid};
         const std::int32_t number[]{view.rpm, view.temperature, view.speed};
@@ -969,7 +988,10 @@ void serviceUsbSimulation() {
             else if (index == 3) std::snprintf(value, sizeof(value), "%s", view.oil ? "BAIXO (SIM)" : "OK (SIM)");
             else std::snprintf(value, sizeof(value), "%ld %s", static_cast<long>(number[index]), units[index]);
             setText(sensorValues[index], value);
-            setTextColor(sensorValues[index], index == 3 && view.oilValid && view.oil ? danger : text);
+            const auto color = index == 0 ?
+                (source.enabled && !view.rpmValid ? secondary : rpmWarningColor(view.rpmWarning)) :
+                (index == 3 && view.oilValid && view.oil ? danger : text);
+            setTextColor(sensorValues[index], color);
         }
         setText(sensorSourceLabel, source.enabled ? (view.live ? "SIM USB / dados sinteticos" : "SIM SEM LINK / dados indisponiveis") :
                 "Entradas fisicas desabilitadas");
@@ -1327,6 +1349,10 @@ bool startUsbSimulation() {
     if (radio::snapshot(latest)) radioView = latest;
     if (!ready || calibrating || calibrationRequested || pairOverlay || radioView.blePairingPending ||
         credentialActive || applyPending || importPending || benchmarkPhase != BenchmarkPhase::Idle) return false;
+    // A stopped session may reuse its token before the next UI tick. Starting
+    // a session always clears warning history, even when that token is equal.
+    usbRpmWarning = RpmWarning::Normal;
+    usbRpmSession = 0;
     demoEnabled = false;
     queuedAction = 0;
     requestPage(Page::Panel);

@@ -15,6 +15,7 @@ from PySide6.QtWidgets import (
 )
 
 from .model import Controls, Fault, VehicleModel, set_fault
+from .alerts import RpmWarning, rpm_warning
 
 
 def available_ports() -> list[str]:
@@ -35,6 +36,7 @@ QLabel[role='small_number'] { font-size: 25px; font-weight: 700; color: #eaf5ff;
 QLabel[role='tag'] { background: #103b46; color: #6ce9ff; border: 1px solid #246276;
                     border-radius: 7px; padding: 7px 10px; font-size: 10px; font-weight: 700; }
 QLabel[tone='fault'] { color: #ff8b83; }
+QLabel[tone='warning'] { color: #ffc857; }
 QLabel[tone='good'] { color: #74e3b0; }
 QPushButton { background: #203045; border: 1px solid #354a63; border-radius: 7px;
               min-height: 30px; padding: 0 12px; font-weight: 600; }
@@ -56,6 +58,8 @@ QSlider::handle:horizontal { width: 15px; height: 15px; margin: -6px 0; backgrou
                             border: 2px solid #4acfe9; border-radius: 8px; }
 QProgressBar { border: 0; background: #26354a; border-radius: 3px; max-height: 6px; min-height: 6px; }
 QProgressBar::chunk { background: #4dd7ee; border-radius: 3px; }
+QProgressBar[tone='warning']::chunk { background: #ffc857; }
+QProgressBar[tone='fault']::chunk { background: #ff736a; }
 """
 
 
@@ -132,8 +136,9 @@ class SimulatorWindow(QMainWindow):
             from .link import SerialLink
             link = SerialLink()
         self._link = link
-        self.controls = Controls()
+        self.controls = Controls(thermal_auto=True)
         self.model = VehicleModel()
+        self._rpm_warning = RpmWarning.NORMAL
         self._closed = False
         self._last_step = time.monotonic()
         self._fault_boxes: dict[Fault, QCheckBox] = {}
@@ -169,7 +174,7 @@ class SimulatorWindow(QMainWindow):
         identity = QVBoxLayout()
         identity.setSpacing(2)
         identity.addWidget(label("NGK / SIMULADOR", "title"))
-        identity.addWidget(label("COCKPIT DE BANCADA  ·  MODELO ILUSTRATIVO", "muted"))
+        identity.addWidget(label("FUSCA 1300 · DEMONSTRAÇÃO · LIMITES ILUSTRATIVOS", "muted"))
         header.addLayout(identity)
         header.addStretch()
         header.addWidget(label("DADOS SINTÉTICOS", "tag"))
@@ -205,7 +210,8 @@ class SimulatorWindow(QMainWindow):
         layout.addLayout(heading)
         self.rpm_bar = QProgressBar()
         self.rpm_bar.setObjectName("rpm_bar")
-        self.rpm_bar.setRange(0, 12000)
+        self.rpm_bar.setRange(0, 6000)
+        self.rpm_bar.setToolTip("Escala 0–6000 RPM; o valor numérico aceita até 12000 no modo manual.")
         self.rpm_bar.setTextVisible(False)
         layout.addWidget(self.rpm_bar)
         gauges = QHBoxLayout()
@@ -231,7 +237,13 @@ class SimulatorWindow(QMainWindow):
             row.addLayout(column, 1)
         layout.addLayout(row)
         self.oil_value = label("AVISO DE ÓLEO · NORMAL", "muted", "oil_value")
-        layout.addWidget(self.oil_value)
+        alerts = QHBoxLayout()
+        alerts.addWidget(self.oil_value)
+        alerts.addStretch()
+        self.rpm_alert = label("RPM · REF. 4000 / 4500", "muted", "rpm_alert")
+        self.rpm_alert.setToolTip("Referências visuais de bancada, não um limite seguro certificado do motor.")
+        alerts.addWidget(self.rpm_alert)
+        layout.addLayout(alerts)
         self.history = HistoryStrip()
         layout.addWidget(self.history)
         return frame
@@ -336,7 +348,13 @@ class SimulatorWindow(QMainWindow):
         self.clutch_switch.toggled.connect(lambda checked: setattr(self.controls, "clutch", checked))
         row.addWidget(self.clutch_switch)
         layout.addLayout(row)
+        self.thermal_auto_switch = QCheckBox("Temperatura automática · superfície do bloco simulada")
+        self.thermal_auto_switch.setObjectName("thermal_auto_switch")
+        self.thermal_auto_switch.setToolTip("Modelo térmico ilustrativo. A medição real requer posição e calibração do sensor.")
+        self.thermal_auto_switch.toggled.connect(self._thermal_changed)
+        layout.addWidget(self.thermal_auto_switch)
         layout.addWidget(self._numeric_row("temperature", "Bloco", "block_c", -40, 200, 1, 1, " °C"))
+        self.temperature_spin.setToolTip("Valor inicial no automático; extremo de 200 °C para testes manuais, não referência normal.")
         return frame
 
     def _faults(self) -> QWidget:
@@ -372,8 +390,9 @@ class SimulatorWindow(QMainWindow):
         layout.addWidget(label("Cenários rápidos", "section"))
         self.preset_combo = QComboBox()
         self.preset_combo.setObjectName("preset_combo")
-        for caption, key in (("Marcha lenta", "idle"), ("Cruzeiro em 3ª", "cruise"),
-                             ("Motor quente", "hot"), ("Falha de RPM", "rpm_loss")):
+        for caption, key in (("Marcha lenta quente · oscilação", "idle"), ("Partida fria · aquecimento", "cold"),
+                             ("Cruzeiro em 3ª", "cruise"), ("Giro alto · teste de alerta", "high_rpm"),
+                             ("Motor quente · falha", "hot"), ("Falha de RPM", "rpm_loss")):
             self.preset_combo.addItem(caption, key)
         layout.addWidget(self.preset_combo)
         self.preset_button = QPushButton("Aplicar cenário")
@@ -429,6 +448,16 @@ class SimulatorWindow(QMainWindow):
         self.controls.manual = checked
         self.control_pages.setCurrentIndex(1 if checked else 0)
         self.mode_label.setText("MANUAL" if checked else "CONDUÇÃO ILUSTRATIVA")
+        self._sync_thermal_controls()
+
+    def _thermal_changed(self, checked: bool) -> None:
+        self.controls.thermal_auto = checked
+        self._sync_thermal_controls()
+
+    def _sync_thermal_controls(self) -> None:
+        editable = self.controls.manual or not self.controls.thermal_auto
+        self.temperature_spin.setEnabled(editable)
+        self.temperature_slider.setEnabled(editable)
 
     def _fault_changed(self, flag: Fault, checked: bool) -> None:
         set_fault(self.controls, flag, checked)
@@ -446,7 +475,8 @@ class SimulatorWindow(QMainWindow):
 
     def _sync_controls(self) -> None:
         pairs = ((self.engine_switch, self.controls.engine_on), (self.clutch_switch, self.controls.clutch),
-                 (self.manual_switch, self.controls.manual))
+                 (self.manual_switch, self.controls.manual),
+                 (self.thermal_auto_switch, self.controls.thermal_auto))
         blockers = [QSignalBlocker(widget) for widget, _ in pairs]
         for widget, value in pairs:
             widget.setChecked(value)
@@ -466,8 +496,10 @@ class SimulatorWindow(QMainWindow):
         self.controls.clutch = False
         self.controls.brake_pct = 0
         self.controls.faults = Fault.NONE
-        self.controls.manual = key != "idle"
-        scenarios = {"idle": (850, 0, 0, 0, 85), "cruise": (3200, 60, 3, 35, 95),
+        self.controls.manual = key not in ("idle", "cold")
+        self.controls.thermal_auto = True
+        scenarios = {"idle": (700, 0, 0, 0, 85), "cold": (1000, 0, 0, 0, 25),
+                     "cruise": (3200, 60, 3, 35, 95), "high_rpm": (4700, 55, 2, 90, 100),
                      "hot": (2800, 40, 2, 20, 155), "rpm_loss": (3000, 45, 3, 25, 90)}
         rpm, speed, gear, throttle, temperature = scenarios[key]
         self.controls.manual_rpm, self.controls.manual_speed_kph = rpm, speed
@@ -477,6 +509,7 @@ class SimulatorWindow(QMainWindow):
         elif key == "rpm_loss":
             self.controls.faults = Fault.NO_RPM
         self.model.reset()
+        self._rpm_warning = RpmWarning.NORMAL
         self._sync_controls()
 
     def _refresh_ports(self) -> None:
@@ -514,8 +547,8 @@ class SimulatorWindow(QMainWindow):
         self.connection_detail.setText(status.detail)
 
     @staticmethod
-    def _tone(widget: QLabel, fault: bool) -> None:
-        tone = "fault" if fault else ""
+    def _tone(widget: QWidget, fault: bool | str) -> None:
+        tone = fault if isinstance(fault, str) else ("fault" if fault else "")
         if widget.property("tone") != tone:
             widget.setProperty("tone", tone)
             widget.style().unpolish(widget)
@@ -537,13 +570,19 @@ class SimulatorWindow(QMainWindow):
         invalid_temperature = bool(faults & (Fault.TEMP_OPEN | Fault.TEMP_SHORT))
         self.temperature_value.setText("--" if invalid_temperature else f"{sample.block_c:.1f} °C")
         self.oil_value.setText({0: "AVISO DE ÓLEO · NORMAL", 1: "AVISO DE ÓLEO · BAIXO", 2: "ÓLEO · SEM LEITURA"}[sample.oil])
-        self._tone(self.rpm_value, bool(faults & Fault.NO_RPM))
+        self._rpm_warning = rpm_warning(sample.rpm, not bool(faults & Fault.NO_RPM), self._rpm_warning)
+        rpm_tone = {RpmWarning.NORMAL: "", RpmWarning.HIGH: "warning", RpmWarning.CRITICAL: "fault"}[self._rpm_warning]
+        self._tone(self.rpm_value, "fault" if faults & Fault.NO_RPM else rpm_tone)
+        self._tone(self.rpm_bar, rpm_tone)
+        self._tone(self.rpm_alert, rpm_tone)
+        self.rpm_alert.setText({RpmWarning.NORMAL: "RPM · REF. 4000 / 4500", RpmWarning.HIGH: "SIM · ROTAÇÃO ALTA",
+                                RpmWarning.CRITICAL: "SIM · GIRO CRÍTICO"}[self._rpm_warning])
         self._tone(self.speed_value, bool(faults & Fault.NO_SPEED))
         self._tone(self.tps_value, bool(faults & Fault.TPS_INVALID))
         self._tone(self.gear_value, bool(faults & Fault.GEAR_INVALID))
         self._tone(self.temperature_value, invalid_temperature or bool(faults & Fault.OVERHEAT))
         self._tone(self.oil_value, sample.oil != 0)
-        self.rpm_bar.setValue(0 if faults & Fault.NO_RPM else round(sample.rpm))
+        self.rpm_bar.setValue(0 if faults & Fault.NO_RPM else min(self.rpm_bar.maximum(), round(sample.rpm)))
         self.history.append(now, None if faults & Fault.NO_RPM else sample.rpm)
         self._sync_status()
 
