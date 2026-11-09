@@ -90,6 +90,23 @@ Conectar. O worker identificaNGK ECU/protocolo antes de enviar a sessão. Sem
 conexão automática nem reconexão silenciosa. Acesso negado exige a liberação
 USB específica já documentada; o aplicativo não modifica grupos/ACL.
 
+Se aparecer **Sem acesso à porta USB**, a porta pode existir sem permissão de
+leitura/escrita para a conta do aplicativo. A ACL temporária pode se perder ao
+reconectar a USB ou reiniciar o Linux. A recuperação exige autenticação de uma
+conta administradora; reiniciar ou reinstalar o simulador não concede acesso.
+
+1. No terminal da conta que executa o simulador, execute `id -u` e anote o UID.
+2. Entre na conta administradora com `su - NOME_DA_CONTA_ADMINISTRADORA`.
+3. Execute `/usr/bin/sudo.ws /usr/bin/setfacl -m u:UID_ANOTADO:rw /dev/ttyUSB0`,
+   substituindo o UID e conferindo a porta. Nesta máquina `sudo.ws` é o sudo
+   tradicional disponível; em outra distribuição, use o sudo instalado nela.
+4. Execute `exit` para retornar à conta original.
+5. Clique **Conectar** no simulador. Não é necessário reabrir a janela.
+
+O UID deve ser o da conta original, não o resultado de `id -u` depois do `su`.
+Digite senhas somente no terminal local. Essa concessão é específica para a
+conta e a porta; não requer alterar grupos, sudoers ou permissões gerais.
+
 A tela mostra **SIM USB**, RPM/velocidade/bloco/óleo, marcha e TPS. Os dados
 físicos continuam desabilitados. Após750 ms sem novo frame válido, mostra
 **SIM SEM LINK** e limpa valores/alertas vencidos. Retomar frames válidos recupera
