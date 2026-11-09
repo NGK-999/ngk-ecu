@@ -105,7 +105,7 @@ substituem o tamanho do firmware linkado nem medem desempenho de desenho.
 `--prepare` é a etapa explícita com rede: baixa o TTF verificado e instala o
 conversor com `npm ci --ignore-scripts` no diretório local de ferramentas.
 `--check` e os testes não baixam arquivos nem instalam dependências. Sem
-`--check`, o gerador reproduz os quatro C no diretório de fontes da aplicação;
+`--check`, o gerador reproduz os cinco C no diretório de fontes da aplicação;
 `--output-dir` permite escolher outro destino.
 
 Os testes compilam os callbacks reais LVGL 8.4 para verificar exatamente os
@@ -116,18 +116,28 @@ separadamente. Essa comparação é pulada explicitamente se os caches faltarem;
 nenhum teste pede rede. GCC e a dependência LVGL local são necessários para
 os ensaios de execução C.
 
-## NGK Gear 48 — subconjunto para marcha
+## NGK Gear 48 e 64 — subconjuntos para marcha
 
-`firmware/ecu/src/ngk_gear_48.c` deriva da mesma Barlow Condensed Bold fixada
-acima, com o nome **NGK Gear 48** e os oito caracteres `-NR01234`. Permanece sob
-SIL OFL 1.1, com o mesmo copyright dos autores. Usa 4 bpp, sem compressão ou
-kerning, mapa Unicode esparso nativo e altura efetiva de 34 px. Não inclui
-fontes, ícones ou logotipos da Apple ou FuelTech.
+`firmware/ecu/src/ngk_gear_48.c` e `ngk_gear_64.c` derivam da mesma Barlow
+Condensed Bold fixada acima, com os nomes **NGK Gear 48/64** e os oito
+caracteres `-NR01234`. Permanecem sob SIL OFL 1.1, com o mesmo copyright dos
+autores. Usam 4 bpp, sem compressão ou kerning e mapa Unicode esparso nativo.
+Não incluem fontes, ícones ou logotipos da Apple ou FuelTech.
 
-O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os quatro arquivos;
-não há novo download ou dependência. O ensaio `test_gear_font.py` regenera o C
-e usa os callbacks reais do LVGL para conferir N/R/dígitos, limites da célula
-e ausência dos demais caracteres, inclusive os buracos do mapa Unicode.
+Gear 48 mantém `line_height=34` e `base_line=0`. Gear 64 tem
+`line_height=48` e `base_line=1`: o glifo `0` alcança um pixel abaixo da linha
+de base, como na rasterização oficial. Sua maior caixa mede 31 px de largura
+e o maior avanço é 33 px, com espaçamento zero. Não foi aplicado recorte ou
+deslocamento vertical; a versão 48 e os três subconjuntos Cockpit mantêm seus
+bytes anteriores.
+
+O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os cinco arquivos;
+não há novo download ou dependência. `generate_gear(output)` continua gerando
+a versão 48; `generate_gear(output, size=64)` seleciona a versão maior. O ensaio
+`test_gear_font.py` regenera os dois C e usa os callbacks reais do LVGL para
+conferir N/R/dígitos, limites verticais e ausência dos demais caracteres,
+inclusive os buracos do mapa Unicode. Também confirma que `--check` rejeita
+alterações em Gear 64, sem baixar arquivos ou instalar dependências.
 
 ## Ícones de navegação e alerta
 

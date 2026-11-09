@@ -114,7 +114,7 @@ de animação.
 Não há percentual de CPU livre ou capacidade de aquisição real certificado
 sem ensaio específico.
 
-A entrega 0.4.5 está documentada em [validação](validacao.md#rpm-compacto-e-rampa-maior--045).
+A entrega 0.4.6 está documentada em [validação](validacao.md#distribuição-mais-compacta--046).
 Pendências marcadas na etapa 2 são trabalho no veículo, sensor/calibração e
 futura injeção; não são funcionalidades físicas habilitadas por este firmware.
 

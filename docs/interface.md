@@ -17,7 +17,7 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Cockpit atual — 0.4.5
+## Cockpit atual — 0.4.6
 
 O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
 pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
@@ -50,7 +50,7 @@ A fonte 64 permanece para reprodução/histórico e não é ligada ao normal atu
 em [third_party/licenses](../third_party/licenses/README.md).
 Legendas continuam Montserrat12/14/16/28. Áreas numéricas usam largura do
 conteúdo, preservando alinhamento e invalidando regiões antigas/novas.
-Marcha usa NGK Gear48, oito glifos `-NR01234`, altura efetiva 34 px; não foi
+Marcha usa NGK Gear64, oito glifos `-NR01234`, altura efetiva 48 px e baseline 1; não foi
 habilitada uma fonte Montserrat48 completa. Proveniência e reprodução no mesmo
 documento de licenças. A identidade do simulador Linux foi preservada.
 
@@ -96,6 +96,29 @@ A rampa passou de 304×24 para 304×56 px, começando em y44 e terminando em y99
 Isso aumenta a altura em 133%, preservando velocidade/marcha, bloco/óleo e alerta
 nas posições anteriores. Desenho por colunas sujas, borda Q8, fontes residentes
 na flash e buffers DMA continuam iguais. A referência numérica permanece fixa.
+
+## Aproveitamento do espaço — 0.4.6
+
+A análise da captura 0.4.5 identificou vazios à esquerda da velocidade, acima da
+marcha e entre a leitura de RPM e a curva. A região da velocidade agora tem 184 px;
+sua borda numérica termina em x127, alinhada à do RPM, com unidade em x136.
+A coluna da marcha tem 108 px e usa Gear64/linha 48, preenchendo a altura até y175.
+
+Bloco/óleo usam y180..215, reduzindo o vão de 8 para 4 px após os instrumentos.
+Temperatura usa a Barlow48 já residente (linha 34); estado do óleo, Montserrat14.
+Continuam acomodados -40°C/F,392°F e estados de ausência, sem pressão inventada.
+
+O TPS existente da fonte SIM foi levado ao espaço acima da curva à esquerda,
+com texto de 14 px e barra horizontal de 120×4 px. Não aparece em BANCADA; continua visível
+sob alertas sem esconder dados críticos. Inválido/stale mostra TPS --/barra vazia;
+zero válido é TPS 0%. DEMO interno indica SIMULADO sem inventar TPS. A escala máxima do gráfico
+é sempre visível e acompanha mudanças dos ajustes, inclusive com SIM ativo.
+
+O recorte incremental da rampa agora limita também a altura, usando a coluna
+mais alta entre as alteradas. Isso evita redesenhar a região do TPS em pequenas
+variações de giro. A fórmula de altura é compartilhada com o desenho; host
+comparou frames incrementais com redesenho completo para descidas/subidas,
+frações e extremos. Sem imagem de tela inteira, fonte completa ou SD por quadro.
 
 ## Fluxos
 

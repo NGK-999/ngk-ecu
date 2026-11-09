@@ -22,6 +22,7 @@ SOURCE_COMMIT = "5bb28733cec313b63fbd415b574b5ae35c8aa8b8"
 SOURCE_URL = f"https://raw.githubusercontent.com/google/fonts/{SOURCE_COMMIT}/ofl/barlowcondensed/BarlowCondensed-Bold.ttf"
 SOURCE_SHA256 = "e476562ec9c1e16cf16475895b511f08c804f438cc9a9f80a44ea50a0eeb5b65"
 SIZES = (48, 64, 72)
+GEAR_SIZES = (48, 64)
 GLYPHS = "-.0123456789"
 
 
@@ -112,17 +113,23 @@ def generate(size: int, output: Path) -> tuple[Path, Path]:
     return raw, target
 
 
-def generate_gear(output: Path) -> Path:
+def generate_gear(output: Path, size: int = 48) -> Path:
     """Only gear symbols, with the converter's native sparse Unicode map."""
+    if size not in GEAR_SIZES:
+        raise ValueError("Only the reviewed 48/64 px gear sizes are supported")
     if not dependencies_ready():
         raise RuntimeError("Run tools/fonts/generate_cockpit.py --prepare first")
     output.mkdir(parents=True, exist_ok=True)
     shutil.copy2(FONT, output / FONT.name)
-    target = output / "ngk_gear_48.c"
+    name = f"ngk_gear_{size}"
+    target = output / (name + ".c")
     run([NODE, CONVERTER, "--font", FONT.name, "--symbols=-NR01234",
-         "--size", "48", "--bpp", "4", "--format", "lvgl", "--no-compress",
-         "--no-kerning", "--lv-font-name", "ngk_gear_48", "--lv-include", "ngk_gear_48.h",
+         "--size", str(size), "--bpp", "4", "--format", "lvgl", "--no-compress",
+         "--no-kerning", "--lv-font-name", name, "--lv-include", name + ".h",
          "--output", target.name], output)
+    # Keep the historical Gear48 bytes; new outputs use one final newline.
+    if size != 48:
+        target.write_text(target.read_text().rstrip() + "\n")
     return target
 
 
@@ -144,7 +151,7 @@ def main() -> int:
         temporary_root.mkdir(exist_ok=True)
         with tempfile.TemporaryDirectory(prefix="cockpit-font-", dir=temporary_root) as temporary:
             results = [generate(size, Path(temporary)) for size in SIZES]
-            results.append((None, generate_gear(Path(temporary))))
+            results.extend((None, generate_gear(Path(temporary), size)) for size in GEAR_SIZES)
             for _, generated in results:
                 target = arguments.output_dir / generated.name
                 if arguments.check:
@@ -153,7 +160,7 @@ def main() -> int:
                 else:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(generated.read_bytes())
-        print("Checked" if arguments.check else "Generated", "NGK Cockpit 48/64/72 and Gear 48")
+        print("Checked" if arguments.check else "Generated", "NGK Cockpit 48/64/72 and Gear 48/64")
         return 0
     except (OSError, ValueError, RuntimeError) as error:
         print(f"cockpit fonts: {error}", file=sys.stderr)

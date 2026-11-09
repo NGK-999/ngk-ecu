@@ -29,7 +29,7 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run 
 
 Compilar não abre porta USB nem grava a placa. Os testes nativos não usam
 hardware; execute `sh scripts/test-native.sh` (16 executáveis C++17 com avisos e
-ASan/UBSan). As fontes têm 13 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
+ASan/UBSan). As fontes têm 15 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
 
 Os ícones têm dois testes adicionais: `.venv/bin/python -m unittest discover -s tests/icons -v`.
 Reprodução offline: `.venv/bin/python tools/icons/generate.py --check`.
@@ -85,7 +85,7 @@ Suave com movimento pelo serviço normal de perfis; preserva os outros campos.
 `info` inclui `refresh_mode` e `reduced_motion`. Nenhum desses comandos habilita
 sensores ou atuadores. Não há comando serial para informar senha ou aceitar pareamento.
 
-## Simulação USB — protocolo 1, normal 0.4.5
+## Simulação USB — protocolo 1, normal 0.4.6
 
 O appLinux está em [simulator/](../../simulator/README.md). Nenhuma porta é
 aberta ao iniciar o app; Conectar identifica o projeto e simulation_protocol1.

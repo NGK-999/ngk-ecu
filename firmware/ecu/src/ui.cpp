@@ -8,7 +8,7 @@
 #include "profile_service.hpp"
 #include "radio.hpp"
 #include "cockpit_fonts.h"
-#include "ngk_gear_48.h"
+#include "ngk_gear_64.h"
 #include "simulation_service.hpp"
 #include "simulation_view.hpp"
 #include "screen_capture.hpp"
@@ -63,6 +63,8 @@ lv_obj_t* speedValue = nullptr;
 lv_obj_t* rpmValue = nullptr;
 std::array<char, 16> rpmText{}, speedText{};
 lv_obj_t* speedSignal = nullptr;
+lv_obj_t* tpsTrack = nullptr;
+lv_obj_t* tpsFill = nullptr;
 lv_obj_t* rpmSignal = nullptr;
 lv_obj_t* modeLabel = nullptr;
 lv_obj_t* unitLabel = nullptr;
@@ -430,7 +432,15 @@ lv_obj_t* actionButton(lv_obj_t* parent, const char* caption, Rect rect, unsigne
 
 void requestPage(Page next) { requestedPage = next; pageChangeRequested = true; }
 
+void refreshRpmScaleCaption() {
+    if (!rpmScaleLabel) return;
+    char scale[24];
+    std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
+    setText(rpmScaleLabel, scale);
+}
+
 void applyPreview() {
+    refreshRpmScaleCaption();
     display.setBrightness(static_cast<std::uint8_t>(settingsEditor.values.brightness * 255U / 100U));
     if (registeredDisplay && benchmarkPhase == BenchmarkPhase::Idle) {
         // FrameClock caps changed values; waking the paused LVGL refresher
@@ -447,6 +457,10 @@ std::uint32_t rpmWarningColor(RpmWarning state, std::uint32_t normal = text) {
     return normal;
 }
 
+int rpmColumnHeight(int x) {
+    return 5 + x * x * (rpmBar.h - 5) / ((rpmBar.w - 1) * (rpmBar.w - 1));
+}
+
 void drawRpmRamp(lv_event_t* event) {
     auto* context = lv_event_get_draw_ctx(event);
     lv_area_t bounds{};
@@ -461,9 +475,6 @@ void drawRpmRamp(lv_event_t* event) {
         rpmCriticalThreshold * rpmBar.w / settings.rpmScale : settings.rpmRedPercent * rpmBar.w / 100, yellow, rpmBar.w);
     const auto low = lv_color_hex(warning), middle = lv_color_hex(accent), high = lv_color_hex(danger);
     const auto inactive = lv_color_hex(theme::inactive);
-    const auto height = [](int x) {
-        return 5 + x * x * (rpmBar.h - 5) / ((rpmBar.w - 1) * (rpmBar.w - 1));
-    };
     const auto color = [&](int x) {
         const auto whole = rpmRampPosition >> 8;
         const auto fraction = static_cast<std::uint8_t>(rpmRampPosition & 255U);
@@ -481,9 +492,9 @@ void drawRpmRamp(lv_event_t* event) {
     for (int x = first; x <= last;) {
         const int local = x - bounds.x1;
         const auto runColor = color(local);
-        const auto runHeight = height(local);
+        const auto runHeight = rpmColumnHeight(local);
         int end = x + 1;
-        while (end <= last && height(end - bounds.x1) == runHeight && color(end - bounds.x1).full == runColor.full) ++end;
+        while (end <= last && rpmColumnHeight(end - bounds.x1) == runHeight && color(end - bounds.x1).full == runColor.full) ++end;
         const lv_area_t area{static_cast<lv_coord_t>(x), static_cast<lv_coord_t>(bounds.y2 - runHeight + 1),
                              static_cast<lv_coord_t>(end - 1), bounds.y2};
         style.bg_color = runColor;
@@ -495,6 +506,7 @@ void drawRpmRamp(lv_event_t* event) {
 void updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
     if (!rpmRampObject) return;
     const auto& settings = settingsEditor.values;
+    if (rpmRampScale != settings.rpmScale) refreshRpmScaleCaption();
     const auto progress = valid ? static_cast<unsigned>(std::lround(
         std::clamp(rpm, 0.0F, float(settings.rpmScale)) * (rpmBar.w * 256.0F / settings.rpmScale))) : 0U;
     const auto previous = rpmRampPosition;
@@ -507,8 +519,12 @@ void updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
     else if (previous != progress) {
         lv_area_t dirty{};
         lv_obj_get_coords(rpmRampObject, &dirty);
-        dirty.x2 = static_cast<lv_coord_t>(dirty.x1 + std::min<unsigned>(rpmBar.w - 1, (std::max(previous, progress) >> 8) + 1));
+        const auto lastColumn = std::min<unsigned>(rpmBar.w - 1, (std::max(previous, progress) >> 8) + 1);
+        dirty.x2 = static_cast<lv_coord_t>(dirty.x1 + lastColumn);
         dirty.x1 = static_cast<lv_coord_t>(dirty.x1 + ((std::min(previous, progress) >> 8) ? (std::min(previous, progress) >> 8) - 1 : 0));
+        // Heights increase with x. This covers every changed column while
+        // excluding the empty space and independent TPS content above it.
+        dirty.y1 = static_cast<lv_coord_t>(dirty.y2 - rpmColumnHeight(lastColumn) + 1);
         lv_obj_invalidate_area(rpmRampObject, &dirty);
     }
 }
@@ -634,6 +650,7 @@ void renderPage(Page next) {
     }
     page = next;
     storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
+    tpsTrack = tpsFill = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
     temperatureValue = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
     dashboardHintLabel = faultFooterLabel = faultFooterPanel = sensorSourceLabel = nullptr;
@@ -692,8 +709,8 @@ void renderPage(Page next) {
         gearLabel = label(pageContent, "MARCHA", gearCard.x, gearCard.y, gearCard.w,
                           &lv_font_montserrat_12, secondary);
         gearValue = label(pageContent, unknown, gearCard.x,
-                          gearCard.y + gearCard.h - ngk_gear_48.line_height,
-                          gearCard.w, &ngk_gear_48);
+                          gearCard.y + gearCard.h - ngk_gear_64.line_height,
+                          gearCard.w, &ngk_gear_64);
         lv_obj_set_style_text_align(gearLabel, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_align(gearValue, LV_TEXT_ALIGN_CENTER, 0);
         setHidden(gearLabel, true); setHidden(gearValue, true);
@@ -701,29 +718,39 @@ void renderPage(Page next) {
         lv_obj_set_style_bg_opa(rpmRampObject, LV_OPA_TRANSP, 0);
         lv_obj_clear_flag(rpmRampObject, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(rpmRampObject, drawRpmRamp, LV_EVENT_DRAW_MAIN, nullptr);
-        auto* divider = surface(pageContent, {216, speedCard.y, 1, speedCard.h}, border, 0);
+        auto* divider = surface(pageContent, {196, speedCard.y, 1, speedCard.h}, border, 0);
         lv_obj_set_style_border_width(divider, 0, 0);
         auto* speed = region(pageContent, speedCard);
         label(speed, "VELOCIDADE", 0, 0, speedCard.w, &lv_font_montserrat_12, secondary);
         speedValue = label(speed, unknown, 0, 19, 160, speedDigits);
         lv_obj_set_width(speedValue, LV_SIZE_CONTENT);
-        lv_obj_align(speedValue, LV_ALIGN_TOP_RIGHT, -48, 19);
+        lv_obj_align(speedValue, LV_ALIGN_TOP_RIGHT, -64, 19);
         unitLabel = label(speed, settingsEditor.values.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph",
-                          164, 57, 44, &lv_font_montserrat_12, secondary);
+                          128, 57, 56, &lv_font_montserrat_12, secondary);
         label(pageContent, "BLOCO", temperatureCard.x, temperatureCard.y + 10, 56,
               &lv_font_montserrat_12, secondary);
         label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "°C" : "°F",
-              138, temperatureCard.y + 14, 18, &lv_font_montserrat_12, secondary);
-        temperatureValue = label(pageContent, unknown, 64, temperatureCard.y + 2, 72,
-                                  &lv_font_montserrat_28);
+              138, temperatureCard.y + 18, 18, &lv_font_montserrat_12, secondary);
+        temperatureValue = label(pageContent, unknown, 64, temperatureCard.y + 1, 72,
+                                  &ngk_cockpit_48);
         lv_obj_set_style_text_align(temperatureValue, LV_TEXT_ALIGN_RIGHT, 0);
-        divider = surface(pageContent, {8, 180, 304, 1}, border, 0);
+        divider = surface(pageContent, {8, 178, 304, 1}, border, 0);
         lv_obj_set_style_border_width(divider, 0, 0);
         label(pageContent, "OLEO", oilStrip.x, oilStrip.y + 10, 44, &lv_font_montserrat_12, secondary);
-        oilValue = label(pageContent, noSignal, 210, oilStrip.y + 10, 102, &lv_font_montserrat_12);
+        oilValue = label(pageContent, noSignal, 210, oilStrip.y + 10, 102, &lv_font_montserrat_14);
         lv_obj_set_style_text_align(oilValue, LV_TEXT_ALIGN_RIGHT, 0);
-        speedSignal = label(pageContent, noSignal, 8, dashboardHint.y, 96, &lv_font_montserrat_12, secondary);
-        dashboardHintLabel = label(pageContent, "2 toques: menu", 112, dashboardHint.y, 200,
+        speedSignal = label(pageContent, demoEnabled ? "SIMULADO" : "", 8, 50, 120, &lv_font_montserrat_14);
+        lv_obj_set_style_text_align(speedSignal, LV_TEXT_ALIGN_RIGHT, 0);
+        setHidden(speedSignal, !demoEnabled);
+        tpsTrack = surface(pageContent, {8, 72, 120, 4}, theme::inactive, 1);
+        lv_obj_set_style_border_width(tpsTrack, 0, 0);
+        lv_obj_clear_flag(tpsTrack, LV_OBJ_FLAG_CLICKABLE);
+        tpsFill = surface(tpsTrack, {0, 0, 1, 4}, accent, 1);
+        lv_obj_set_style_border_width(tpsFill, 0, 0);
+        lv_obj_clear_flag(tpsFill, LV_OBJ_FLAG_CLICKABLE);
+        setHidden(tpsTrack, true);
+        setHidden(tpsFill, true);
+        dashboardHintLabel = label(pageContent, "2 toques: menu", 8, dashboardHint.y, 304,
                            &lv_font_montserrat_12, secondary);
         lv_obj_set_style_text_align(dashboardHintLabel, LV_TEXT_ALIGN_RIGHT, 0);
         faultFooterPanel = surface(pageContent, alertStrip, theme::alertCriticalBackground, 0);
@@ -1164,7 +1191,7 @@ void serviceUsbSimulation() {
         }
         if (!paintDetails) return;
         setHidden(gearLabel, !source.enabled); setHidden(gearValue, !source.enabled);
-        setHidden(rpmScaleLabel, source.enabled); setHidden(rpmSignal, source.enabled);
+        setHidden(rpmSignal, source.enabled);
         setNumber(temperatureValue, view.temperatureValid, view.temperature);
         setTextColor(rpmValue, source.enabled && !view.rpmValid ? secondary : rpmWarningColor(view.rpmWarning));
         setTextColor(speedValue, source.enabled && !view.speedValid ? secondary : text);
@@ -1186,7 +1213,16 @@ void serviceUsbSimulation() {
             setText(rpmSignal, noSignal);
         }
         const bool alert = source.enabled && view.alert != simulation::Alert::None;
-        setHidden(speedSignal, alert); setHidden(dashboardHintLabel, alert);
+        setHidden(speedSignal, !source.enabled);
+        setTextColor(speedSignal, view.tpsValid ? text : secondary);
+        setHidden(tpsTrack, !source.enabled);
+        const bool tpsVisible = source.enabled && view.tpsValid && view.tps > 0;
+        setHidden(tpsFill, !tpsVisible);
+        if (tpsVisible) {
+            const auto width = static_cast<lv_coord_t>(view.tps * 120 / 100);
+            if (lv_obj_get_width(tpsFill) != width) lv_obj_set_width(tpsFill, width);
+        }
+        setHidden(dashboardHintLabel, alert);
         setHidden(faultFooterPanel, !alert);
         setHidden(faultFooterLabel, !alert);
         setText(faultFooterLabel, simulation::alertText(view.alert));

@@ -632,3 +632,47 @@ Imagem normal **1417728 B**, SHA-256
 `45db589d0d26955b405ba711f2460a02d8b02cdf5d52761107ae95f60ac1cbd2`.
 O simulador Linux foi reaberto/streaming após os ensaios. Sensores/atuadores
 físicos continuam desabilitados; nenhum ensaio de motor/veículo.
+
+## Distribuição mais compacta — 0.4.6
+
+Pedido: analisar a captura e aproveitar os espaços. Identificados vazios à
+esquerda da velocidade, acima da marcha e entre RPM e curva. A velocidade foi
+aproximada de sua unidade, a marcha passou de 34 para 48 px e a temperatura de 28
+para 34 px. O TPS já existente em SIM ocupa o vão superior, com barra de 120×4 px;
+a escala do gráfico fica visível também em SIM. Sem novos canais de aquisição.
+
+**Testes sem hardware:** 16 executáveis nativos ASan/UBSan e 15 testes de fontes
+passaram. Gear64 preserva baseline 1/linha 48 e contém somente -NR01234; os demais
+arquivos de fontes foram preservados byte a byte e reproduzidos offline.
+Renderer real LVGL em host passou em extremos/ausência, C/F, kmh/mph, N/R, 10 alertas +
+normal, captura, modal, escala máxima e TPS inválido/stale. O layout anterior falhou
+primeiro no contrato novo de distribuição/fontes maiores, depois passou.
+
+Recorte da rampa limita agora X e altura efetiva da curva. Teste observou
+RED→GREEN: pequena variação de giro deixou de transferir o vazio acima da curva.
+Comparação pixel a pixel confirmou que atualizações incrementais coincidem com
+redesenho completo em subidas/descidas, frações, zero e máximo. Dois revisores
+conferiram geometria/estados e código final, sem achados concretos.
+
+Três builds e auditoria de pinos/hashes passaram. RAM estática normal 96024 B
+(+8 B frente à 0.4.5), flash 1413613 B (+2464 B). DMA 20 KiB/pool LVGL 32 KiB mantidos,
+sem imagem de tela inteira ou SD por quadro. A fonte Gear48 anterior é descartada
+pelo linker normal; marcha usa Gear64, RPM/temperatura reutilizam Cockpit48.
+
+**Bancada física:** normal 0.4.5 identificado antes da escrita. Instalado normal
+0.4.6 só em app 0x10000, com hash de escrita verificado. Sem formato SD, NVS,
+partições, calibração ou permissões alterados. Captura recebida da própria ESP32:
+153600 B de pixels, CRC32 `1e4507fe`, duração 13.364 s. PNG inspecionado
+com dados SIM em [captura-tela.md](captura-tela.md).
+
+Modo Suave, captura desligada, fonte USB 20 Hz alvo: **598 apresentações
+parciais em 10000 ms**, rampa 598, p95 superior da rampa
+22000 µs/máximo 34889 µs. Maior intervalo de
+consulta touch 26564 µs. ui::tick decorrido acumulado
+4029471 µs/máximo 14706 µs. Eventos DMA/tempo decorrido,
+não medição óptica, 60 telas completas/s garantidas ou percentual de CPU livre.
+
+Imagem normal **1420192 B**, SHA-256
+`1971be3deebe56a0388db032f483f604dda46a9e4bbe4144f9c322fadf2e7d04`.
+Simulador Linux reaberto/streaming após os ensaios; modelo/visual Linux intocados.
+Aquisição e atuação físicas continuam desabilitadas, sem teste veicular.

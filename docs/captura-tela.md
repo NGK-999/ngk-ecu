@@ -64,3 +64,10 @@ Nova captura recebida da placa: RPM compacto e rampa de 56 px, com valores SIM.
 Payload 153600 B, CRC32 `64495377`, conferido antes de salvar PNG.
 
 ![Painel 0.4.5 recebido da ESP32](images/esp32-painel-rpm-045.png)
+
+## Nova distribuição — 0.4.6
+
+Captura recebida da ESP32, dados SIM, CRC32 `1e4507fe` conferido.
+Marcha e temperatura maiores; TPS/escala ocupam os espaços superiores.
+
+![Painel 0.4.6 recebido da ESP32](images/esp32-painel-046.png)
