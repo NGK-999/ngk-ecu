@@ -4,7 +4,7 @@
 #include "perf_stats.hpp"
 #include "profile_service.hpp"
 #include "radio.hpp"
-#include "digits_font.h"
+#include "cockpit_fonts.h"
 
 #include <Preferences.h>
 #include <algorithm>
@@ -19,18 +19,20 @@ namespace ecu::ui {
 static_assert(sizeof(lv_color_t) == 2 && LV_COLOR_16_SWAP == 1,
               "Display DMA requires byte-swapped RGB565");
 namespace {
-constexpr std::uint32_t background = 0x050505;
-constexpr std::uint32_t card = 0x101010;
-constexpr std::uint32_t buttonColor = 0x181818;
+constexpr std::uint32_t background = 0x06090D;
+constexpr std::uint32_t card = 0x101820;
+constexpr std::uint32_t buttonColor = 0x131E28;
 constexpr std::uint32_t text = 0xFFFFFF;
-constexpr std::uint32_t secondary = 0xA6A6A6;
-constexpr std::uint32_t accent = 0xFFC400;
-constexpr std::uint32_t danger = 0xFF453A;
-constexpr std::uint32_t border = 0x353535;
-const lv_font_t* const largeDigits = &ngk_digits_48;
+constexpr std::uint32_t secondary = 0x8F9DAA;
+constexpr std::uint32_t accent = 0x35D9D0;
+constexpr std::uint32_t danger = 0xFF4D5A;
+constexpr std::uint32_t border = 0x283642;
+const lv_font_t* const rpmDigits = &ngk_cockpit_64;
+const lv_font_t* const speedDigits = &ngk_cockpit_72;
+constexpr std::uint32_t warning = 0xFFC857;
 constexpr const char* unknown = "--";
 constexpr const char* noSignal = "SEM SINAL";
-enum class Page : std::uint8_t { Menu, Panel, Sensors, Settings, System, Networks, Keyboard, Confirm };
+enum class Page : std::uint8_t { Menu, Panel, Sensors, Settings, System, Networks, Keyboard, Confirm, SettingsHome };
 
 Display display;
 ResistiveTouch touch;
@@ -48,6 +50,7 @@ lv_color_t* bufferA = nullptr;
 lv_color_t* bufferB = nullptr;
 lv_obj_t* pageContent = nullptr;
 lv_obj_t* storageLabel = nullptr;
+lv_obj_t* menuStatusLabel = nullptr;
 lv_obj_t* speedValue = nullptr;
 lv_obj_t* rpmValue = nullptr;
 lv_obj_t* speedSignal = nullptr;
@@ -90,7 +93,7 @@ enum Action : unsigned {
     ManualSsid, UseSavedWifi, ToggleBle, DiscoverBle, EraseBonds,
     PreviousNetworks, NextNetworks, BackWifi, CancelKeyboard, Backspace,
     PreviousKeys, NextKeys, SubmitKeyboard, ConfirmYes, ConfirmNo,
-    AcceptPairing, RejectPairing, EditSetting = 100, KeyInput = 200, NetworkInput = 300
+    AcceptPairing, RejectPairing, OpenSettingsHome, UnitsPage, RpmPage, EditSetting = 100, KeyInput = 200, NetworkInput = 300, CategoryInput = 400
 };
 enum class Confirmation : std::uint8_t { None, Import, Bonds };
 Confirmation confirmation = Confirmation::None;
@@ -213,7 +216,7 @@ lv_obj_t* button(lv_obj_t* parent, const char* value, Rect rect,
     lv_obj_set_style_radius(object, 6, 0);
     lv_obj_set_style_border_width(object, 1, 0);
     lv_obj_set_style_border_color(object, lv_color_hex(border), 0);
-    lv_obj_set_style_bg_color(object, lv_color_hex(0x403800), LV_STATE_PRESSED);
+    lv_obj_set_style_bg_color(object, lv_color_hex(0x123C42), LV_STATE_PRESSED);
     lv_obj_set_style_anim_time(object, 0, 0);
     lv_obj_set_style_border_color(object, lv_color_hex(accent), LV_STATE_PRESSED);
     lv_obj_set_style_border_color(object, lv_color_hex(accent), LV_STATE_CHECKED);
@@ -222,6 +225,25 @@ lv_obj_t* button(lv_obj_t* parent, const char* value, Rect rect,
     lv_obj_set_style_text_align(caption, LV_TEXT_ALIGN_CENTER, 0);
     lv_obj_center(caption);
     lv_obj_add_event_cb(object, callback, LV_EVENT_CLICKED, userData);
+    return object;
+}
+
+void updateMenuStatus() {
+    if (!menuStatusLabel) return;
+    const auto* connection = settingsEditor.dirty() ? "Ajustes nao salvos" : radioView.wifiEnabled ? (radioView.wifiConnected ? "Wi-Fi conectado" : "Wi-Fi ligado") :
+        (radioView.bleEnabled ? "Bluetooth ligado" : "Conexoes desligadas");
+    char message[80];
+    std::snprintf(message, sizeof(message), "%s   /   %s", storageMounted ? "SD pronto" : "SD ausente", connection);
+    setText(menuStatusLabel, message);
+}
+
+lv_obj_t* region(lv_obj_t* parent, Rect rect) {
+    auto* object = lv_obj_create(parent);
+    lv_obj_remove_style_all(object);
+    lv_obj_set_pos(object, rect.x, rect.y);
+    lv_obj_set_size(object, rect.w, rect.h);
+    noScroll(object);
+    lv_obj_clear_flag(object, LV_OBJ_FLAG_CLICKABLE);
     return object;
 }
 
@@ -238,7 +260,7 @@ void startCalibration();
 void selectPage(lv_event_t* event) {
     const auto index = reinterpret_cast<std::uintptr_t>(lv_event_get_user_data(event));
     if (index < navigation.size()) {
-        requestedPage = static_cast<Page>(index + 1);
+        requestedPage = index == 2 ? Page::SettingsHome : static_cast<Page>(index + 1);
         pageChangeRequested = true;
     }
 }
@@ -285,7 +307,7 @@ void updateRpmBar(unsigned rpm, bool valid) {
         if (valid && index < filled) {
             const auto percent = (index + 1) * 5;
             color = percent >= settings.rpmRedPercent ? danger :
-                (percent >= settings.rpmYellowPercent ? accent : text);
+                (percent >= settings.rpmYellowPercent ? warning : accent);
         }
         if (segmentColors[index] != color) {
             segmentColors[index] = color;
@@ -311,8 +333,13 @@ void refreshNotice() {
 void refreshSettingsView() {
     if (page != Page::Settings) return;
     const auto& settings = settingsEditor.values;
-    setText(settingsStateLabel, applyPending ? "GRAVANDO" :
-            (settingsEditor.dirty() || !profileView.persisted ? "NAO SALVO" : "SALVO"));
+    if (settingsGroup <= 2) {
+        setText(settingsStateLabel, applyPending ? "SALVANDO" :
+                (settingsEditor.dirty() || !profileView.persisted ? "NAO SALVO" : "SALVO"));
+    } else if (settingsGroup == 4) setText(modeLabel, storageMounted ? "SD PRONTO" : "SD AUSENTE");
+    else if (settingsGroup == 5) setText(modeLabel, radioView.wifiEnabled ? "WI-FI LIGADO" : "WI-FI OFF");
+    else if (settingsGroup == 6) setText(modeLabel, radioView.bleEnabled ? "BLE LIGADO" : "BLE OFF");
+    else setText(modeLabel, demoEnabled ? "DEMO ATIVO" : "LOCAL");
     char value[64];
     if (settingsGroup == 0) {
         std::snprintf(value, sizeof(value), "%u %%", unsigned(settings.brightness));
@@ -320,7 +347,7 @@ void refreshSettingsView() {
         std::snprintf(value, sizeof(value), "%lu ms", static_cast<unsigned long>(framePeriodMs(settings.refreshMode)));
         setText(settingValues[1], value);
         setText(settingValues[2], settings.reducedMotion ? "SIM" : "NAO");
-        setText(detailLabel, "Previa imediata. Aplicar para salvar.");
+        setText(detailLabel, "Previa imediata. Salvar para manter.");
     } else if (settingsGroup == 1) {
         setText(settingValues[0], settings.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph");
         setText(settingValues[1], settings.tempUnit == TempUnit::Celsius ? "Celsius" : "Fahrenheit");
@@ -341,9 +368,13 @@ void refreshSettingsView() {
         setText(detailLabel, profiles::statusText(profileView.status));
     } else if (settingsGroup == 5) {
         setText(settingValues[0], radioView.wifiEnabled ? "Desligar Wi-Fi" : "Ativar Wi-Fi");
+        if (radioView.wifiEnabled) lv_obj_add_state(lv_obj_get_parent(settingValues[0]), LV_STATE_CHECKED);
+        else lv_obj_clear_state(lv_obj_get_parent(settingValues[0]), LV_STATE_CHECKED);
         setText(detailLabel, radio::statusText(radioView.status));
     } else if (settingsGroup == 6) {
         setText(settingValues[0], radioView.bleEnabled ? "Desligar BLE" : "Ativar BLE");
+        if (radioView.bleEnabled) lv_obj_add_state(lv_obj_get_parent(settingValues[0]), LV_STATE_CHECKED);
+        else lv_obj_clear_state(lv_obj_get_parent(settingValues[0]), LV_STATE_CHECKED);
         setText(detailLabel, radio::statusText(radioView.status));
     }
     refreshNotice();
@@ -405,7 +436,7 @@ void renderPage(Page next) {
         selectedNetwork.fill(0);
     }
     page = next;
-    storageLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
+    storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
     settingValues.fill(nullptr); networkLabels.fill(nullptr); networkButtons.fill(nullptr);
     keyLabels.fill(nullptr); keyButtons.fill(nullptr); rpmSegments.fill(nullptr);
@@ -422,52 +453,81 @@ void renderPage(Page next) {
         lv_obj_set_style_text_align(modeLabel, LV_TEXT_ALIGN_RIGHT, 0);
     }
     if (page == Page::Menu) {
-        constexpr std::array<const char*, 4> names{{"Painel", "Sensores", "Ajustes", "Sistema"}};
-        constexpr std::array<const char*, 4> icons{{LV_SYMBOL_HOME, LV_SYMBOL_EYE_OPEN, LV_SYMBOL_SETTINGS, LV_SYMBOL_SD_CARD}};
+        auto* title = lv_obj_get_child(pageContent, 0);
+        setText(title, "NGK ECU");
+        lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
+        lv_obj_set_y(title, 0);
+        auto* primary = button(pageContent, "", navigation[0], selectPage, nullptr);
+        label(primary, "PAINEL", 16, 8, 220, &lv_font_montserrat_28);
+        label(primary, "RPM / velocidade / motor", 17, 46, 248, &lv_font_montserrat_12, secondary);
+        label(primary, LV_SYMBOL_RIGHT, 264, 21, 28, &lv_font_montserrat_28, accent);
+        auto* edge = surface(primary, {0, 0, 3, 72}, accent, 0);
+        lv_obj_set_style_border_width(edge, 0, 0);
+        lv_obj_clear_flag(edge, LV_OBJ_FLAG_CLICKABLE);
+        constexpr std::array<const char*, 3> names{{"SENSORES", "AJUSTES", "SISTEMA"}};
+        constexpr std::array<const char*, 3> icons{{LV_SYMBOL_LIST, LV_SYMBOL_SETTINGS, LV_SYMBOL_SD_CARD}};
         for (std::size_t i = 0; i < names.size(); ++i) {
-            auto* tile = button(pageContent, names[i], navigation[i], selectPage,
-                                reinterpret_cast<void*>(std::uintptr_t(i)));
-            auto* caption = lv_obj_get_child(tile, 0);
-            lv_obj_align(caption, LV_ALIGN_TOP_MID, 0, 57);
-            auto* icon = label(tile, icons[i], 0, 14, navigation[i].w - 2, &lv_font_montserrat_28, accent);
+            auto* tile = button(pageContent, "", navigation[i + 1], selectPage,
+                                reinterpret_cast<void*>(std::uintptr_t(i + 1)));
+            auto* icon = label(tile, icons[i], 0, 12, 94, &lv_font_montserrat_28, accent);
             lv_obj_set_style_text_align(icon, LV_TEXT_ALIGN_CENTER, 0);
+            auto* caption = label(tile, names[i], 0, 56, 94, &lv_font_montserrat_12);
+            lv_obj_set_style_text_align(caption, LV_TEXT_ALIGN_CENTER, 0);
         }
+        menuStatusLabel = label(pageContent, "", 8, 224, 304, &lv_font_montserrat_12, secondary);
+        lv_obj_set_style_text_align(menuStatusLabel, LV_TEXT_ALIGN_CENTER, 0);
+        updateMenuStatus();
     } else if (page == Page::Panel) {
+        setText(lv_obj_get_child(pageContent, 0), "NGK ECU");
+        auto* rpm = region(pageContent, rpmCard);
+        rpmValue = label(rpm, unknown, 0, 0, 200, rpmDigits);
+        lv_obj_set_width(rpmValue, LV_SIZE_CONTENT);
+        label(pageContent, "RPM", 174, 58, 42, &lv_font_montserrat_14, accent);
+        rpmSignal = label(pageContent, noSignal, 228, 36, 84, &lv_font_montserrat_12, secondary);
+        char scale[32];
+        std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
+        label(pageContent, scale, 228, 57, 84, &lv_font_montserrat_12, secondary);
         for (unsigned index = 0; index < rpmSegments.size(); ++index) {
-            rpmSegments[index] = surface(pageContent, {8 + int(index) * 15, rpmBar.y, 12, rpmBar.h}, 0x202020, 0);
+            const auto height = 12 + int(index) / 2;
+            rpmSegments[index] = surface(pageContent, {8 + int(index) * 15, rpmBar.y + rpmBar.h - height, 12, height}, 0x202020, 0);
             lv_obj_set_style_border_width(rpmSegments[index], 0, 0);
         }
-        auto* speed = surface(pageContent, speedCard);
-        centeredLabel(speed, "VELOCIDADE", 4, speedCard.w, &lv_font_montserrat_12, secondary);
-        speedValue = centeredLabel(speed, unknown, 22, speedCard.w, largeDigits);
-        // Invalidate just the number's actual width, rather than a full card
-        // width on every change. Keep alignment when digit count changes.
+        for (unsigned index = 0; index < 5; ++index) {
+            char tick[12];
+            std::snprintf(tick, sizeof(tick), "%u", unsigned(settingsEditor.values.rpmScale) * index / 4);
+            const int x = std::clamp(8 + int(index) * 76 - 22, 8, 268);
+            auto* caption = label(pageContent, tick, x, 112, 44, &lv_font_montserrat_12, secondary);
+            lv_obj_set_style_text_align(caption, index == 0 ? LV_TEXT_ALIGN_LEFT :
+                                       (index == 4 ? LV_TEXT_ALIGN_RIGHT : LV_TEXT_ALIGN_CENTER), 0);
+        }
+        auto* divider = surface(pageContent, {160, 133, 1, 90}, border, 0);
+        lv_obj_set_style_border_width(divider, 0, 0);
+        auto* speed = region(pageContent, speedCard);
+        centeredLabel(speed, "VELOCIDADE", 0, speedCard.w, &lv_font_montserrat_12, secondary);
+        speedValue = centeredLabel(speed, unknown, 23, speedCard.w, speedDigits);
         lv_obj_set_width(speedValue, LV_SIZE_CONTENT);
-        lv_obj_align(speedValue, LV_ALIGN_TOP_MID, 0, 22);
+        lv_obj_align(speedValue, LV_ALIGN_TOP_MID, 0, 23);
         unitLabel = centeredLabel(speed, settingsEditor.values.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph",
-                                  82, speedCard.w, &lv_font_montserrat_12, secondary);
-        speedSignal = centeredLabel(speed, noSignal, 100, speedCard.w, &lv_font_montserrat_12, secondary);
-        auto* rpm = surface(pageContent, rpmCard);
-        centeredLabel(rpm, "RPM", 4, rpmCard.w, &lv_font_montserrat_12, secondary);
-        rpmValue = centeredLabel(rpm, unknown, 22, rpmCard.w, largeDigits);
-        lv_obj_set_width(rpmValue, LV_SIZE_CONTENT);
-        lv_obj_align(rpmValue, LV_ALIGN_TOP_MID, 0, 22);
-        char scale[32];
-        std::snprintf(scale, sizeof(scale), "ESCALA %u", unsigned(settingsEditor.values.rpmScale));
-        centeredLabel(rpm, scale, 82, rpmCard.w, &lv_font_montserrat_12, secondary);
-        rpmSignal = centeredLabel(rpm, noSignal, 100, rpmCard.w, &lv_font_montserrat_12, secondary);
-        auto* temperature = surface(pageContent, temperatureCard);
-        label(temperature, settingsEditor.values.tempUnit == TempUnit::Celsius ? "BLOCO C" : "BLOCO F",
-              8, 2, 130, &lv_font_montserrat_12, secondary);
-        label(temperature, unknown, 8, 16, 34, &lv_font_montserrat_16);
-        label(temperature, noSignal, 48, 19, 94, &lv_font_montserrat_12, secondary);
-        auto* oil = surface(pageContent, oilStrip);
-        label(oil, "AVISO OLEO", 8, 2, 130, &lv_font_montserrat_12, secondary);
-        label(oil, unknown, 8, 16, 34, &lv_font_montserrat_16);
-        label(oil, noSignal, 48, 19, 94, &lv_font_montserrat_12, secondary);
-        auto* hint = label(pageContent, "2 toques: menu", dashboardHint.x, dashboardHint.y,
-                           dashboardHint.w, &lv_font_montserrat_12, secondary);
-        lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_CENTER, 0);
+                                  76, speedCard.w, &lv_font_montserrat_12, secondary);
+        label(pageContent, "TEMP. BLOCO", 8, 136, 116, &lv_font_montserrat_12, secondary);
+        label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "C" : "F",
+              136, 136, 20, &lv_font_montserrat_12, accent);
+        label(pageContent, unknown, 8, 151, 148, &lv_font_montserrat_28);
+        divider = surface(pageContent, {8, 189, 148, 1}, border, 0);
+        lv_obj_set_style_border_width(divider, 0, 0);
+        label(pageContent, "OLEO", 8, 201, 52, &lv_font_montserrat_12, secondary);
+        label(pageContent, noSignal, 72, 201, 84, &lv_font_montserrat_12);
+        speedSignal = label(pageContent, noSignal, 8, dashboardHint.y, 96, &lv_font_montserrat_12, secondary);
+        auto* hint = label(pageContent, "2 toques: menu", 112, dashboardHint.y, 200,
+                           &lv_font_montserrat_12, secondary);
+        lv_obj_set_style_text_align(hint, LV_TEXT_ALIGN_RIGHT, 0);
+    } else if (page == Page::SettingsHome) {
+        constexpr std::array<const char*, 6> names{{"Tela", "Instrumentos", "Toque / DEMO", "Perfis SD", "Wi-Fi", "Bluetooth"}};
+        for (unsigned index = 0; index < names.size(); ++index) {
+            actionButton(pageContent, names[index], settingsCategories[index], CategoryInput + index);
+        }
+        button(pageContent, "Menu", menuReturn, returnMenu);
+        setText(modeLabel, settingsEditor.dirty() || !profileView.persisted ? "NAO SALVO" : "SALVO");
     } else if (page == Page::Sensors) {
         auto* panel = surface(pageContent, content);
         constexpr std::array<const char*, 4> names{{"RPM", "Bloco", "Velocidade", "Oleo (chave)"}};
@@ -480,7 +540,7 @@ void renderPage(Page next) {
     } else if (page == Page::Settings) {
         constexpr std::array<const char*, 7> names{{"TELA", "UNIDADES", "ESCALA RPM", "TOQUE / DEMO", "PERFIS SD", "WI-FI", "BLUETOOTH"}};
         char heading[48];
-        std::snprintf(heading, sizeof(heading), "%s %u/7", names[settingsGroup], settingsGroup + 1);
+        std::snprintf(heading, sizeof(heading), "%s", names[settingsGroup]);
         setText(lv_obj_get_child(pageContent, 0), heading);
         settingsStateLabel = modeLabel;
         detailLabel = label(pageContent, "", 8, 25, 304, &lv_font_montserrat_12, secondary);
@@ -519,10 +579,19 @@ void renderPage(Page next) {
             actionButton(pageContent, "Descobrir por 120 s", settingsRows[1], DiscoverBle);
             actionButton(pageContent, "Apagar vinculos", settingsRows[2], EraseBonds);
         }
-        actionButton(pageContent, LV_SYMBOL_LEFT, {8, 188, 44, 44}, PreviousSettings);
-        button(pageContent, "Menu", {60, 188, 76, 44}, returnMenu);
-        actionButton(pageContent, "Aplicar", {144, 188, 108, 44}, ApplySettings);
-        actionButton(pageContent, LV_SYMBOL_RIGHT, {260, 188, 52, 44}, NextSettings);
+        if (settingsGroup == 1 || settingsGroup == 2) {
+            actionButton(pageContent, LV_SYMBOL_LEFT, {8, 188, 44, 44}, OpenSettingsHome);
+            auto* unitsTab = actionButton(pageContent, "Unidades", {60, 188, 96, 44}, UnitsPage);
+            auto* rpmTab = actionButton(pageContent, "RPM", {164, 188, 60, 44}, RpmPage);
+            lv_obj_add_state(settingsGroup == 1 ? unitsTab : rpmTab, LV_STATE_CHECKED);
+            actionButton(pageContent, "Salvar", {232, 188, 80, 44}, ApplySettings);
+        } else if (settingsGroup == 0) {
+            actionButton(pageContent, "Voltar", {8, 188, 148, 44}, OpenSettingsHome);
+            actionButton(pageContent, "Salvar ajustes", {164, 188, 148, 44}, ApplySettings);
+        } else {
+            actionButton(pageContent, "Voltar", {8, 188, 148, 44}, OpenSettingsHome);
+            button(pageContent, "Menu", {164, 188, 148, 44}, returnMenu);
+        }
         refreshSettingsView();
     } else if (page == Page::Networks) {
         detailLabel = label(pageContent, "", 8, 25, 304, &lv_font_montserrat_12, secondary);
@@ -585,6 +654,12 @@ void handleAction() {
     queuedAction = 0;
     if (!action) return;
     if (page == Page::Keyboard && radioView.blePairingPending && pageChangeRequested) return;
+    if (action >= CategoryInput && action < CategoryInput + 6) {
+        constexpr unsigned groups[]{0, 1, 3, 4, 5, 6};
+        settingsGroup = groups[action - CategoryInput];
+        requestPage(Page::Settings);
+        return;
+    }
     if (action >= EditSetting && action < EditSetting + 16) {
         settingsEditor.adjust(SettingField((action - EditSetting) / 2), (action - EditSetting) % 2 ? 1 : -1);
         applyPreview(); refreshSettingsView();
@@ -605,6 +680,9 @@ void handleAction() {
         return;
     }
     switch (action) {
+        case OpenSettingsHome: requestPage(Page::SettingsHome); break;
+        case UnitsPage: settingsGroup = 1; requestPage(Page::Settings); break;
+        case RpmPage: settingsGroup = 2; requestPage(Page::Settings); break;
         case PreviousSettings: settingsGroup = (settingsGroup + 6) % 7; requestPage(Page::Settings); break;
         case NextSettings: settingsGroup = (settingsGroup + 1) % 7; requestPage(Page::Settings); break;
         case ApplySettings:
@@ -616,7 +694,9 @@ void handleAction() {
         case ToggleDemo:
             demoEnabled = !demoEnabled;
             demoStartedAt = millis(); demoUpdatedAt = demoStartedAt - 250;
-            refreshSettingsView(); break;
+            refreshSettingsView();
+            if (demoEnabled) requestPage(Page::Panel);
+            break;
         case ExportProfile:
             if (applyPending || importPending) showNotice("Aguarde a operacao anterior");
             else localResult(profiles::exportSd());
@@ -777,7 +857,8 @@ void pollServices(bool force = false) {
         }
         applyPreview();
     }
-    refreshSettingsView(); refreshNetworks();
+    refreshSettingsView(); refreshNetworks(); updateMenuStatus();
+    if (page == Page::SettingsHome) setText(modeLabel, settingsEditor.dirty() || !profileView.persisted ? "NAO SALVO" : "SALVO");
     if (page == Page::System && detailLabel) {
         char value[80];
         std::snprintf(value, sizeof(value), "Heap livre: %lu KiB\nMaior bloco: %lu KiB",
@@ -1099,7 +1180,7 @@ void setStorage(bool mounted, std::uint32_t capacityMiB) {
     if (mounted == storageMounted && capacityMiB == storageCapacity) return;
     storageMounted = mounted;
     storageCapacity = capacityMiB;
-    if (ready) updateStorage();
+    if (ready) { updateStorage(); updateMenuStatus(); }
 }
 
 bool startBenchmark() {

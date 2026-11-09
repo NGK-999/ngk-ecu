@@ -118,6 +118,10 @@ A identificação USB, backup, manutenção SD e versão anterior estão registr
 em [validacao.md](validacao.md). A revisão atual separa testes locais,
 inspeção visual, ensaio de desempenho na placa e operação no veículo.
 
-REA também repetiu `section_headers` no ELF final da revisão0.2.0:
+REA também repetiu `section_headers` no ELF final da revisão 0.2.0:
 exit0,complete,artifact_changed=false; SHA-256
 `bea2ea9fccae4286641a0da865973496180948600237ca021435f3dec60d713c`.
+
+Na revisão 0.3.0, section_headers foi repetido no ELF próprio final, com
+SHA-256 `c24dbe35e1c7d8745bdef3c7f0eb4a9969b1050af614b2bd8deb24607fecb70e`.
+Resultado completo, exit 0,artifact_changed=false; nenhum binário extraído publicado.

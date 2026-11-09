@@ -10,12 +10,12 @@ RPM, temperatura do bloco, velocidade e estado do óleo começam como
 `-- / SEM SINAL`. Ainda não existem circuitos/sensores ligados e validados.
 Nenhum GPIO de aquisição do motor ou saída de injeção/ignição é habilitado.
 
-Menu inicial com botões Painel, Sensores, Ajustes e Sistema. O modo Painel
+Menu inicial com Painel em destaque e botões Sensores, Ajustes e Sistema. O modo Painel
 dedica a tela aos instrumentos grandes; duplo toque retorna ao menu.
 As páginas secundárias têm botão Menu. A primeira inicialização
 pede calibração de cinco pontos. Toque e solte cada alvo; o ajuste é salvo em
 NVS próprio `ngk-touch`. Ajustes permite repetir a calibração. Wi-Fi e Bluetooth BLE começam desligados;
-a ativação é explícita nas páginas de ajustes.
+a ativação é explícita nas categorias de ajustes.
 
 ## Ferramentas e compilação
 
@@ -29,15 +29,16 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/python -m platformio run 
 
 Compilar não abre porta USB nem grava a placa. Os testes nativos não usam
 hardware; execute `sh scripts/test-native.sh` (12 executáveis C++17 com avisos e
-ASan/UBSan). A fonte reduzida tem 9 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
+ASan/UBSan). As fontes têm 12 testes adicionais: `.venv/bin/python -m unittest discover -s tests/font`.
 
 ## Ajustes e conexões
 
-Sete páginas: Tela, Unidades, Escala RPM, Toque/DEMO, Perfis SD, Wi-Fi e
-Bluetooth. Brilho e cadência têm prévia imediata; Aplicar salva em NVS próprio.
-Outras alterações permanecem em rascunho até Aplicar. Importação do SD substitui
+Índice com seis categorias: Tela, Instrumentos, Toque/DEMO, Perfis SD, Wi-Fi
+e Bluetooth. Instrumentos tem abas Unidades e Escala RPM. Brilho e cadência têm prévia imediata; Salvar ajustes grava em NVS próprio.
+Outras alterações permanecem em rascunho até Salvar. Importação do SD substitui
 ajustes/rascunho após confirmação. Faixas de RPM são visuais, sem corte de giro.
-DEMO é explicitamente sintético e não persiste após reiniciar.
+DEMO abre diretamente o painel, é explicitamente sintético e não persiste
+após reiniciar. Rádios/SD não exibem o botão Salvar dos parâmetros visuais.
 
 Wi-Fi usa modo estação, busca assíncrona e até seis redes no snapshot.
 SSID manual e senha ASCII são digitados na própria tela; a senha aparece

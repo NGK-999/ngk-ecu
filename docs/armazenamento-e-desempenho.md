@@ -39,7 +39,7 @@ PSRAM ou buffers DMA. A memória externa integrada ao endereço do ESP32 é
 [PSRAM com suporte específico](https://docs.espressif.com/projects/esp-idf/en/v4.4/esp32/api-guides/external-ram.html),
 ausente na unidade identificada. Firmware continua executando da flash.
 
-Para uma imagem RGB565 de 320×240 são 153.600 bytes. Só transportar esses
+Para uma imagem RGB565 de 320 × 240 são 153.600 bytes. Só transportar esses
 bytes pelo SPI do SD a 8 MHz exige teoricamente 153,6 ms, antes de protocolo,
 decodificação e envio ao LCD. Ler a imagem a cada quadro prejudicaria a fluidez.
 A 1 MHz, o limite teórico de leitura passa a 1,2288 s. Esses são cálculos de
@@ -88,3 +88,13 @@ as fases. Heap mínimo corresponde ao boot inteiro. Nenhuma dessas medidas é
 latência óptica ou ensaio do motor/veículo.
 
 Resultados próprios e limites de validação ficam em [validacao.md](validacao.md).
+
+## Fontes do cockpit 0.3.0
+
+A composição atual usa NGK Cockpit64/72 derivadas de Barlow Condensed Bold,
+com 12 glifos por fonte e alturas efetivas 48/53 px. Os dois objetos somam14.045 B
+constantes, mais 8 B de cache por fonte. São fontes maiores que a antiga
+NGK Digits48; o objetivo é a legibilidade mantendo desenho parcial eficiente.
+A imagem integrada normal tem 1.404.240 B, ainda dentro do slot 1.966.080 B.
+A fonte anterior e seu gerador continuam no histórico/repositório, mas não
+são usados no desenho do cockpit atual. Licença/geração estão documentadas.

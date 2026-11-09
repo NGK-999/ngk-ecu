@@ -74,14 +74,14 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.2.0-race** foi instalada em bancada: tema preto/âmbar, RPM
-segmentado, instrumentos grandes, sete páginas de ajustes, perfis SD e
+A versão **0.3.0-cockpit** foi instalada em bancada: cockpit assimétrico, RPM
+em barra crescente, números condensados grandes, índice de ajustes, perfis SD e
 Wi-Fi/BLE sob demanda. Os rádios começam desligados. A memória desta unidade
 limitou a ativação simultânea: usar um por vez; a interface informa recusa.
 
-Doze executáveis nativos, nove testes de fonte e três builds passaram.
-Medição própria sintética: **56,6 apresentações parciais/s**, p95 de **18,1 ms**;
-com busca Wi-Fi ou anúncio BLE separado, cerca de 56,5/s. Não são telas completas
+Doze executáveis nativos, doze testes de fonte e três builds passaram.
+Medição própria sintética: **57,6 apresentações parciais/s**, p95 de **17,1 ms**;
+com busca Wi-Fi ou anúncio BLE separado, cerca de 57,5–57,6/s. Não são telas completas
 por segundo nem medição óptica. Relatório e limites em [validação](docs/validacao.md).
 Sensores, atuação e uso no veículo continuam sem validação.
 
@@ -89,6 +89,7 @@ Renderizações do próprio código com LVGL em host; não são fotos da placa:
 
 ![Menu NGK ECU, renderização headless](docs/images/menu.png)
 ![Painel em demonstração sintética, renderização headless](docs/images/painel_demo.png)
+![Categorias de ajustes, renderização headless](docs/images/ajustes.png)
 
 Teste sem hardware: `sh scripts/test-native.sh`.
 Compilação e operação: [guia do firmware](firmware/ecu/README.md).

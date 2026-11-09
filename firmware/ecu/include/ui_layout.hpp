@@ -84,16 +84,19 @@ struct Rect {
     }
 };
 inline constexpr std::array<Rect, 4> navigation{{
-    {8, 38, 148, 88}, {164, 38, 148, 88}, {8, 134, 148, 88}, {164, 134, 148, 88}}};
+    {8, 42, 304, 72}, {8, 126, 96, 82}, {112, 126, 96, 82}, {216, 126, 96, 82}}};
 inline constexpr Rect content{8, 36, 304, 144};
 inline constexpr Rect menuReturn{8, 188, 304, 44};
-inline constexpr Rect rpmBar{8, 30, 304, 22};
-inline constexpr Rect speedCard{8, 60, 148, 118};
-inline constexpr Rect rpmCard{164, 60, 148, 118};
-inline constexpr Rect temperatureCard{8, 184, 148, 36};
-inline constexpr Rect oilStrip{164, 184, 148, 36};
-inline constexpr Rect dashboardHint{8, 222, 304, 16};
+inline constexpr Rect rpmCard{8, 27, 208, 49};
+inline constexpr Rect rpmBar{8, 84, 304, 24};
+inline constexpr Rect speedCard{164, 133, 148, 90};
+inline constexpr Rect temperatureCard{8, 133, 148, 53};
+inline constexpr Rect oilStrip{8, 193, 148, 30};
+inline constexpr Rect dashboardHint{8, 226, 304, 14};
 inline constexpr std::array<Rect, 3> settingsRows{{{8, 40, 304, 44}, {8, 88, 304, 44}, {8, 136, 304, 44}}};
+inline constexpr std::array<Rect, 6> settingsCategories{{
+    {8, 40, 148, 44}, {164, 40, 148, 44}, {8, 88, 148, 44},
+    {164, 88, 148, 44}, {8, 136, 148, 44}, {164, 136, 148, 44}}};
 inline constexpr Rect keyboardKey(unsigned index) { return {8 + int(index % 6) * 52, 46 + int(index / 6) * 48, 44, 44}; }
 inline constexpr std::array<Point, 5> calibrationTargets{{
     {26, 54}, {294, 54}, {294, 166}, {26, 166}, {160, 110}}};

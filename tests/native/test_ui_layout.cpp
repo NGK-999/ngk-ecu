@@ -33,15 +33,16 @@ int main() {
         }
     }
     check(navigation.size() == 4, "all four pages remain accessible");
-    check(navigation[0].y == navigation[1].y && navigation[2].y == navigation[3].y &&
-              navigation[2].y > navigation[0].y,
-          "initial menu presents four large tiles on two separate rows");
+    check(navigation[0].w > navigation[1].w * 2 &&
+              navigation[1].y == navigation[2].y && navigation[2].y == navigation[3].y &&
+              navigation[1].y >= navigation[0].y + navigation[0].h,
+          "menu prioritizes driving with one primary action and three secondary actions");
     check(menuReturn.w >= 44 && menuReturn.h >= 44 && !menuReturn.overlaps(content),
           "secondary pages have a separate finger-sized Menu action");
     check(screen.contains(menuReturn.x + menuReturn.w - 1, menuReturn.y + menuReturn.h - 1),
           "Menu return action fits the screen");
-    check(speedCard.h >= 110 && rpmCard.h >= 110 && speedCard.w >= 140 && rpmCard.w >= 140,
-          "speed and RPM both receive large dashboard areas");
+    check(speedCard.h >= 90 && speedCard.w >= 140 && rpmCard.w >= 200 && rpmCard.h >= 48,
+          "asymmetric cockpit reserves large speed area and wide five-digit RPM area");
     for (const auto instrument : {speedCard, rpmCard, temperatureCard, oilStrip}) {
         check(screen.contains(instrument.x, instrument.y) &&
                   screen.contains(instrument.x + instrument.w - 1, instrument.y + instrument.h - 1),
@@ -53,8 +54,20 @@ int main() {
               !oilStrip.overlaps(speedCard) && !oilStrip.overlaps(rpmCard),
           "all instruments remain separate");
     check(!rpmBar.overlaps(speedCard) && !rpmBar.overlaps(rpmCard) &&
+              rpmBar.y >= rpmCard.y + rpmCard.h &&
               screen.contains(rpmBar.x + rpmBar.w - 1, rpmBar.y + rpmBar.h - 1),
-          "RPM band stays visible above the large instruments");
+          "RPM band separates top rotation from lower driving instruments");
+    for (std::size_t index = 0; index < settingsCategories.size(); ++index) {
+        const auto target = settingsCategories[index];
+        check(target.w >= 44 && target.h >= 44 &&
+                  screen.contains(target.x, target.y) &&
+                  screen.contains(target.x + target.w - 1, target.y + target.h - 1) &&
+                  !target.overlaps(menuReturn),
+              "each settings category is reachable by a distinct finger-sized target");
+        for (std::size_t other = index + 1; other < settingsCategories.size(); ++other) {
+            check(!target.overlaps(settingsCategories[other]), "category targets never overlap");
+        }
+    }
     for (unsigned index = 0; index < 18; ++index) {
         const auto current = keyboardKey(index);
         check(current.w >= 44 && current.h >= 44 &&

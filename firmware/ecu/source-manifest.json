@@ -1,11 +1,12 @@
 {
-  "firmware": "0.2.0-race",
+  "firmware": "0.3.0-cockpit",
   "mode": "bench",
   "sources": {
     "include/board.hpp": "b66b3edae66fc1d11b8b77159873263eaf01099940d225b406a737891a257c93",
     "include/board_profile.hpp": "ab7959bf4d31c78b55fa059da9c75cda41a609b2a371a50d792a28774aa6fb72",
     "include/card_identity.hpp": "7d22927457842c1cb3a5d4e0e8ab61b817c543fff705c1d366eac31fffb90429",
     "include/card_probe.hpp": "07b6b85a42a912a22134f5ba7289c75e8a6cb4681ec837fba76e92462b54d6cf",
+    "include/cockpit_fonts.h": "4215c353deaf373b8a220c4de74eb0468d63fe60ea86d321acd50cb8b4f59667",
     "include/command_line.hpp": "3f47ff8cfdff82a08dfcac661e7dafa808344d188f70a568ead450e7c6936cf7",
     "include/config_codec.hpp": "9d85b316c31758d733b349a2505274c6f980c133ce46165ac493762417f34c02",
     "include/digits_font.h": "db54547a28837f62839d6c492add348d649f303ec3f141f93e65806f24e767c6",
@@ -20,15 +21,17 @@
     "include/settings.hpp": "7a041eaa99a6c3c874294d652f9c5635fea8e0290e2d9bedd2d85fdacdbde7e1",
     "include/storage_schedule.hpp": "21efc07ee31c61bf34b9b4d7a4668708d704fa7801dc61467506eccbf423db94",
     "include/ui.hpp": "755385f40f9bd8e6ca57da06fb63218d4654c488099bd3b3e228b542bbae1668",
-    "include/ui_layout.hpp": "6f897a1d46f2e1898a9c2f520b347e1b486961e895e49b2f7f623fc807f713b3",
+    "include/ui_layout.hpp": "c90dbd83084bcdc9958f6234547ab59493dfe5023d5ee2d23e735a17170caca5",
     "partitions.csv": "8a79ebd0da99c195c2f223887be05f88b1f2c884317345d60a836a6b23fde83c",
-    "platformio.ini": "971a10e2f85a749c3225d2c702472581aaf2ee8d2f6275d088ae03ef07a5269c",
-    "src/main.cpp": "ce688e6309d506a5a4ab183b315a0f02ef35dfc48a01f0d775765391568164d1",
+    "platformio.ini": "d96313be1f734369e5c8693c9fab3f1ae9ccfba84147e3dc4a1b829312c2da7c",
+    "src/main.cpp": "a040b8e0820e74b800a0aeeff0466d8267c3eb4dd6da81b590cf8461c592bdf0",
+    "src/ngk_cockpit_64.c": "30d77d6c637991972f54d5ca7362a878b9b5e11ec00332588a47091dd1a1e2e9",
+    "src/ngk_cockpit_72.c": "33966747d1d7539ac2983b132cce1f692b1ca76a9db5e2b2601afbe221d00900",
     "src/ngk_digits_48.c": "5bafb4b6021c308dd6da53343eeb4c57ea2e56e086351f836678a47fc71cc1c7",
     "src/profile_service.cpp": "be9f14ddba9626d76447e48fdcddb030f237d70625ee5759d72f74dc0a76eca7",
     "src/radio.cpp": "82523bff5ff6f0421e1877c2cfd2bcc140a587d266ca35abbac708061685cbcf",
-    "src/ui.cpp": "897bfe8a6d65509b9928fee9df96051c65fff272de7ecfafa05056cadcfa3eae"
+    "src/ui.cpp": "af566bcec0d937dc605d111b51a12ee5c470340cb01ad78d9a9b6b9d60655e89"
   },
-  "normal_image_sha256": "b4b5b89f354111a66a655da2a7de7f6f3747af7a3d4647981f2f25e40c96e120",
-  "normal_image_bytes": 1393056
+  "normal_image_sha256": "5ca470324a7cf12f2f74274b0141e3f4027c9e87216a08f86c072cc1faf14ffd",
+  "normal_image_bytes": 1404240
 }

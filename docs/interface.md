@@ -17,39 +17,55 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Tema automobilístico atual
+## Cockpit atual — 0.3.0
 
-O pedido posterior adotou as fotos FuelTech como referência de instrumentos,
-sem copiar logotipo ou acrescentar leituras inexistentes. A interface própria
-usa fundo `#050505`, cartões `#101010`, branco `#FFFFFF`, texto secundário
-`#A6A6A6`, destaque âmbar `#FFC400`, alerta vermelho `#FF453A` e borda `#353535`.
-Superfícies opacas com raios de 4–6 px, bordas finas e barra de RPM segmentada.
+O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
+pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
+adota uma composição contínua e assimétrica inspirada na hierarquia dos
+instrumentos [FuelTech](https://www.fueltech.com.br/products/ft450-injecao-eletronica),
+nos layouts [AiM MXm/MXq](https://aim-sportline.com/download/doc/eng/mxm-mxq/MXm-MXq_user_guide_eng.pdf)
+e no formato320 × 240 do [MoTeC D153](https://www.motec.com.au/products/D153).
+As medidas e decisões visuais são próprias; nenhum ativo dessas marcas foi copiado.
 
-Velocidade e RPM usam glifos de 48 px, reduzidos a números e pontuação para
-poupar flash. Legendas usam Montserrat 12/14/16/28 conforme a hierarquia.
-Não há marcha estimada, pressão de óleo numérica ou sonda inexistente.
+| Região | Tratamento |
+| --- | --- |
+| RPM superior | Número condensado, barra crescente e cinco marcas de escala |
+| Velocidade inferior direita | Número maior, unidade separada e alinhamento estável |
+| Bloco e óleo à esquerda | Temperatura legível e estado binário, sem pressão inventada |
+| Menu | Painel em destaque; Sensores, Ajustes e Sistema como ações secundárias |
+| Ajustes | Seis categorias diretas; abas Unidades/RPM dentro de Instrumentos |
 
-Interação por clique, alvos de pelo menos 44×44 px e páginas. Teclado local
-ASCII paginado, senha mascarada. Calibração de cinco pontos e filtro de ruído
-foram preservados. Leitura sob sol, vibração e distância de condução ainda
-exigem validação na unidade instalada.
+Fundo `#06090D`, superfícies `#101820`, botões `#131E28`, texto branco,
+secundário `#8F9DAA`, ciano `#35D9D0`, âmbar `#FFC857`, vermelho `#FF4D5A`
+e divisórias `#283642`. Sem imagem de fundo, transparência animada ou sombra.
+Cores de faixaRPM são referências visuais, não corte/proteção do motor.
 
-## Organização proposta
+Barlow Condensed Bold foi convertida em NGK Cockpit64/72, com apenas 12 glifos:
+`-.0123456789`. As alturas de linha efetivas são 48/53 px; em 72, três dígitos
+ocupam até 105 px; em 64, cinco dígitos ocupam até 155 px. Fontes residentes na flash,
+4bpp sem compressão, sem carregamento do SD durante desenho. Licença e reprodução
+em [third_party/licenses](../third_party/licenses/README.md).
+Legendas continuam Montserrat12/14/16/28. Áreas numéricas usam largura do
+conteúdo, preservando alinhamento e invalidando regiões antigas/novas.
 
-Pedido posterior do responsável: a tela inicial é um **menu com botões grandes**
-para Painel, Sensores, Ajustes e Sistema. O botão Painel entra num **modo de
-instrumentos de carro**, ocupando a tela com velocidade/RPM grandes, temperatura
-e estado do óleo. Não manter dock ou botões fixos de configuração nesse modo.
-Um **duplo toque no painel** retorna ao menu; páginas secundárias possuem botão
-Menu. Esse gesto é uma solicitação explícita para esta ECU.
+## Fluxos
 
-Na versão `0.1.1-bench`, o menu tem quatro botões de 148×88 px. Velocidade e
-RPM usam Montserrat de 48 px, disponível no LVGL 8.4, em dois cartões grandes;
-temperatura e óleo ficam abaixo. O botão Menu das telas secundárias tem 44 px
-de altura. O painel não contém dock. O gesto aceita dois contatos completos
-próximos em até 400 ms, rejeita hold acima de 350 ms e arrastes acima de 18 px,
-com distância máxima de 48 px entre os toques. A troca de tela é adiada para
-fora do callback de leitura do LVGL. Esses limites têm testes nativos.
+Menu → Painel ocupa toda a tela, sem barra fixa de navegação. Duplo toque
+retorna ao menu: dois contatos completos em até 400ms, hold até 350ms, arraste
+até 18px e distância entre toques até 48px. Mudança de página somente fora do
+callback LVGL. A calibração e os GPIOs do touch não foram modificados.
+
+Ajustes abre Tela, Instrumentos, Toque/DEMO, PerfisSD, Wi-Fi e Bluetooth.
+Salvar aparece apenas nos parâmetros visuais; rádios e SD exibem seus próprios
+estados e ações assíncronas. Abas Unidades/RPM destacam a seleção. Voltar
+preserva o rascunho; confirmação de gravação não apaga edições posteriores.
+DEMO abre diretamente o painel, fica identificado e não persiste após boot.
+
+Alvos de pelo menos 44×44px, cliques e páginas, sem arraste obrigatório.
+Teclado local paginado com senha mascarada. Pareamento recebido durante digitação
+apaga a entrada e libera o teclado antes de abrir o modal. Não há marcha estimada,
+pressão numérica de óleo ou sinal real sem sensor. Leitura sob sol/vibração,
+distância de condução e latência óptica continuam sem avaliação no veículo.
 
 Alertas precisam de texto/símbolo, não só cor.
 Valores desconhecidos ou antigos aparecem explicitamente indisponíveis;
@@ -63,7 +79,7 @@ usam o valor adquirido e sua validade, sem atraso introduzido pelo efeito visual
 ## Base técnica de referência, sujeita a validação no novo firmware
 
 C++17, Arduino-ESP32 2.0.17, LVGL 8.4.0 e LovyanGFX 1.2.7 aparecem nos arquivos
-locais. O perfil usa 320×240 em paisagem, RGB565, LCD compatível com ST7789,
+locais. O perfil usa 320 × 240 em paisagem, RGB565, LCD compatível com ST7789,
 SPI de 40 MHz, dois buffers DMA de 320×16 pixels (20 KiB no total), LVGL de
 32 KiB e transições locais de 160 ms com desaceleração. Esses valores não são
 resultados medidos pelo projeto NGK ECU e não fixam a revisão da placa atual.
@@ -77,8 +93,8 @@ O firmware de manutenção do SD deve ser separado do firmware de operação.
 O relato e a documentação local registram aproximadamente 59 apresentações
 **parciais**/s, p95 de 12,5 ms numa animação curta, e 30,8 ms para transportar
 tela inteira. Não são 59 telas completas/s, medição óptica ou garantia de
-desempenho no veículo. Repetir as medições no novo firmware, com sensores,
-touch e SD em uso, antes de publicar números de desempenho próprios.
+desempenho no veículo. As medições próprias da bancada e seus limites estão em
+[validacao.md](validacao.md); não confundir esses resultados com a referência.
 
 SHA-256 dos arquivos locais inspecionados, para distinguir de um commit que
 não inclui esses arquivos ainda não rastreados na origem:

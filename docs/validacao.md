@@ -30,7 +30,7 @@ Builds da base própria normal e de manutenção passaram com Arduino-ESP32
 é `0.1.1-bench`, instalada e confirmada pela serial, com SD montado.
 
 Artefato normal final: **748.560 bytes**, SHA-256
-`761f211bef2c094b01bc84ac6ac135c3c7d852ceedde87e542821c6bee241834`.
+`761f211bef2c094b01bc84ac6ac135c3c7d852ceedde87e542821c6bee 241834`.
 Gravação verificada pelo esptool. O linker reportou 58.336  bytes de RAM
 estática e 748.201 bytes de aplicação. Buffers DMA são alocados separadamente;
 isso não constitui medição de pico ou de folga do heap em execução.
@@ -119,7 +119,7 @@ A fonte de dígitos economiza 92.084 bytes constantes; Wi-Fi/BLE acrescentam
 código e RAM à imagem integrada. Não confundir economia de um recurso com
 redução líquida do firmware ao adicionar funcionalidades.
 
-A revisão encontrou e corrigiu: símbolo inexistente no LVGL8.4, nomes dos
+A revisão encontrou e corrigiu: símbolo inexistente no LVGL 8.4, nomes dos
 botões cortados por alinhamento relativo ao centro, distinção entre perfil
 corrompido e erro de leitura, e memória disputada pelo teclado/modal BLE.
 Quando chega pedido BLE durante digitação, a entrada local é apagada e o
@@ -127,7 +127,7 @@ teclado destruído antes de abrir a confirmação.
 
 ### Inspeção visual headless
 
-Capturas renderizadas a partir do próprio ui.cpp e LVGL8.4 em host, com drivers
+Capturas renderizadas a partir do próprio ui.cpp e LVGL 8.4 em host, com drivers
 stub e redes sintéticas; não são fotos da placa. Avaliação de menu, painel sem
 sinal, demonstração, ajustes, redes, teclado e confirmação. O host usa ponteiros
 de 64bits e não serve para inferir consumo exato no ESP32 de 32bits. Essa inspeção
@@ -180,3 +180,61 @@ Heap em `info`/`radios` usa MALLOC_CAP_INTERNAL; o benchmark usa 8BIT.
 Essas capacidades diferem, portanto não subtrair valores entre esses relatórios
 como se fossem a mesma métrica. Heap mínimo cobre todo o boot, inclusive
 ensaios de rádio anteriores; não é mínimo isolado de cada janela.
+
+## Cockpit 0.3.0 — composição e navegação
+
+Fonte: responsável rejeitou o acabamento 0.2.0 e autorizou pesquisa/escolha da
+reformulação. Confirmou que os botões respondiam na placa 0.2.0; não houve relato
+de defeito de touch. Revisão0.3.0 preservou pinagem, driver, calibração e gesto.
+
+O painel agora é contínuo e assimétrico: RPM/barra no alto, velocidade maior
+à direita, bloco/óleo à esquerda. Menu com Painel em destaque. Ajustes possui
+seis categorias, abas Unidades/RPM e Salvar somente nos parâmetros visuais.
+DEMO abre diretamente o painel. Fontes numéricas Barlow Condensed Bold/OFL,
+convertidas oficialmente e com cmap normalizado para LVGL 8.4; sem leituraSD.
+
+### Execução local e revisão visual
+
+Doze executáveis nativos ASan/UBSan e doze testes de fonte passaram. Três testes
+novos verificam o mapa e os callbacks/fontes reais; com caches locais, reprodução
+exata e 24glifos comparados ao conversor oficial. Sem rede durante os testes;
+a comparação de reprodução é explicitamente pulada em instalação sem caches.
+Gerador --check passou. Builds normal/manutenção/benchmark passaram.
+
+O teste de layout foi observado falhando na geometria antiga e passando na
+nova. Dois revisores independentes examinaram navegação, callbacks/DMA e pool.
+Harness local de ponteiro real LVGL usou display/touch/tempo/serviços sintéticos:
+menu, 6categorias, abas, Voltar/Menu/Salvar, confirmação tardia e DEMO/duplo toque
+passaram. Rascunho preservado entre telas. Quarenta ciclos não perderam memória:
+17.488B livres antes/depois no índice; modalBLE sobre painel 6200B e após fechar
+9632B. São valores do host 64bits, não RAM da placa. Host sem recortes nas
+transições de dígitos; capturas publicadas são renderizações do código.
+
+### Medição física da revisão
+
+Mesmo produtor sintético 17 ms,20 redraws completos e 10 s parciais; conta últimaDMA.
+Uma execução por cenário, sem inferir resultados ópticos ou precisão de sensores.
+
+| Cenário 0.3.0 | Parciais/s | p95 parcial | p95 completo |
+| --- | ---: | ---: | ---: |
+| Rádios off |57,6|17,114ms|55,688ms|
+| Wi-Fi com busca durante a cena |57,6|17,114ms|53,755 ms|
+| BLE anunciando presença |57,5|18,081ms|54,744ms|
+| Diagnósticos seriais contínuos |57,2|18,102ms|53,795ms|
+
+A versão 0.2.0 mediu56,6/s,p95 18,089ms e full p95 56,696ms; as cenas possuem
+composições/fontes diferentes. A comparação é da aplicação completa, não ensaio
+isolado de cada otimização. ScanWi-Fi e anúncioBLE separados; proteçãoMemoryLow
+voltou a recusar segundo rádio. Associação com senha/pareamento cliente ainda
+não ensaiados. Sensores/atuadores permanecem desabilitados, sem teste veicular.
+
+Perfis SD exportados/importados; cartão30.255MiB montado ao fim, rádios off.
+Após reiniciar, a consulta confirmou normal 0.3.0, perfil restaurado, SD montado
+e rádios desligados; o comando inválido de formato foi rejeitado. O responsável
+confirmou na placa que menu, números maiores, índice e toque aparecem e respondem
+corretamente. Isso confirma renderização/interação observadas, sem equivaler a
+avaliação de leitura no veículo ou preferência estética definitiva.
+
+Imagem normal 0.3.0: **1404240 bytes**, SHA-256
+`5ca470324a7cf12f2f74274b0141e3f4027c9e87216a08f86c072cc1faf14ffd`. Gravação conferida pelo esptool.
+Linker:95.552B de RAM estática;1.397.665B de aplicação (71,1% do slot).
