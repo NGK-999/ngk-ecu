@@ -46,6 +46,10 @@ commit `160d821ac9a0310afcb8d1fc427862dd6508add5`.
 
 Ferramenta oficial Espressif instalada em `.venv`, com Python 3.12,
 versão **5.6.0**. Dependências fixadas em `tools/requirements-hardware.lock`.
+O mesmo lock agora inclui **PlatformIO 6.1.18**. O cache da plataforma e dos
+compiladores fica em `.tools/platformio`, selecionado por `PLATFORMIO_CORE_DIR`,
+sem mudar a configuração global. O conjunto usa `espressif32@6.9.0` e
+Arduino-ESP32 2.0.17 para reproduzir os drivers da referência.
 
 ```sh
 .venv/bin/python -m esptool version

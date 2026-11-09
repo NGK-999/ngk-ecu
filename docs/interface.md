@@ -43,9 +43,22 @@ estados de pressionar/soltar devem ser conferidos na unidade real.
 
 ## Organização proposta
 
-Tela inicial com RPM em destaque, velocidade e temperatura legíveis e faixa
-persistente de estados/alertas. Páginas de sensores, configuração e sistema
-sem sobrecarregar a tela principal. Alertas precisam de texto/símbolo, não só cor.
+Pedido posterior do responsável: a tela inicial é um **menu com botões grandes**
+para Painel, Sensores, Ajustes e Sistema. O botão Painel entra num **modo de
+instrumentos de carro**, ocupando a tela com velocidade/RPM grandes, temperatura
+e estado do óleo. Não manter dock ou botões fixos de configuração nesse modo.
+Um **duplo toque no painel** retorna ao menu; páginas secundárias possuem botão
+Menu. Esse gesto é uma solicitação explícita para esta ECU.
+
+Na versão `0.1.1-bench`, o menu tem quatro botões de 148×88 px. Velocidade e
+RPM usam Montserrat de 48 px, disponível no LVGL 8.4, em dois cartões grandes;
+temperatura e óleo ficam abaixo. O botão Menu das telas secundárias tem 44 px
+de altura. O painel não contém dock. O gesto aceita dois contatos completos
+próximos em até 400 ms, rejeita hold acima de 350 ms e arrastes acima de 18 px,
+com distância máxima de 48 px entre os toques. A troca de tela é adiada para
+fora do callback de leitura do LVGL. Esses limites têm testes nativos.
+
+Alertas precisam de texto/símbolo, não só cor.
 Valores desconhecidos ou antigos aparecem explicitamente indisponíveis;
 demonstração deve continuar identificada como simulação.
 

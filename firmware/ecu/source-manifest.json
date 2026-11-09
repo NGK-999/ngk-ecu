@@ -1,0 +1,20 @@
+{
+  "firmware": "0.1.1-bench",
+  "mode": "bench",
+  "sources": {
+    "include/board.hpp": "b66b3edae66fc1d11b8b77159873263eaf01099940d225b406a737891a257c93",
+    "include/board_profile.hpp": "ab7959bf4d31c78b55fa059da9c75cda41a609b2a371a50d792a28774aa6fb72",
+    "include/card_identity.hpp": "7d22927457842c1cb3a5d4e0e8ab61b817c543fff705c1d366eac31fffb90429",
+    "include/card_probe.hpp": "07b6b85a42a912a22134f5ba7289c75e8a6cb4681ec837fba76e92462b54d6cf",
+    "include/command_line.hpp": "3f47ff8cfdff82a08dfcac661e7dafa808344d188f70a568ead450e7c6936cf7",
+    "include/lv_conf.h": "402cebe30cf79c9777d12f30aff4e7311ac7cb89932517b9276c80d6b56d7572",
+    "include/maintenance_policy.hpp": "761d3893c3014c48cffd583a1fc0d93024a6e5e9f0462b8193b8adf74fbc50f6",
+    "include/ui.hpp": "b01d31679e1622d0ef29a64dfc6e08a2cdd1dddf6768f0fd9a14ff85631e1c7e",
+    "include/ui_layout.hpp": "e8a58ae11e4e20727f92814aeb939b93d11776023b82f0e476d4cef6e6e4582a",
+    "partitions.csv": "8a79ebd0da99c195c2f223887be05f88b1f2c884317345d60a836a6b23fde83c",
+    "platformio.ini": "99c76cab630737f8bf30b15f9b98615eeb27fb6726227fe7c9768482dc686f02",
+    "src/main.cpp": "92d667198aaf7dfbaba75712cba9572e36b89b07d429c2e4dfd0a93ef7b884a0",
+    "src/ui.cpp": "ab02c15a3ee528496da7dc03645618f6c04fafdffb103b9e1891a5a26ee5765a"
+  },
+  "normal_image_sha256": "761f211bef2c094b01bc84ac6ac135c3c7d852ceedde87e542821c6bee241834"
+}

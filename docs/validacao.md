@@ -1,57 +1,99 @@
-# Validação inicial — 2026-11-09
+# Validação de bancada — 2026-11-09
 
-## Sistema e ferramentas locais
+## Sistema e execução local, sem hardware
+
+Ferramentas isoladas na pasta do projeto: Python 3.12, esptool 5.6.0,
+PlatformIO 6.1.18, Node 24.22.1 e REA 6.8.0. `pip check` passou.
+O cache PlatformIO está em `.tools/platformio`; não houve alteração de
+Python/Node do sistema, grupos ou configuração global de agentes.
+
+A conta da sessão não tinha sudo. O operador usou uma conta administradora
+local para conceder ACL somente ao usuário/dispositivo da serial. Uma
+reconexão USB removeu a concessão e exigiu repeti-la. O agente não recebeu senha
+nem alterou sudoers. A confirmação final de acesso precedeu cada gravação.
+
+Testes nativos não abrem portas, montam discos ou formatam cartão:
+
+```sh
+sh scripts/test-native.sh
+```
+
+A suíte cobre layout/áreas de toque, debounce, calibração de cinco pontos,
+parser serial (incluindo NUL/CR/overflow), política de autorização de manutenção
+e validação sintética de CID/CRC7/CRC16. Cinco executáveis passaram. Usou C++17, `-Wall -Wextra -Werror`,
+AddressSanitizer e UndefinedBehaviorSanitizer. A revisão de menu/duplo toque
+passou nos casos de dois contatos completos, limites temporais, arraste,
+contato longo, troca de página, debounce e virada de `uint32_t`.
+
+Builds da base própria normal e de manutenção passaram com Arduino-ESP32
+2.0.17, LVGL 8.4.0 e LovyanGFX 1.2.7. A versão com o fluxo novo de menu/painel
+é `0.1.1-bench`, instalada e confirmada pela serial, com SD montado.
+
+Artefato normal final: **748.560 bytes**, SHA-256
+`761f211bef2c094b01bc84ac6ac135c3c7d852ceedde87e542821c6bee241834`.
+Gravação verificada pelo esptool. O linker reportou 58.336 bytes de RAM
+estática e 748.201 bytes de aplicação. Buffers DMA são alocados separadamente;
+isso não constitui medição de pico ou de folga do heap em execução.
+
+## Identificação e bancada real
 
 | Verificação | Resultado observado |
 | --- | --- |
-| Identidade GitHub via CLI | Conta NGK-999 confirmada pela API |
-| USB | Ponte CH340 `1a86:7523` enumerada em `/dev/ttyUSB0` |
-| Acesso à porta | Sem leitura/escrita para o processo atual; elevação não disponível |
-| Inventário de discos | Nenhum dispositivo de bloco correspondente ao SD conectado |
-| Node isolado | 24.22.1, arquivo Linux x64 conferido por SHA-256 oficial |
-| REA CLI | `sh tools/rea/run --version` retornou `6.8.0`; ajuda executada |
-| esptool | `.venv/bin/python -m esptool version` retornou `5.6.0` |
-| Dependências Python | `pip check` na `.venv`: `No broken requirements found` |
-| Script de execução | `sh -n tools/rea/run` sem erro de sintaxe |
+| Ponte USB | CH340, VID:PID `1a86:7523` |
+| Chip | ESP32-D0WD-V3, revisão 3.1, dois núcleos, 240 MHz |
+| Flash | 4.194.304 bytes (4 MiB) |
+| PSRAM | 0 bytes detectados pela aplicação de bancada |
+| Backup anterior | Cópia integral local privada; `verify-flash` conferiu contra a placa antes de sobrescrever |
+| Gravação de bancada | Bootloader, partições e aplicação conferidos pelo esptool; atualizações seguintes somente aplicação |
+| Instrumentos | Modo `bench`, entradas de sensores e saídas de atuação desabilitadas |
 
-Instalações são locais ao projeto. Não houve mudança de grupos/permissões,
-Python/Node do sistema ou configuração global de agentes.
+A imagem com perfil ST7789 foi confirmada legível pelo responsável. Isso
+não determina o sufixo do controlador, o vidro ou a revisão completa da PCB.
+Não houve leitura de MAC/CID publicada nem dump incluído no repositório.
 
-## Inspeção visual
+## Cartão: divergência bloqueada e alvo correto validado
 
-Foto traseira fornecida pelo responsável indica família ESP32-2432S028,
-módulo ESP-32, microUSB, USB-C e cartão inserido no slot TF. Revisão e
-controladores reais continuam sem confirmação. A foto não foi publicada.
+A primeira consulta reportou **1.898 MiB**, divergindo dos 32 GB autorizados.
+Nenhum comando de formatação foi enviado para esse cartão. O responsável
+retirou o cartão errado e informou ter inserido o correto.
 
-## Firmware, bancada e veículo
+Uma consulta nova confirmou **61.962.240 setores de 512 bytes**, ou
+**30.255 MiB**. O cartão respondia, mas não montava como FAT. Não se inferiu
+exFAT, NTFS ou defeito somente desse resultado.
 
-Não há firmware de produto nesta entrega. Não foram executados testes de
-sensores ou tela/touch, nem comunicação serial, reset, leitura/escrita de
-flash, formatação de cartão, acionamento ou ensaio no veículo.
-Versões de ferramentas e pesquisa documental não validam hardware.
+Na manutenção própria NGK ECU, capacidade e identidade CID foram validadas;
+a identidade permaneceu apenas em RAM. O comando explícito foi enviado uma
+única vez, vinculado ao snapshot/setores/token da sessão. O worker reconferiu
+CID e geometria antes da escrita. O resultado foi FAT32 com sucesso, montagem
+aprovada, escrita/leitura de arquivo próprio temporário aprovada e remoção desse
+arquivo. Não foram listados nem lidos arquivos pessoais.
 
-## Pendências
+Após a operação, foi instalado novamente o firmware **normal**. A consulta
+confirmou `build=normal`, SD montado e o mesmo tamanho. Uma tentativa inválida
+de comando de formato recebeu `ERROR command rejected`. O artefato normal não
+contém o comando próprio `FORMAT_SD `; o SDK ainda vincula `f_mkfs` pela sua
+biblioteca, mas ambas as montagens passam `format_if_empty=false`.
 
-1. Disponibilizar acesso autorizado à porta serial: foi fornecido ao operador
-   o comando de ACL temporária por dispositivo/usuário, sem mudança de grupo.
-2. Identificar o cartão pela própria placa e usar manutenção dedicada, com
-   hardware confirmado, conforme a nova autorização para substituir firmware.
-3. Confirmar revisão/esquema e modelos dos sensores.
-4. Definir projeto elétrico e firmware da V1 antes de gravar a placa.
+O campo `sd_rw_ok` informa o teste de escrita/leitura feito **naquele boot**.
+Ele foi verdadeiro na manutenção concluída e começa falso no normal, que não
+repete escrita de teste a cada inicialização. Isso não transforma uma montagem
+normal aprovada em falha de leitura/escrita.
 
-## Complemento de escopo e referência
+## Inspeção visual e interação
 
-O responsável confirmou motor **1300 carburado**, ano desconhecido, e injeção
-**monoponto** futura. Autorizou substituir o firmware e preparar o SD pela
-própria placa. Essas autorizações não são prova de que a operação já ocorreu.
+A referência externa vale somente como identidade visual. O firmware próprio
+contém apenas o domínio da ECU: RPM, velocidade, temperatura e óleo, com dados
+indisponíveis até instalar os sensores. Sem telas de turno/produção industrial.
 
-Foram inspecionados captura, configuração e fontes locais do karl-panel citados
-pelo responsável. A referência tem uma manutenção dedicada de SD e validações
-históricas próprias, mas não prova identidade do cartão, firmware instalado ou
-sensores do projeto NGK ECU. Não transferir suas métricas como medições desta V1.
-Hashes e limites da referência estão em `interface.md`.
+A confirmação do fluxo novo — menu, instrumentos grandes e duplo toque — e
+a calibração física do touch devem ser registradas separadamente de testes
+nativos. A captura de software ou o build não comprovam essas interações reais.
+As métricas de 59 apresentações parciais/s da referência não são medições da ECU.
 
-No complemento, `setfacl` está disponível e a porta continua `/dev/ttyUSB0`.
-O comando de liberação foi fornecido, não executado pelo agente. O teste de
-acesso ainda indicou ausência de leitura/escrita. Nenhuma gravação ou formatação
-foi feita no projeto até este registro.
+## Motor, veículo e próximos ensaios
+
+Não foram conectados sensores do motor, injetores, bobinas ou outras cargas.
+Não houve teste de alimentação automotiva, ruído, transientes, vibração, sol,
+latência óptica ou ensaio no veículo. A ECU permanece uma base de instrumentação
+em bancada, sem injeção/ignição. O próximo levantamento é dos sensores/circuitos
+reais do 1300 carburado e das entradas adicionais de RPM, temperatura e velocidade.

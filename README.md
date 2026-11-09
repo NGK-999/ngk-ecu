@@ -25,12 +25,16 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 ## Estado atual
 
-- Requisitos iniciais registrados; ainda não existe firmware deste projeto.
+- Firmware próprio de bancada em [firmware/ecu](firmware/ecu/README.md), com
+  quatro páginas e instrumentos `-- / SEM SINAL`. Nenhum sensor/atuador externo
+  está habilitado. A aplicação de referência não é o produto da ECU.
 - Foto indica a família **ESP32-2432S028**; revisão e pinagem pendentes de confirmação.
-- Computador detecta ponte USB–serial **CH340**; acesso à porta está bloqueado
-  pelas permissões atuais do Linux. Nenhuma porta serial foi aberta.
-- Cartão visível na foto, mas não exposto como disco USB. Capacidade e conteúdo
-  não foram lidos. **Não foi formatado.**
+- Consulta USB confirmou **ESP32-D0WD-V3 rev. 3.1, flash de 4 MiB** e ponte CH340.
+  Backup local completo conferido antes de gravar manutenção temporária.
+- Um cartão reportou **1.898 MiB**, divergindo dos 32 GB informados; a trava
+  impediu formatação. O responsável retirou esse cartão e informou ter colocado
+  o correto. A consulta nova confirmou **30.255 MiB**; esse cartão foi preparado
+  em FAT32 e passou por escrita/leitura de arquivo próprio temporário.
 - REA 6.8.0 e esptool 5.6.0 instalados localmente e com versões verificadas.
   Análise de firmware ainda pendente; REA 6.8.0 não suporta Xtensa nativamente.
   Instalar a ferramenta não identifica automaticamente tela ou GPIOs.
@@ -56,6 +60,10 @@ sudo setfacl -m "u:$(id -un):rw" /dev/ttyUSB0
 A ACL dá leitura/escrita ao usuário atual sem exigir nova sessão ou mudança
 de grupo. Vale para o dispositivo desta conexão; ao reconectar, conferir o
 nome da porta e repetir se necessário. Não compartilhar senha com o agente.
+Se essa conta não estiver no sudoers, a liberação deve ser feita por uma conta
+administradora, usando o UID da sessão original como destino. Não substituir
+por `id -u` já dentro da conta administradora, pois daria acesso ao usuário errado.
+O comando não concede privilégio administrativo à conta do agente.
 
 ## Limites de validação
 
@@ -64,6 +72,11 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-Neste estágio não houve compilação de firmware, teste de tela/touch, leitura
-de sensores, formatação do cartão ou ensaio de motor. Não usar este projeto
+Testes nativos e builds de bancada passaram. A imagem do firmware temporário
+com perfil ST7789 foi confirmada legível pelo responsável; isso não valida a
+interface nova, o toque, sensores ou operação no veículo. Estado da instalação
+e do cartão deve ser conferido no relatório de validação. Não usar este projeto
 como indicação validada de condição segura do motor.
+
+Teste sem hardware: `sh scripts/test-native.sh`.
+Compilação e operação: [guia do firmware](firmware/ecu/README.md).

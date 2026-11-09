@@ -1,7 +1,8 @@
 # Inventário inicial de hardware
 
 Data: 2026-11-09. Evidência: inspeção de foto fornecida pelo responsável e
-enumeração USB/discos do computador. Não houve comunicação com o firmware.
+enumeração USB/discos do computador, com complemento de consultas e bancada
+serial após a liberação de acesso.
 A foto original não é publicada por conter elementos externos ao projeto.
 
 ## Observado
@@ -9,12 +10,14 @@ A foto original não é publicada por conter elementos externos ao projeto.
 | Item | Evidência | Limite |
 | --- | --- | --- |
 | Placa | Serigrafia ESP32-2432S028 na foto | Sufixo/revisão não confirmados |
-| Módulo | Blindagem marcada ESP-32 | Variante e revisão do chip não consultadas |
+| Módulo | ESP32-D0WD-V3, revisão 3.1 consultada por esptool | Revisão completa da PCB ainda não identificada |
+| Flash | 4 MiB consultados, backup integral conferido | Backup contém dados privados e não integra o Git |
 | USB | Micro-USB e USB-C visíveis | Função elétrica de cada conector não confirmada |
 | Ponte USB–serial | CH340, VID:PID `1a86:7523` | Identifica a ponte, não a pinagem da placa |
 | Porta no diagnóstico | `/dev/ttyUSB0` | Nome pode mudar ao reconectar |
-| Acesso serial | Processo sem leitura/escrita na porta | Nenhuma abertura/reset/leitura de flash |
-| Cartão | Inserido no slot TF na foto | 32 GB informados; capacidade não verificada |
+| Acesso serial | ACL temporária já permitiu identificação e gravação | Reconexão USB remove a concessão; verificar a cada conexão |
+| Cartão inicial | Relatório do firmware indicou 1.898 MiB | Divergência bloqueou formato; responsável informou troca pelo cartão correto |
+| Cartão correto | 61.962.240 setores de 512 bytes, 30.255 MiB | CID conferido apenas em RAM; FAT32 e escrita/leitura aprovados com arquivo próprio |
 | Disco removível | Nenhum cartão acessível no inventário do host | Não prova falha ou ausência do cartão |
 
 ## Pinagem
@@ -46,6 +49,10 @@ Há divergência entre fontes do fabricante: o
 descreve ILI9341, enquanto a definição acima usa ST7789. Nenhum dos dois
 controladores está confirmado na placa fotografada. Não inferir a revisão
 "Rv3" apenas por haver dois conectores USB.
+
+Atualização de bancada: o firmware temporário com perfil ST7789 mostrou imagem
+legível confirmada pelo responsável. Isso valida o funcionamento observado
+desse perfil de desenho, sem determinar o sufixo do CI ou o vidro TN/IPS.
 
 ## Identificação e substituição autorizada do firmware
 

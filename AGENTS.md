@@ -50,3 +50,9 @@ Não publicar dumps ou resultados experimentais não revisados junto com código
 Referência de tema e interação em `docs/interface.md`, baseada na orientação e
 nos arquivos karl-panel indicados pelo responsável. Preferir cliques, alvos
 grandes e paginação. Manter aquisição independente do LVGL, SD e animações.
+
+Pedido posterior explícito: abrir um menu com botões grandes e entrar num modo
+painel de carro, com velocidade/RPM grandes e temperatura/óleo visíveis. Sem
+barra fixa de navegação no modo painel. Duplo toque no painel retorna ao menu.
+Essa exceção de gesto foi solicitada pelo responsável e não deve ser removida
+por diretrizes antigas de navegação exclusivamente por cliques simples.
