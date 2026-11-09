@@ -5,8 +5,12 @@ Este repositório é independente do monitor de sinais musculares InterfaceNeura
 
 ## Escopo
 
-V1: painel ESP32 com tela touch para RPM, temperatura do bloco e velocidade de
-uma gaiola com motor boxer VW Fusca. Ainda não há controle de injeção/ignição.
+V1: painel ESP32 com tela touch para RPM, temperatura do bloco, velocidade e
+todos os sensores/sinais originais efetivamente presentes no motor boxer VW
+Fusca **1300 carburado**, ano desconhecido, instalado em uma gaiola.
+Consultar `docs/sensores-motor.md`: não inventar sensores de fábrica nem
+converter interruptor binário em pressão numérica. Futuro: injeção **monoponto**.
+Ainda não há controle de injeção/ignição.
 Não introduzir saídas de atuação sem uma nova etapa de projeto e validação.
 
 ## Hardware e dados
@@ -15,7 +19,12 @@ Não introduzir saídas de atuação sem uma nova etapa de projeto e validação
 - Testes devem usar fontes sintéticas; não abrir serial nem formatar SD em testes.
 - A autorização de formato vale somente para o cartão identificado; não escolher
   disco por tamanho nem formatar automaticamente em falha de montagem.
-- Não alterar grupos/permissões, Python/Node do sistema ou configuração global.
+- O responsável autorizou substituir o firmware e preparar/formatar o SD pela
+  própria placa. Confirmar alvo e preservar backup local se a leitura for possível;
+  não exigir leitor externo nem uma nova autorização genérica para essa operação.
+- Acesso temporário à porta serial foi solicitado. Orientar ACL somente para o
+  usuário/dispositivo em questão; não usar chmod 777/666 ou alterar grupos.
+  Não alterar Python/Node do sistema ou configuração global de agentes.
 - Não publicar firmware extraído, NVS, credenciais, MAC, dados brutos ou fotos
   com conteúdo alheio ao hardware. Artefatos de análise ficam locais e ignorados.
 
@@ -35,3 +44,9 @@ segredos, caminhos pessoais ou identificadores de hardware.
 
 Publicação deste novo repositório e documentação inicial foi solicitada.
 Não publicar dumps ou resultados experimentais não revisados junto com código.
+
+## Interface
+
+Referência de tema e interação em `docs/interface.md`, baseada na orientação e
+nos arquivos karl-panel indicados pelo responsável. Preferir cliques, alvos
+grandes e paginação. Manter aquisição independente do LVGL, SD e animações.

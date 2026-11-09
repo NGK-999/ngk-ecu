@@ -1,13 +1,31 @@
 # Escopo inicial
 
-Fonte: requisitos fornecidos pelo responsável pelo projeto em 2026-11-09.
+Fonte: requisitos e complementos fornecidos pelo responsável em 2026-11-09.
 Este registro documenta o pedido; não é um projeto elétrico ou de firmware aprovado.
 
 ## Objetivo
 
 Exibir rotação, temperatura do bloco e velocidade em uma tela touch ligada a
-um ESP32, num motor boxer de Fusca instalado numa gaiola para uso fora de estrada.
-Preservar um caminho de evolução para gerenciamento de combustível e automações.
+um ESP32, num motor boxer de Fusca **1300 carburado**, ano desconhecido,
+instalado numa gaiola para uso fora de estrada. Incluir todos os sensores e
+sinais de fábrica efetivamente presentes nesse motor, após inventário físico,
+sem assumir equipamentos de versões injetadas.
+Preservar um caminho de evolução para injeção **monoponto** e automações.
+
+## Autorizações e fluxo de manutenção
+
+O responsável autorizou trocar o firmware atual e usar a própria placa para
+preparar/formatar o cartão informado como 32 GB, pois não pode usar leitor
+externo. Não pedir novamente autorização genérica para essas ações.
+
+Após acesso serial: identificar chip/flash, preservar backup local do firmware
+atual quando possível, confirmar o perfil de hardware e instalar manutenção
+dedicada ao SD. Identificar capacidade/estado do cartão antes de apagar e testar
+escrita/leitura apenas com arquivo de teste próprio. Reinstalar firmware normal
+sem o comando de formatação. Uma falha de montagem nunca deve formatar sozinha.
+
+A falta atual de acesso serial é um bloqueio operacional, não falta de
+autorização. O comando temporário de ACL está no README.
 
 ## V1: instrumentação
 
@@ -20,6 +38,9 @@ Preservar um caminho de evolução para gerenciamento de combustível e automaç
 
 A ordem é proposta técnica, sujeita ao hardware confirmado. Taxas de amostragem,
 limites de alarme, faixas e precisão ainda não foram definidos.
+O inventário de fábrica e as medições que exigem sensores adicionais estão em
+[sensores-motor.md](sensores-motor.md). A orientação visual está em
+[interface.md](interface.md).
 
 ## Comportamento esperado
 
@@ -45,8 +66,10 @@ mas essa decisão não foi tomada pelo responsável pelo projeto.
 
 ## Etapas futuras
 
-Mapas de combustível e acionamento de injetores/bobinas não fazem parte da V1.
-Antes disso: definir sincronismo e roda fônica, sensores adicionais necessários,
+Mapas de combustível e acionamento de injetor(es)/bobinas não fazem parte da V1.
+O caminho de injeção definido pelo responsável é **monoponto**, não multiponto.
+Antes disso: definir a referência de rotação/sincronismo e avaliar a necessidade
+de roda fônica conforme o controlador escolhido, além de sensores adicionais,
 drivers de potência, estados de falha e plano de validação em bancada. Não
 transformar medições de painel em saídas de atuação sem revisar a arquitetura.
 
@@ -54,8 +77,8 @@ transformar medições de painel em saídas de atuação sem revisar a arquitetu
 
 - Revisão exata da placa e esquema correspondente.
 - Origem do RPM e da velocidade; modelo e posição do sensor de temperatura.
-- Acesso autorizado à serial sem alterar grupos/permissões nesta tarefa.
-- Identificação do cartão de 32 GB por leitor de cartões ou firmware conhecido.
+- Disponibilizar o acesso à serial já autorizado, por ACL temporária específica.
+- Identificação do cartão de 32 GB por firmware de manutenção conhecido.
 
 O pedido autoriza formatar o cartão indicado, mas não identifica um disco do
 computador como alvo. Nenhum disco deve ser escolhido somente pela capacidade.

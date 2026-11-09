@@ -47,13 +47,16 @@ descreve ILI9341, enquanto a definição acima usa ST7789. Nenhum dos dois
 controladores está confirmado na placa fotografada. Não inferir a revisão
 "Rv3" apenas por haver dois conectores USB.
 
-## Identificação sem sobrescrever firmware
+## Identificação e substituição autorizada do firmware
 
 Com acesso à serial e placa isolada de qualquer atuador, usar esptool para
 consultar o chip e a flash. A comunicação pode reiniciar o dispositivo. Não
 gravar firmware para descobrir que placa é. Se for necessário analisar o
 firmware existente, preservar uma cópia local autorizada antes de qualquer escrita.
 Essa cópia pode conter credenciais; nunca publicá-la no repositório ou memória.
+O responsável autorizou a substituição do firmware para o novo projeto e para
+manutenção do SD. Preservar o firmware atual não é requisito para manter a placa
+intocada; o backup local permite recuperação quando a leitura for possível.
 
 Consultas ao chip não identificam necessariamente o controlador do LCD/touch ou
 o roteamento dos GPIOs. Usar esquema e drivers da revisão, com verificação física.
@@ -67,7 +70,11 @@ A ponte CH340 não expõe o slot como armazenamento USB. Opções de acesso:
 2. Firmware conhecido na própria placa, após confirmar sua pinagem e capacidade
    de identificar explicitamente o cartão e limitar a formatação ao SD.
 
-Preferir o leitor neste estágio para preservar o firmware desconhecido.
+**Fluxo escolhido pelo responsável:** manutenção pela própria placa, pois não
+pode usar leitor externo. A referência local karl-panel possui implementação
+dedicada de FAT32 por comando explícito. Conferir o perfil da placa e o código
+antes de reutilizar; o histórico de sucesso em outra tarefa não identifica
+automaticamente o cartão conectado agora.
 FAT32 é candidato para 32 GB, condicionado à confirmação do cartão e do driver.
 Não ativar formatação automática quando a montagem falhar. Ausência, corrupção
 ou mau contato devem produzir diagnóstico, não apagamento.

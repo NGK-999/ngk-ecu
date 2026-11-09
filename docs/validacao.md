@@ -32,9 +32,26 @@ Versões de ferramentas e pesquisa documental não validam hardware.
 
 ## Pendências
 
-1. Disponibilizar acesso autorizado à porta serial, preservando grupos e
-   permissões existentes conforme as regras desta tarefa.
-2. Identificar o cartão no computador por um leitor microSD antes de formatar,
-   ou definir um fluxo na própria placa com hardware e firmware confirmados.
+1. Disponibilizar acesso autorizado à porta serial: foi fornecido ao operador
+   o comando de ACL temporária por dispositivo/usuário, sem mudança de grupo.
+2. Identificar o cartão pela própria placa e usar manutenção dedicada, com
+   hardware confirmado, conforme a nova autorização para substituir firmware.
 3. Confirmar revisão/esquema e modelos dos sensores.
 4. Definir projeto elétrico e firmware da V1 antes de gravar a placa.
+
+## Complemento de escopo e referência
+
+O responsável confirmou motor **1300 carburado**, ano desconhecido, e injeção
+**monoponto** futura. Autorizou substituir o firmware e preparar o SD pela
+própria placa. Essas autorizações não são prova de que a operação já ocorreu.
+
+Foram inspecionados captura, configuração e fontes locais do karl-panel citados
+pelo responsável. A referência tem uma manutenção dedicada de SD e validações
+históricas próprias, mas não prova identidade do cartão, firmware instalado ou
+sensores do projeto NGK ECU. Não transferir suas métricas como medições desta V1.
+Hashes e limites da referência estão em `interface.md`.
+
+No complemento, `setfacl` está disponível e a porta continua `/dev/ttyUSB0`.
+O comando de liberação foi fornecido, não executado pelo agente. O teste de
+acesso ainda indicou ausência de leitura/escrita. Nenhuma gravação ou formatação
+foi feita no projeto até este registro.

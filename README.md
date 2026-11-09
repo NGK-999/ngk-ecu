@@ -1,7 +1,8 @@
 # NGK ECU
 
 Projeto experimental de painel e futura ECU para um motor boxer Volkswagen
-Fusca em uma gaiola de uso fora de estrada, usando ESP32 com tela touch.
+Fusca **1300 carburado**, de ano desconhecido, em uma gaiola de uso fora de
+estrada, usando ESP32 com tela touch.
 Referência funcional: instrumentos e configuração na própria tela, como em
 painéis de gerenciamento de motor. Interface e firmware serão próprios.
 
@@ -14,8 +15,13 @@ painéis de gerenciamento de motor. Interface e firmware serão próprios.
 | Velocidade do veículo | km/h | Sensor, pulsos por volta e circunferência da roda |
 
 Armazenamento previsto em cartão microSD informado como 32 GB, com uso e
-formato a validar na placa. Mapas de combustível, injeção, ignição e outras
+formato a validar na placa. Incluir os sensores e sinais originais que
+efetivamente existem nesse motor, conforme o [inventário](docs/sensores-motor.md).
+Mapas de combustível, injeção **monoponto**, ignição e outras
 automações pertencem a etapas futuras, com projeto elétrico e validação próprios.
+
+Substituição do firmware e manutenção/formatação do SD pela própria placa
+foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 ## Estado atual
 
@@ -35,6 +41,21 @@ automações pertencem a etapas futuras, com projeto elétrico e validação pr�
 - [Inventário de hardware e pendências](docs/hardware.md)
 - [Ferramentas e REA](docs/ferramentas.md)
 - [Validação e bloqueios observados](docs/validacao.md)
+- [Sensores do motor 1300 carburado](docs/sensores-motor.md)
+- [Referência visual e limites de desempenho](docs/interface.md)
+
+## Liberar a serial nesta conexão Linux
+
+A porta atual é `/dev/ttyUSB0` e o sistema dispõe de `setfacl`. Executar no
+terminal do operador, com autorização administrativa:
+
+```sh
+sudo setfacl -m "u:$(id -un):rw" /dev/ttyUSB0
+```
+
+A ACL dá leitura/escrita ao usuário atual sem exigir nova sessão ou mudança
+de grupo. Vale para o dispositivo desta conexão; ao reconectar, conferir o
+nome da porta e repetir se necessário. Não compartilhar senha com o agente.
 
 ## Limites de validação
 
