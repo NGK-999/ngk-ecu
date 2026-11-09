@@ -453,3 +453,83 @@ Imagem normal: **1.416.512 B**, SHA-256
 Linker: **95.984 B RAM estática**, **1.409.933 B flash** (71,7% do slot 1.966.080 B).
 RAM estática cresceu 336 B frente à 0.4.1; isso não é medição de heap máximo.
 Planos e pendências físicas em [plano-geral.md](plano-geral.md).
+
+## Acabamento dos instrumentos — 0.4.3
+
+Autorização: “faça”, após a pesquisa de referências e a proposta de três
+refinamentos. Implementados somente na ESP32: ícones consistentes, âncoras
+numéricas estáveis e faixa inferior com ícone/texto maior. Paleta, barra curva,
+menu 2×2, gesto, unidades, validade, prioridades e modelo Linux preservados.
+
+### Verificação sem hardware
+
+- **15 executáveis nativos** ASan/UBSan, incluindo faixa que não cobre os
+  instrumentos; **13 testes de fontes**, **2 testes de ícones** e **55 testes
+  do simulador** passaram. Fontes/ícones foram reproduzidos offline. Os testes
+  usam host/transporte em memória e não abrem dispositivos físicos.
+- Gerador alpha4: SVGs/licença pinados no Lucide, hashes conferidos. Decoder
+  LVGL 8.4 real comparou todos os pixels, ordem de nibbles e largura ímpar.
+  Objeto Xtensa dos cinco recursos: 2308 B constantes, zero data/bss/text.
+- Renderer LVGL real em host observou RED→GREEN para mudança de quantidade de
+  dígitos sem mover a borda de referência e para faixa independente de 22 px.
+  Conferiu limites reais dos glifos, todos os 10 alertas + estado normal,
+  km/h/mph, °C/°F, máximos/mínimos/ausência, TTL e transições sob modal.
+- Revisão independente conferiu lifetime, tintas, flags de toque, geometria,
+  prioridades e ausência de nova alocação de texto principal por quadro;
+  nenhum problema concreto restante. Três ambientes PlatformIO passaram.
+- Auditoria estática ESP32 passou: 14 sinais/0 erros/3 avisos existentes.
+  Manifest atualizado após conferir que main mudou somente versão e o filtro
+  de benchmark incluiu o novo asset; GPIOs e barramentos não mudaram.
+
+Capturas publicadas são do código LVGL em host com dados sintéticos, não fotos
+do LCD. O renderer usa stubs de hardware/serviços. Ele confere desenho/estado e
+limites de texto, sem substituir toque real ou medição de latência óptica.
+
+### Instalação e comparação física
+
+Antes da escrita: alvo identificado NGK ECU, normal 0.4.2, flash 4 MiB e entradas/
+atuadores desabilitados. Normal 0.4.3 instalado somente em app 0x10000, com hash
+conferido pelo esptool. Não houve apagamento integral, formato SD, alteração de
+partições, calibração, permissões ou parâmetros de perfil nesta revisão.
+
+`bench` preservou fonte 17 ms/refresher 5 ms e rádios desligados. O método e a
+composição diferem do observador de animação; p95 é pedido→último DMA parcial.
+
+| Métrica | 0.4.2 | 0.4.3 |
+| --- | ---: | ---: |
+| Apresentações / duração | 574 / 10.007 ms | 569 / 10.000 ms |
+| p95 parcial | 17.097 µs | 18.089 µs |
+| p95 tela inteira | 45.778 µs | 47.975 µs |
+| Heap livre / mínimo | 109.564 / 107.744 B | 109.556 / 107.736 B |
+| Maior bloco livre | 94.196 B | 94.196 B |
+| LVGL usado / fragmentação | 28% / 1% | 28% / 1% |
+
+Observador separado `motion-bench`, fonte SIM USB 20 Hz alvo, Suave com movimento:
+
+| Métrica | 0.4.3 |
+| --- | ---: |
+| Apresentações parciais / duração | 600 / 10.000 ms |
+| Transferências da última linha da rampa | 600 |
+| Intervalo da rampa, p95 superior / máximo | 22.000 / 23.771 µs |
+| Intervalo entre apresentações, p95 / máximo | 32.019 / 33.994 µs |
+| Pixels máximos numa apresentação | 17.782 |
+| Maior intervalo de consulta touch | 27.522 µs |
+| Tempo decorrido ui::tick acumulado / máximo | 5.065.148 / 18.015 µs |
+
+Mesmas definições/limites da seção 0.4.2: eventos de software/DMA, não FPS óptico,
+60 telas completas/s ou percentual de CPU livre. Fonte 20 Hz, barra alvo 60 Hz e
+números cerca de 30 Hz. Tempo ui::tick inclui espera e preempção. Não houve
+ensaio de rádio/motor, aquisição/atuação física ou validação veicular.
+
+Consulta final confirmou normal 0.4.3, modo Suave/movimento, SD montado com
+30.255 MiB e perfil visual persistido carregado. Não houve exportação/importação
+ou formato do cartão nesta revisão.
+
+Simulador Linux reaberto ao final, com ação explícita de conectar marcha lenta;
+o produto continua iniciando offline e seu visual/código não mudou.
+
+Imagem normal **1.419.104 B**, SHA-256
+`b7352b94421aa321ac700eec1d29544bfbb0003cc32c141c54b2a06bf5d8d987`.
+Linker **95.992 B RAM estática** e **1.412.529 B flash**, crescimento de 8 B RAM
+estática e 2596 B flash frente à 0.4.2. Buffers DMA 20 KiB/pool LVGL 32 KiB mantidos.
+Ícones permanecem na flash e não há SVG/Qt/Flow embarcado ou framebuffer extra.

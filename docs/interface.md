@@ -17,7 +17,7 @@ pelo navegador automatizado nesta sessão. Não tratá-lo como arquivo inspecion
 Na ESP, manter Montserrat e ícones apropriados do LVGL; não incorporar fontes
 ou componentes de plataforma Apple ao firmware.
 
-## Cockpit atual — 0.4.2
+## Cockpit atual — 0.4.3
 
 O responsável considerou a composição 0.2.0 insuficiente e deu liberdade para
 pesquisar outra solução. Confirmou que o touch estava funcionando. A revisão
@@ -59,6 +59,30 @@ Referências conferidas nesta revisão: [manual oficial FuelTech, página 20](ht
 [Gauges](https://developer.apple.com/design/human-interface-guidelines/gauges).
 FuelTech orienta a hierarquia de instrumentos; Apple, agrupamento/alinhamento
 e semântica de cor. A composição e o código são próprios.
+
+## Acabamento dos instrumentos — 0.4.3
+
+Pedido aprovado após a pesquisa: padronizar ícones, fixar as referências dos
+números/unidades e destacar alertas. O menu usa velocímetro, atividade,
+deslizadores e processador, com os mesmos tamanhos/traços. São somente cinco
+máscaras alpha4 derivadas do Lucide, incluindo triângulo de alerta; SVGs,
+licença integral, commit, hashes e gerador em
+[third_party/icons/lucide](../third_party/icons/lucide/README.md).
+
+Os ícones são recursos constantes na flash, 2.308 B no objeto Xtensa, sem
+renderizador SVG ou fonte adicional na placa. A cor vem do tema LVGL e os
+filhos não capturam clique; os cartões mantêm alvos e a animação local anterior.
+
+RPM e velocidade continuam com largura do conteúdo e buffers estáticos, mas
+agora têm borda direita fixa. Isso mantém o alinhamento ao trocar dígitos sem
+invalidar uma caixa numérica inteira por quadro. Unidades permanecem em labels
+separados; temperatura exibe °C/°F. Não foram mudados valores ou conversões.
+
+Faixa de alerta em y218..239, com ícone20 px e texto Montserrat14. Fundo
+`#5C3200` para rotação alta e `#8F1D1D` para os demais alertas, com texto claro.
+Ocupa o lugar da dica/TPS, preservando todos os instrumentos. Fonte SIM,
+prioridades, histerese e validade continuam iguais; perda de link também
+retira o contêiner inteiro. A faixa é estática enquanto o alerta não muda.
 
 ## Fluxos
 

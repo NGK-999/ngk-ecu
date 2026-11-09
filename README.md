@@ -44,7 +44,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.2-cockpit. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.3-cockpit. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -97,17 +97,19 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.4.2-cockpit** está instalada em bancada. Tela preta com laranja e
+A versão **0.4.3-cockpit** está instalada em bancada. Tela preta com laranja e
 vermelho, menu 2×2, instrumentos grandes e barra RPM contínua em rampa curva.
 O redesenho afeta somente a ESP32; o visual do simulador foi preservado.
+A revisão 0.4.3 acrescenta ícones Lucide consistentes, números ancorados pela
+direita com unidades fixas e faixa de alerta com símbolo e texto maior.
 A barra usa interpolação com cadência alvo de 60 Hz; os números, cerca de
 30 Hz no modo Suave. Alarmes e perda de sinal têm prioridade imediata.
 
-Quinze executáveis nativos, treze testes de fontes, 55 testes do simulador e
-três builds passaram. A bancada mediu aproximadamente **60 apresentações
+Quinze executáveis nativos, treze testes de fontes, dois testes de ícones,
+55 testes do simulador e três builds passaram. A bancada mediu aproximadamente **60 apresentações
 parciais/s** no caminho SIM animado. Isso não representa 60 telas completas/s
 ou medição óptica; intervalos, consumo de memória e limites estão no
-[relatório de validação](docs/validacao.md#cockpit-preto-e-rampa-contínua--042).
+[relatório de validação](docs/validacao.md#acabamento-dos-instrumentos--043).
 Sensores, atuação e uso no veículo continuam sem validação.
 
 Wi-Fi e BLE estão disponíveis sob demanda e começam desligados. Nesta unidade,

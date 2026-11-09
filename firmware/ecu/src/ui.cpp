@@ -3,6 +3,7 @@
 #include "ui_layout.hpp"
 #include "ui_theme.hpp"
 #include "ui_motion.hpp"
+#include "ui_icons.h"
 #include "perf_stats.hpp"
 #include "profile_service.hpp"
 #include "radio.hpp"
@@ -74,6 +75,7 @@ lv_obj_t* gearLabel = nullptr;
 lv_obj_t* gearValue = nullptr;
 lv_obj_t* dashboardHintLabel = nullptr;
 lv_obj_t* faultFooterLabel = nullptr;
+lv_obj_t* faultFooterPanel = nullptr;
 lv_obj_t* sensorSourceLabel = nullptr;
 std::array<lv_obj_t*, 4> sensorValues{};
 std::array<lv_obj_t*, 3> settingValues{}, networkLabels{}, networkButtons{};
@@ -342,6 +344,18 @@ lv_obj_t* region(lv_obj_t* parent, Rect rect) {
     return object;
 }
 
+lv_obj_t* iconImage(lv_obj_t* parent, const lv_img_dsc_t* source, int x, int y,
+                    std::uint32_t color = accent) {
+    auto* object = lv_img_create(parent);
+    lv_img_set_src(object, source);
+    lv_obj_set_pos(object, x, y);
+    lv_obj_set_style_img_recolor(object, lv_color_hex(color), 0);
+    lv_obj_set_style_img_recolor_opa(object, LV_OPA_COVER, 0);
+    lv_obj_clear_flag(object, LV_OBJ_FLAG_CLICKABLE);
+    noScroll(object);
+    return object;
+}
+
 void updateStorage() {
     if (!storageLabel) return;
     char value[96];
@@ -589,7 +603,7 @@ void renderPage(Page next) {
     storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
     temperatureValue = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
-    dashboardHintLabel = faultFooterLabel = sensorSourceLabel = nullptr;
+    dashboardHintLabel = faultFooterLabel = faultFooterPanel = sensorSourceLabel = nullptr;
     sensorValues.fill(nullptr);
     settingValues.fill(nullptr); networkLabels.fill(nullptr); networkButtons.fill(nullptr);
     keyLabels.fill(nullptr); keyButtons.fill(nullptr); rpmRampObject = nullptr;
@@ -614,12 +628,12 @@ void renderPage(Page next) {
         lv_obj_set_style_text_font(title, &lv_font_montserrat_28, 0);
         lv_obj_set_y(title, 0);
         constexpr std::array<const char*, 4> names{{"PAINEL", "SENSORES", "AJUSTES", "SISTEMA"}};
-        constexpr std::array<const char*, 4> icons{{LV_SYMBOL_HOME, LV_SYMBOL_LIST, LV_SYMBOL_SETTINGS, LV_SYMBOL_SD_CARD}};
+        const std::array<const lv_img_dsc_t*, 4> icons{{&ngk_icon_gauge_32, &ngk_icon_activity_32,
+                                                     &ngk_icon_sliders_32, &ngk_icon_cpu_32}};
         for (std::size_t i = 0; i < names.size(); ++i) {
             auto* tile = button(pageContent, "", navigation[i], selectPage,
                                 reinterpret_cast<void*>(std::uintptr_t(i)));
-            menuIcons[i] = label(tile, icons[i], 14, settingsEditor.values.reducedMotion ? 12 : 16,
-                                 40, &lv_font_montserrat_28, accent);
+            menuIcons[i] = iconImage(tile, icons[i], 14, settingsEditor.values.reducedMotion ? 12 : 16);
             label(tile, names[i], 14, 52, 120, &lv_font_montserrat_16);
         }
         menuIconMotion.snap(4);
@@ -635,6 +649,7 @@ void renderPage(Page next) {
         auto* rpm = region(pageContent, rpmCard);
         rpmValue = label(rpm, unknown, 0, 0, 200, rpmDigits);
         lv_obj_set_width(rpmValue, LV_SIZE_CONTENT);
+        lv_obj_align(rpmValue, LV_ALIGN_TOP_RIGHT, -8, 0);
         label(pageContent, "RPM", 224, 26, 88, &lv_font_montserrat_12, accent);
         rpmSignal = label(pageContent, noSignal, 224, 44, 88, &lv_font_montserrat_12, secondary);
         char scale[32];
@@ -658,11 +673,12 @@ void renderPage(Page next) {
         label(speed, "VELOCIDADE", 0, 0, speedCard.w, &lv_font_montserrat_12, secondary);
         speedValue = label(speed, unknown, 0, 19, 160, speedDigits);
         lv_obj_set_width(speedValue, LV_SIZE_CONTENT);
+        lv_obj_align(speedValue, LV_ALIGN_TOP_RIGHT, -48, 19);
         unitLabel = label(speed, settingsEditor.values.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph",
                           164, 57, 44, &lv_font_montserrat_12, secondary);
         label(pageContent, "BLOCO", temperatureCard.x, temperatureCard.y + 10, 56,
               &lv_font_montserrat_12, secondary);
-        label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "C" : "F",
+        label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "°C" : "°F",
               138, temperatureCard.y + 14, 18, &lv_font_montserrat_12, secondary);
         temperatureValue = label(pageContent, unknown, 64, temperatureCard.y + 2, 72,
                                   &lv_font_montserrat_28);
@@ -676,7 +692,12 @@ void renderPage(Page next) {
         dashboardHintLabel = label(pageContent, "2 toques: menu", 112, dashboardHint.y, 200,
                            &lv_font_montserrat_12, secondary);
         lv_obj_set_style_text_align(dashboardHintLabel, LV_TEXT_ALIGN_RIGHT, 0);
-        faultFooterLabel = label(pageContent, "", 8, dashboardHint.y, 304, &lv_font_montserrat_12, danger);
+        faultFooterPanel = surface(pageContent, alertStrip, theme::alertCriticalBackground, 0);
+        lv_obj_set_style_border_width(faultFooterPanel, 0, 0);
+        lv_obj_clear_flag(faultFooterPanel, LV_OBJ_FLAG_CLICKABLE);
+        iconImage(faultFooterPanel, &ngk_icon_alert_20, 8, 1, text);
+        faultFooterLabel = label(faultFooterPanel, "", 34, 3, 278, &lv_font_montserrat_14, text);
+        setHidden(faultFooterPanel, true);
         setHidden(faultFooterLabel, true);
     } else if (page == Page::SettingsHome) {
         constexpr std::array<const char*, 6> names{{"Tela", "Instrumentos", "Toque / DEMO", "Perfis SD", "Wi-Fi", "Bluetooth"}};
@@ -1132,10 +1153,13 @@ void serviceUsbSimulation() {
         }
         const bool alert = source.enabled && view.alert != simulation::Alert::None;
         setHidden(speedSignal, alert); setHidden(dashboardHintLabel, alert);
+        setHidden(faultFooterPanel, !alert);
         setHidden(faultFooterLabel, !alert);
         setText(faultFooterLabel, simulation::alertText(view.alert));
-        setTextColor(faultFooterLabel, !alert ? secondary :
-            (view.alert == simulation::Alert::HighRpm ? warning : danger));
+        const auto alertBackground = lv_color_hex(view.alert == simulation::Alert::HighRpm ?
+            theme::alertWarningBackground : theme::alertCriticalBackground);
+        if (lv_obj_get_style_bg_color(faultFooterPanel, 0).full != alertBackground.full)
+            lv_obj_set_style_bg_color(faultFooterPanel, alertBackground, 0);
     } else if (page == Page::Sensors) {
         const bool valid[]{view.rpmValid, view.temperatureValid, view.speedValid, view.oilValid};
         const std::int32_t number[]{view.rpm, view.temperature, view.speed};

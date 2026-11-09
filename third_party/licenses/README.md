@@ -123,3 +123,11 @@ O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os três arquivos;
 não há novo download ou dependência. O ensaio `test_gear_font.py` regenera o C
 e usa os callbacks reais do LVGL para conferir N/R/dígitos, limites da célula
 e ausência dos demais caracteres, inclusive os buracos do mapa Unicode.
+
+## Ícones de navegação e alerta
+
+A revisão 0.4.3 usa cinco ícones do Lucide, com licença upstream integral
+ISC e avisos MIT preservados em [third_party/icons/lucide/LICENSE](../icons/lucide/LICENSE).
+Proveniência, commit, hashes e reprodução dos recursos alpha4 estão em
+[README dos ícones](../icons/lucide/README.md). Os SVGs originais são somente
+entradas do gerador no host; não há renderizador SVG no ESP32.

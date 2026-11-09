@@ -46,11 +46,15 @@ int main() {
     check(gearCard.w >= 72 && gearCard.h >= 48 && gearCard.y == speedCard.y &&
               !gearCard.overlaps(speedCard),
           "SIM gear gets its own large area beside speed");
+    check(alertStrip.h >= 22 && screen.contains(alertStrip.x, alertStrip.y) &&
+              screen.contains(alertStrip.x + alertStrip.w - 1, alertStrip.y + alertStrip.h - 1),
+          "alarm strip reserves space for readable text and its icon");
     for (const auto instrument : {speedCard, gearCard, rpmCard, temperatureCard, oilStrip}) {
         check(screen.contains(instrument.x, instrument.y) &&
                   screen.contains(instrument.x + instrument.w - 1, instrument.y + instrument.h - 1),
               "dashboard instrument remains inside the screen");
         check(!instrument.overlaps(dashboardHint), "menu gesture hint does not cover instruments");
+        check(!instrument.overlaps(alertStrip), "alarm strip never covers an instrument");
     }
     check(!rpmCard.overlaps(temperatureCard) && !rpmCard.overlaps(speedCard) &&
               !temperatureCard.overlaps(speedCard) && !oilStrip.overlaps(temperatureCard) &&

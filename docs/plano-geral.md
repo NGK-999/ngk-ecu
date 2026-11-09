@@ -57,7 +57,8 @@ inferência ao melhorar a interface. Fontes: [sensores](sensores-motor.md),
 - [x] Concluir a revisão preto/laranja/vermelho: referências FuelTech para
   instrumentos e Apple para hierarquia/alinhamento, menu 2×2 e nova distribuição.
   A barra RPM foi substituída por uma rampa curva sólida, conforme a imagem
-  enviada posteriormente, com preenchimento contínuo e cores graduadas.
+  enviada posteriormente, com preenchimento contínuo e cores graduadas. A
+  revisão 0.4.3 padroniza ícones, fixa âncoras numéricas e amplia a faixa de alertas.
 - [x] Concluir a implementação de fluidez: interpolação curta dos instrumentos, microanimação
   local, barra com alvo de 60 Hz/números cerca de 30 Hz e resposta imediata de
   alertas/validade. Não é promessa de 60 quadros ópticos completos.
@@ -113,6 +114,6 @@ de animação.
 Não há percentual de CPU livre ou capacidade de aquisição real certificado
 sem ensaio específico.
 
-A entrega 0.4.2 está documentada em [validação](validacao.md#cockpit-preto-e-rampa-contínua--042).
+A entrega 0.4.3 está documentada em [validação](validacao.md#acabamento-dos-instrumentos--043).
 Pendências marcadas na etapa 2 são trabalho no veículo, sensor/calibração e
 futura injeção; não são funcionalidades físicas habilitadas por este firmware.

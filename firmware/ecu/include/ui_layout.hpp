@@ -94,6 +94,7 @@ inline constexpr Rect gearCard{224, 104, 88, 72};
 inline constexpr Rect temperatureCard{8, 184, 148, 32};
 inline constexpr Rect oilStrip{164, 184, 148, 32};
 inline constexpr Rect dashboardHint{8, 224, 304, 16};
+inline constexpr Rect alertStrip{0, 218, 320, 22};
 inline constexpr std::array<Rect, 3> settingsRows{{{8, 40, 304, 44}, {8, 88, 304, 44}, {8, 136, 304, 44}}};
 inline constexpr std::array<Rect, 6> settingsCategories{{
     {8, 40, 148, 44}, {164, 40, 148, 44}, {8, 88, 148, 44},

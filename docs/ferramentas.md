@@ -141,3 +141,7 @@ exit 0, `completion_status=complete`, `artifact_changed=false`; SHA-256
 `b09b855a81055a79e8e304ca426cb1b2a02f745ffa5ed53e80be24cb8c7cbf80`.
 A inspeção de seções não mede utilização de CPU ou latência da tela; essas
 evidências estão separadas no [relatório de bancada](validacao.md).
+
+REA também conferiu as seções do ELF próprio0.4.3: exit0, complete,
+`artifact_changed=false`, SHA-256
+`e8fa46836a5dd4c24f6cb7244c53a414fb1c7b478db786dde04022ebeed922c2`.

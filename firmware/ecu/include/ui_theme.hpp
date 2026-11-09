@@ -14,5 +14,7 @@ inline constexpr std::uint32_t danger = 0xFF3B30;
 inline constexpr std::uint32_t border = 0x212121;
 inline constexpr std::uint32_t pressed = 0x2A160B;
 inline constexpr std::uint32_t inactive = 0x202020;
+inline constexpr std::uint32_t alertWarningBackground = 0x5C3200;
+inline constexpr std::uint32_t alertCriticalBackground = 0x8F1D1D;
 inline constexpr int buttonRadius = 12;
 }
