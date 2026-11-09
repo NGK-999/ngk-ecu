@@ -1,0 +1,12 @@
+{
+  "name": "ngk-ecu-analysis-tools",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Ferramentas locais de investigação para NGK ECU",
+  "engines": {
+    "node": "^22.23.4 || ^24.22.1 || >=26.12.1"
+  },
+  "devDependencies": {
+    "rea-agents": "6.8.0"
+  }
+}

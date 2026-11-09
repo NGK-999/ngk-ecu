@@ -1,0 +1,25 @@
+# Ferramentas e runtimes locais
+.venv/
+.tools/
+node_modules/
+.pio/
+build/
+dist/
+__pycache__/
+
+# Dados, firmware extraído e relatórios locais
+artifacts/
+local/
+dumps/
+reports/
+*.bin
+*.elf
+*.map
+*.log
+*.csv
+*.har
+.env
+.env.*
+!.env.example
+.rea/
+.DS_Store
