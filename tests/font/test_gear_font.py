@@ -32,7 +32,7 @@ class GearFontTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
             for name in ('ngk_cockpit_48.c', 'ngk_cockpit_64.c', 'ngk_cockpit_72.c',
-                         'ngk_gear_48.c', 'ngk_gear_64.c'):
+                         'ngk_cockpit_84.c', 'ngk_gear_48.c', 'ngk_gear_64.c'):
                 source = ROOT / 'firmware/ecu/src' / name
                 self.assertTrue(source.is_file(), 'All reviewed font sizes must reproduce offline')
                 shutil.copy2(source, folder / name)

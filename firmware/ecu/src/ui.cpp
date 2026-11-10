@@ -8,7 +8,7 @@
 #include "profile_service.hpp"
 #include "radio.hpp"
 #include "cockpit_fonts.h"
-#include "ngk_gear_64.h"
+#include "ngk_gear_48.h"
 #include "simulation_service.hpp"
 #include "simulation_view.hpp"
 #include "screen_capture.hpp"
@@ -36,7 +36,7 @@ using theme::danger;
 using theme::border;
 using theme::warning;
 const lv_font_t* const rpmDigits = &ngk_cockpit_48;
-const lv_font_t* const speedDigits = &ngk_cockpit_72;
+const lv_font_t* const speedDigits = &ngk_cockpit_84;
 constexpr const char* unknown = "--";
 constexpr const char* noSignal = "SEM SINAL";
 enum class Page : std::uint8_t { Menu, Panel, Sensors, Settings, System, Networks, Keyboard, Confirm, SettingsHome };
@@ -793,8 +793,8 @@ void renderPage(Page next) {
         gearLabel = label(pageContent, "MARCHA", gearCard.x, gearCard.y, gearCard.w,
                           &lv_font_montserrat_12, secondary);
         gearValue = label(pageContent, unknown, gearCard.x,
-                          gearCard.y + gearCard.h - ngk_gear_64.line_height,
-                          gearCard.w, &ngk_gear_64);
+                          gearCard.y + 30,
+                          gearCard.w, &ngk_gear_48);
         lv_obj_set_style_text_align(gearLabel, LV_TEXT_ALIGN_CENTER, 0);
         lv_obj_set_style_text_align(gearValue, LV_TEXT_ALIGN_CENTER, 0);
         setHidden(gearLabel, true); setHidden(gearValue, true);
@@ -803,15 +803,16 @@ void renderPage(Page next) {
         lv_obj_clear_flag(rpmRampObject, LV_OBJ_FLAG_CLICKABLE);
         lv_obj_add_event_cb(rpmRampObject, drawRpmRamp, LV_EVENT_DRAW_MAIN, nullptr);
         lv_obj_add_event_cb(rpmRampObject, drawRpmGraduations, LV_EVENT_DRAW_MAIN, nullptr);
-        auto* divider = surface(pageContent, {196, speedCard.y, 1, speedCard.h}, border, 0);
+        auto* divider = surface(pageContent, {100, speedCard.y, 1, speedCard.h}, border, 0);
         lv_obj_set_style_border_width(divider, 0, 0);
         auto* speed = region(pageContent, speedCard);
-        label(speed, "VELOCIDADE", 0, 0, speedCard.w, &lv_font_montserrat_12, secondary);
+        auto* speedTitle = label(speed, "VELOCIDADE", 0, 0, speedCard.w, &lv_font_montserrat_12, secondary);
+        lv_obj_set_style_text_align(speedTitle, LV_TEXT_ALIGN_CENTER, 0);
         speedValue = label(speed, unknown, 0, 19, 160, speedDigits);
         lv_obj_set_width(speedValue, LV_SIZE_CONTENT);
-        lv_obj_align(speedValue, LV_ALIGN_TOP_RIGHT, -64, 19);
+        lv_obj_align(speedValue, LV_ALIGN_TOP_RIGHT, -62, 16);
         unitLabel = label(speed, settingsEditor.values.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph",
-                          128, 57, 56, &lv_font_montserrat_12, secondary);
+                          152, 61, 52, &lv_font_montserrat_12, secondary);
         label(pageContent, "BLOCO", temperatureCard.x, temperatureCard.y + 10, 56,
               &lv_font_montserrat_12, secondary);
         label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "°C" : "°F",

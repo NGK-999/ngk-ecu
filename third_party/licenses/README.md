@@ -51,11 +51,12 @@ constantes e 8 bytes de cache em BSS, contra 96.713 e 8 bytes da fonte completa.
 A diferença de 92.084 bytes refere-se aos objetos de fonte; o MAP do firmware
 integrado determina a economia final na flash. Essa redução não mede FPS.
 
-## NGK Cockpit 48, 64 e 72 — Barlow Condensed Bold
+## NGK Cockpit 48, 64, 72 e 84 — Barlow Condensed Bold
 
-`firmware/ecu/src/ngk_cockpit_48.c`, `ngk_cockpit_64.c` e `ngk_cockpit_72.c` são subconjuntos
+`firmware/ecu/src/ngk_cockpit_48.c`, `ngk_cockpit_64.c`, `ngk_cockpit_72.c` e
+`ngk_cockpit_84.c` são subconjuntos
 numéricos rasterizados da **Barlow Condensed Bold**, peso 700. O nome das
-versões derivadas é **NGK Cockpit 48/64/72**. Contêm somente `-.0123456789`,
+versões derivadas é **NGK Cockpit 48/64/72/84**. Contêm somente `-.0123456789`,
 4 bpp, sem compressão e sem kerning.
 
 Copyright 2017 The Barlow Project Authors (https://github.com/jpt/barlow).
@@ -83,7 +84,9 @@ a rejeição de `/` e dos demais caracteres ausentes.
 
 As métricas globais já são compactas: no tamanho nominal 48, `line_height=34`
 e `base_line=0`; no 64, `line_height=48` e `base_line=1`; no 72,
-`line_height=53` e `base_line=1`. Não foi necessário trim vertical.
+`line_height=53` e `base_line=1`; no 84, `line_height=61` e `base_line=1`.
+A fonte 84 usa o mesmo TTF fixado, conversor e licença OFL descritos acima.
+Não foi necessário trim vertical.
 O subconjunto 48 atende o RPM compacto: `12000` mede 101 px de avanço com
 espaçamento zero, e cinco dígitos precisam de no máximo 115 px.
 Cinco dígitos no tamanho 64 precisam de no máximo 155 px;
@@ -105,13 +108,13 @@ substituem o tamanho do firmware linkado nem medem desempenho de desenho.
 `--prepare` é a etapa explícita com rede: baixa o TTF verificado e instala o
 conversor com `npm ci --ignore-scripts` no diretório local de ferramentas.
 `--check` e os testes não baixam arquivos nem instalam dependências. Sem
-`--check`, o gerador reproduz os cinco C no diretório de fontes da aplicação;
+`--check`, o gerador reproduz os seis C no diretório de fontes da aplicação;
 `--output-dir` permite escolher outro destino.
 
 Os testes compilam os callbacks reais LVGL 8.4 para verificar exatamente os
 doze caracteres e a ausência de margem vertical vazia. Quando os caches locais
 do conversor/TTF estão preparados, também regeneram os arquivos, verificam
-reprodução exata e comparam os 36 bitmaps/métricas com a saída oficial compilada
+reprodução exata e comparam os 48 bitmaps/métricas com a saída oficial compilada
 separadamente. Essa comparação é pulada explicitamente se os caches faltarem;
 nenhum teste pede rede. GCC e a dependência LVGL local são necessários para
 os ensaios de execução C.
@@ -128,10 +131,10 @@ Gear 48 mantém `line_height=34` e `base_line=0`. Gear 64 tem
 `line_height=48` e `base_line=1`: o glifo `0` alcança um pixel abaixo da linha
 de base, como na rasterização oficial. Sua maior caixa mede 31 px de largura
 e o maior avanço é 33 px, com espaçamento zero. Não foi aplicado recorte ou
-deslocamento vertical; a versão 48 e os três subconjuntos Cockpit mantêm seus
+deslocamento vertical; a versão 48 e os subconjuntos Cockpit 48/64/72 mantêm seus
 bytes anteriores.
 
-O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os cinco arquivos;
+O mesmo `tools/fonts/generate_cockpit.py` reproduz e confere os seis arquivos;
 não há novo download ou dependência. `generate_gear(output)` continua gerando
 a versão 48; `generate_gear(output, size=64)` seleciona a versão maior. O ensaio
 `test_gear_font.py` regenera os dois C e usa os callbacks reais do LVGL para

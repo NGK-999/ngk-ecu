@@ -23,6 +23,7 @@ HARNESS = r'''
 LV_FONT_DECLARE(ngk_cockpit_48_original);
 LV_FONT_DECLARE(ngk_cockpit_64_original);
 LV_FONT_DECLARE(ngk_cockpit_72_original);
+LV_FONT_DECLARE(ngk_cockpit_84_original);
 #endif
 static void check_font(const lv_font_t* font, const lv_font_t* original) {
     const char allowed[] = "-.0123456789";
@@ -56,14 +57,17 @@ static void check_font(const lv_font_t* font, const lv_font_t* original) {
 }
 int main(void) {
     assert(ngk_cockpit_48.line_height <= 34);
+    assert(ngk_cockpit_84.line_height == 61 && ngk_cockpit_84.base_line == 1);
 #ifdef COMPARE_ORIGINAL
     check_font(&ngk_cockpit_48, &ngk_cockpit_48_original);
     check_font(&ngk_cockpit_64, &ngk_cockpit_64_original);
     check_font(&ngk_cockpit_72, &ngk_cockpit_72_original);
+    check_font(&ngk_cockpit_84, &ngk_cockpit_84_original);
 #else
     check_font(&ngk_cockpit_48, NULL);
     check_font(&ngk_cockpit_64, NULL);
     check_font(&ngk_cockpit_72, NULL);
+    check_font(&ngk_cockpit_84, NULL);
 #endif
 }
 '''
@@ -95,6 +99,7 @@ class CockpitFontTests(unittest.TestCase):
                           str(ROOT / "firmware/ecu/src/ngk_cockpit_48.c"),
                           str(ROOT / "firmware/ecu/src/ngk_cockpit_64.c"),
                           str(ROOT / "firmware/ecu/src/ngk_cockpit_72.c"),
+                          str(ROOT / "firmware/ecu/src/ngk_cockpit_84.c"),
                           str(LVGL / "src/font/lv_font_fmt_txt.c"), str(LVGL / "src/misc/lv_utils.c"),
                           *objects, "-o", str(folder / "check")], folder)
         self.run_command([str(folder / "check")], folder)
@@ -113,7 +118,7 @@ class CockpitFontTests(unittest.TestCase):
         with tempfile.TemporaryDirectory() as temporary:
             folder = Path(temporary)
             originals = {}
-            for size in (48, 64, 72):
+            for size in (48, 64, 72, 84):
                 raw, final = generator.generate(size, folder)
                 self.assertEqual(final.read_bytes(), (ROOT / f"firmware/ecu/src/ngk_cockpit_{size}.c").read_bytes())
                 originals[size] = raw

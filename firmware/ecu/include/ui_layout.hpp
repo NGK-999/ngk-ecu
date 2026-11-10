@@ -88,9 +88,9 @@ inline constexpr std::array<Rect, 4> navigation{{
 inline constexpr Rect content{8, 36, 304, 144};
 inline constexpr Rect menuReturn{8, 188, 304, 44};
 inline constexpr Rect rpmCard{8, 2, 120, 34};
-inline constexpr Rect rpmBar{8, 44, 304, 56};
-inline constexpr Rect speedCard{8, 104, 184, 72};
-inline constexpr Rect gearCard{204, 104, 108, 72};
+inline constexpr Rect rpmBar{8, 40, 304, 56};
+inline constexpr Rect speedCard{108, 100, 204, 78};
+inline constexpr Rect gearCard{8, 100, 84, 78};
 inline constexpr Rect temperatureCard{8, 180, 148, 36};
 inline constexpr Rect oilStrip{164, 180, 148, 36};
 inline constexpr Rect dashboardHint{8, 224, 304, 16};

@@ -50,8 +50,9 @@ int main() {
     check(gearCard.w >= 72 && gearCard.h >= 48 && gearCard.y == speedCard.y &&
               !gearCard.overlaps(speedCard),
           "SIM gear gets its own large area beside speed");
-    check(speedCard.w <= 192 && gearCard.w >= 104 && temperatureCard.h >= 36,
-          "driving fields share the width and thermal values use the free vertical gap");
+    check(speedCard.x > gearCard.x && speedCard.w >= 200 && speedCard.h >= 78 &&
+              gearCard.w >= 72 && gearCard.w <= 96 && temperatureCard.h >= 36,
+          "larger speed is on the right, smaller gear on the left, with the thermal row preserved");
     check(alertStrip.h >= 22 && screen.contains(alertStrip.x, alertStrip.y) &&
               screen.contains(alertStrip.x + alertStrip.w - 1, alertStrip.y + alertStrip.h - 1),
           "alarm strip reserves space for readable text and its icon");
@@ -70,7 +71,7 @@ int main() {
               !gearCard.overlaps(oilStrip) && !gearCard.overlaps(rpmBar),
           "SIM gear cannot cover another instrument");
     check(temperatureCard.y == oilStrip.y &&
-              temperatureCard.y >= speedCard.y + speedCard.h + 4 &&
+              temperatureCard.y >= speedCard.y + speedCard.h + 2 &&
               temperatureCard.y + temperatureCard.h + 8 <= dashboardHint.y &&
               screen.contains(dashboardHint.x + dashboardHint.w - 1,
                               dashboardHint.y + dashboardHint.h - 1),

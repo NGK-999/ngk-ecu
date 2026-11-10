@@ -21,7 +21,7 @@ FONT = ROOT / ".tools/font-sources/BarlowCondensed-Bold.ttf"
 SOURCE_COMMIT = "5bb28733cec313b63fbd415b574b5ae35c8aa8b8"
 SOURCE_URL = f"https://raw.githubusercontent.com/google/fonts/{SOURCE_COMMIT}/ofl/barlowcondensed/BarlowCondensed-Bold.ttf"
 SOURCE_SHA256 = "e476562ec9c1e16cf16475895b511f08c804f438cc9a9f80a44ea50a0eeb5b65"
-SIZES = (48, 64, 72)
+SIZES = (48, 64, 72, 84)
 GEAR_SIZES = (48, 64)
 GLYPHS = "-.0123456789"
 
@@ -95,7 +95,7 @@ static const lv_font_fmt_txt_cmap_t cmaps[] = {
 def generate(size: int, output: Path) -> tuple[Path, Path]:
     """Generate raw and normalized C into a caller-owned temporary directory."""
     if size not in SIZES:
-        raise ValueError("Only the reviewed 48/64/72 px sizes are supported")
+        raise ValueError("Only the reviewed 48/64/72/84 px sizes are supported")
     if not dependencies_ready():
         raise RuntimeError("Run tools/fonts/generate_cockpit.py --prepare first")
     output.mkdir(parents=True, exist_ok=True)
@@ -160,7 +160,7 @@ def main() -> int:
                 else:
                     target.parent.mkdir(parents=True, exist_ok=True)
                     target.write_bytes(generated.read_bytes())
-        print("Checked" if arguments.check else "Generated", "NGK Cockpit 48/64/72 and Gear 48/64")
+        print("Checked" if arguments.check else "Generated", "NGK Cockpit 48/64/72/84 and Gear 48/64")
         return 0
     except (OSError, ValueError, RuntimeError) as error:
         print(f"cockpit fonts: {error}", file=sys.stderr)

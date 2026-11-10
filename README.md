@@ -1,5 +1,10 @@
 # NGK ECU
 
+> Esta branch contém a **prévia de disposição e tamanhos 0.4.9-layout-preview**.
+> Velocidade maior à direita e marcha menor à esquerda.
+> [Veja a proposta e as imagens](docs/proposta-painel-disposicao.md).
+> A versão instalada na placa continua sendo a 0.4.8; esta prévia não foi gravada.
+
 Projeto experimental de painel e futura ECU para um motor boxer Volkswagen
 Fusca **1300 carburado**, de ano desconhecido, em uma gaiola de uso fora de
 estrada, usando ESP32 com tela touch.
