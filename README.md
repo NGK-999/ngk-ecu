@@ -150,3 +150,10 @@ para transferir os pixels; o PNG só é salvo após conferir tamanho e CRC.
 
 Teste sem hardware: `sh scripts/test-native.sh`.
 Compilação e operação: [guia do firmware](firmware/ecu/README.md).
+
+## Trabalho sem sensores
+
+O simulador permite continuar validando o painel. A proteção de produção
+suspende o envio se o modelo deixar de atualizar por 250 ms, preservando
+valores constantes que continuam sendo produzidos. Testes, limites e próximos
+ensaios estão em [validação sem sensores](docs/validacao-sem-sensores.md).

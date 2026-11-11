@@ -83,6 +83,17 @@ class WindowTests(unittest.TestCase):
         self.assertTrue(connect.isEnabled())
         self.assertFalse(disconnect.isEnabled())
 
+    def test_source_stale_keeps_connection_controls_active_and_names_the_problem(self):
+        self.link.status = SimpleNamespace(state="source_stale", detail="Origem sem dados novos", port="MEMORY",
+                                           device_live=False, sequence=4)
+        self.window._sync_status()
+        self.assertEqual(self.widget(QLabel, "connection_status").text(), "ORIGEM SEM DADOS")
+        self.assertFalse(self.widget(QPushButton, "connect_button").isEnabled())
+        self.assertTrue(self.widget(QPushButton, "disconnect_button").isEnabled())
+        self.assertFalse(self.widget(QComboBox, "port_combo").isEnabled())
+        self.assertFalse(self.widget(QPushButton, "refresh_ports_button").isEnabled())
+        self.assertEqual(self.widget(QLabel, "connection_detail").text(), "Origem sem dados novos")
+
     def test_manual_inputs_and_driving_controls_reach_the_model(self):
         self.widget(QSlider, "throttle_slider").setValue(72)
         self.widget(QSlider, "brake_slider").setValue(21)

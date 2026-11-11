@@ -47,6 +47,65 @@ def until(predicate, timeout=2):
     raise AssertionError('condition not observed')
 
 class LinkTests(unittest.TestCase):
+    def test_no_initial_production_suspends_frames_but_keeps_status_and_close(self):
+        device=MemorySerial();link=SerialLink(serial_factory=lambda:device,session_factory=lambda:123)
+        self.addCleanup(link.close)
+        link.connect('MEMORY')
+        until(lambda:link.snapshot().state=='source_stale')
+        until(lambda:device.writes.count(b'sim-status\n')>=2)
+        self.assertEqual(device.frames(),[])
+        self.assertEqual(link.snapshot().sequence,0)
+        link.close()
+        self.assertTrue(device.closed)
+        self.assertIn(b'sim-stop 123\n',device.writes)
+    def test_expired_producer_stops_frames_and_same_value_resumes_same_session(self):
+        device=MemorySerial();link=SerialLink(serial_factory=lambda:device,session_factory=lambda:123)
+        self.addCleanup(link.close)
+        sample=Sample(rpm=2450)
+        link.set_sample(sample)
+        link.connect('MEMORY')
+        until(lambda:len(device.frames())>=2)
+        until(lambda:link.snapshot().state=='source_stale')
+        count=len(device.frames())
+        until(lambda:device.writes.count(b'sim-status\n')>=2)
+        self.assertEqual(len(device.frames()),count)
+        link.set_sample(sample)
+        until(lambda:len(device.frames())>count)
+        until(lambda:link.snapshot().state=='streaming')
+        self.assertEqual(link.snapshot().state,'streaming')
+        frames=device.frames()
+        self.assertEqual([int(frame.split()[2]) for frame in frames],list(range(1,len(frames)+1)))
+        self.assertTrue(all(frame.split()[1]==b'123' for frame in frames))
+        self.assertEqual(device.writes.count(b'sim-start 123\n'),1)
+        link.set_sample(sample,paused=True)
+        until(lambda:link.snapshot().state=='paused')
+        count=len(device.frames())
+        until(lambda:device.writes.count(b'sim-status\n')>=3)
+        self.assertEqual(link.snapshot().state,'paused')
+        self.assertEqual(len(device.frames()),count)
+        for rpm in (1000,2000,3000):
+            link.set_sample(Sample(rpm=rpm),paused=True)
+        link.set_sample(Sample(rpm=3500),paused=False)
+        until(lambda:len(device.frames())>count)
+        self.assertTrue(all(frame.split()[3]==b'3500' for frame in device.frames()[count:]))
+    def test_identical_fresh_samples_keep_streaming_beyond_producer_timeout(self):
+        device=MemorySerial();link=SerialLink(serial_factory=lambda:device)
+        self.addCleanup(link.close)
+        sample=Sample(rpm=2450)
+        link.set_sample(sample)
+        link.connect('MEMORY')
+        until(lambda:link.snapshot().state=='streaming')
+        start=time.monotonic()
+        while time.monotonic()-start<.4:
+            link.set_sample(sample)
+            time.sleep(.02)
+            self.assertEqual(link.snapshot().state,'streaming')
+        self.assertGreaterEqual(len(device.frames()),5)
+    def test_producer_timeout_requires_a_positive_finite_number(self):
+        for value in (0,-1,float('nan'),float('inf'),True,None,'0.25'):
+            with self.subTest(value=value),self.assertRaises(ValueError):
+                SerialLink(producer_timeout=value)
+        self.assertIsInstance(SerialLink(producer_timeout=.1),SerialLink)
     def test_usb_ports_are_offered_before_legacy_serial_ports_without_opening(self):
         ports=[SimpleNamespace(device='/dev/ttyS0'),SimpleNamespace(device='/dev/ttyUSB0'),SimpleNamespace(device='/dev/ttyACM0')]
         with patch('ngk_simulator.link.list_ports.comports',return_value=ports):

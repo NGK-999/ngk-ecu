@@ -3,6 +3,7 @@ from __future__ import annotations
 
 from dataclasses import dataclass, replace
 import json
+import math
 import secrets
 import threading
 import time
@@ -65,16 +66,22 @@ def available_ports() -> list[str]:
 class SerialLink:
     def __init__(self, serial_factory: Callable | None = None, *,
                  handshake_timeout: float = 8.0, reply_timeout: float = 3.0,
-                 session_factory: Callable[[], int] | None = None):
+                 session_factory: Callable[[], int] | None = None,
+                 producer_timeout: float = .25):
+        if (isinstance(producer_timeout, bool) or not isinstance(producer_timeout, (int, float))
+                or not math.isfinite(producer_timeout) or producer_timeout <= 0):
+            raise ValueError('producer_timeout deve ser um número positivo e finito')
         self._factory = serial_factory or serial.Serial
         self._session_factory = session_factory or (lambda: secrets.randbelow(0xFFFFFFFF) + 1)
         self._handshake_timeout = handshake_timeout
         self._reply_timeout = reply_timeout
+        self._producer_timeout = producer_timeout
         self._lock = threading.Lock()
         self._stop = threading.Event()
         self._thread: threading.Thread | None = None
         self._status = LinkStatus()
-        self._sample = Sample()
+        self._sample: Sample | None = None
+        self._produced_at: float | None = None
         self._paused = False
 
     def snapshot(self) -> LinkStatus:
@@ -89,6 +96,9 @@ class SerialLink:
         # Sample is immutable. Only the latest state is retained, never a queue.
         with self._lock:
             self._sample, self._paused = sample, bool(paused)
+            # Identical values still represent fresh production, unlike a
+            # frozen GUI leaving the worker to retransmit an old snapshot.
+            self._produced_at = time.monotonic()
 
     def connect(self, port: str) -> bool:
         if self._thread and self._thread.is_alive():
@@ -147,19 +157,23 @@ class SerialLink:
                     if now - last_reply > self._reply_timeout:
                         raise _LinkFailure('O painel parou de responder. Clique Conectar para retomar.')
                     with self._lock:
-                        sample, paused = self._sample, self._paused
+                        sample, paused, produced_at = self._sample, self._paused, self._produced_at
                     if now >= next_frame:
                         next_frame += .05
                         if next_frame < now:
                             next_frame = now + .05
-                        if not paused:
+                        fresh = (sample is not None and produced_at is not None
+                                 and now - produced_at < self._producer_timeout)
+                        if not paused and fresh:
                             if sequence >= 0xFFFFFFFF:
                                 raise _LinkFailure('Sessão concluída. Conecte novamente para continuar.')
                             sequence += 1
                             send(encode_frame(session, sequence, sample))
-                        self._update(state='paused' if paused else 'streaming', sequence=sequence,
+                        self._update(state='paused' if paused else 'streaming' if fresh else 'source_stale',
+                                     sequence=sequence,
                                      detail='Transmissão pausada: testando perda de comunicação.' if paused
-                                     else 'Enviando simulação ao painel por USB.')
+                                     else 'Enviando simulação ao painel por USB.' if fresh
+                                     else 'Origem sem dados novos. Envio suspenso até a simulação retomar.')
                     if now >= next_status:
                         send(b'sim-status\n')
                         next_status = now + .5

@@ -536,13 +536,13 @@ class SimulatorWindow(QMainWindow):
         if not hasattr(self, "connection_detail"):
             return
         status = self._link.snapshot()
-        active = status.state in {"connecting", "streaming", "paused"}
+        active = status.state in {"connecting", "streaming", "paused", "source_stale"}
         self.connect_button.setEnabled(bool(self.port_combo.currentText().strip()) and not active)
         self.disconnect_button.setEnabled(active)
         self.port_combo.setEnabled(not active)
         self.refresh_ports_button.setEnabled(not active)
         names = {"offline": "OFFLINE", "connecting": "CONECTANDO", "streaming": "USB AO VIVO",
-                 "paused": "USB PAUSADO", "error": "ERRO DE LINK"}
+                 "paused": "USB PAUSADO", "source_stale": "ORIGEM SEM DADOS", "error": "ERRO DE LINK"}
         self.connection_status.setText(names.get(status.state, "OFFLINE"))
         self.connection_detail.setText(status.detail)
 
