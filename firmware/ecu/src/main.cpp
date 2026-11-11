@@ -17,6 +17,11 @@ extern "C" {
 #include "serial_tx.hpp"
 #include "ui.hpp"
 #include "simulation_service.hpp"
+#ifdef NGK_SD_IO_BENCH
+#include "sd_io_service.hpp"
+#include "card_probe.hpp"
+#include <esp_timer.h>
+#endif
 #ifdef NGK_SD_MAINTENANCE
 #include <esp_task_wdt.h>
 #include "card_probe.hpp"
@@ -26,12 +31,20 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
+#ifdef NGK_SD_IO_BENCH
+constexpr const char* Version = "0.4.9-sd-io-bench";
+uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
+#else
 constexpr const char* Version = "0.4.9-layout-preview";
+#endif
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
     uint32_t sectors = 0, type = 0;
     uint64_t identity = 0; // RAM only. Never printed or persisted.
     int formatState = 0; // 0 idle, 1 active, 2 success, -1 failed
+#ifdef NGK_SD_IO_BENCH
+    uint32_t clockHz = 0;
+#endif
 };
 QueueHandle_t snapshots = nullptr;
 Snapshot view;
@@ -78,23 +91,26 @@ bool probe(SPIClass& spi, uint8_t& drive, Geometry& geometry, int frequency = 10
     }
     geometry.sectors = sectors;
     geometry.type = unsigned(sdcard_type(drive));
-#ifdef NGK_SD_MAINTENANCE
+#if defined(NGK_SD_MAINTENANCE) || defined(NGK_SD_IO_BENCH)
     // Failure still permits diagnostics, but never formatting.
     ecu::readCardIdentity(spi, SdSelect, geometry.identity);
 #endif
     return true;
 }
 
-bool mountCard(SPIClass& spi, const Geometry& geometry) {
+bool mountCard(SPIClass& spi, const Geometry& geometry, uint32_t* observedClock = nullptr) {
     SD.end();
+    uint32_t frequency = 8000000;
     bool okay = SD.begin(SdSelect, spi, 8000000, "/sdcard", 3, false);
     if (!okay) {
         SD.end();
+        frequency = 1000000;
         okay = SD.begin(SdSelect, spi, 1000000, "/sdcard", 3, false);
     }
     if (okay && SD.cardSize() / SectorBytes != geometry.sectors) {
         SD.end(); okay = false;
     }
+    if (observedClock) *observedClock = okay ? frequency : 0;
     return okay;
 }
 
@@ -178,7 +194,11 @@ void storageWorker(void*) {
             state.sectors = state.present ? geometry.sectors : 0;
             state.type = state.present ? geometry.type : 0;
             state.identity = state.present ? geometry.identity : 0;
-            state.mounted = state.present && mountCard(spi, geometry);
+            state.mounted = state.present && mountCard(spi, geometry
+#ifdef NGK_SD_IO_BENCH
+                , &state.clockHz
+#endif
+            );
             if (!state.present || !state.mounted || state.sectors != previousSectors ||
                 state.identity != previousIdentity) state.verified = false;
 #ifdef NGK_SD_MAINTENANCE
@@ -187,6 +207,9 @@ void storageWorker(void*) {
             xQueueOverwrite(snapshots, &state);
         }
         if (hasProfileRequest) ecu::profiles::workerProcess(profileRequest, state.mounted);
+#ifdef NGK_SD_IO_BENCH
+        ecu::sdbench::workerPoll(state.mounted, state.sectors, spi, state.identity);
+#endif
 #ifdef NGK_SD_MAINTENANCE
         FormatRequest request{};
         if (xQueueReceive(formatQueue, &request, pdMS_TO_TICKS(100)) == pdTRUE) {
@@ -280,6 +303,9 @@ void printInfo() {
         "\"profile_status\":%u,\"profile_revision\":%u,\"profile_persisted\":%s,"
         "\"simulation_protocol\":%u,\"simulation_enabled\":%s,\"simulation_live\":%s,"
         "\"refresh_mode\":%u,\"reduced_motion\":%s,\"screen_capture_protocol\":%u"
+#ifdef NGK_SD_IO_BENCH
+        ",\"sd_io_benchmark_protocol\":1,\"sd_spi_hz\":%u"
+#endif
 #ifdef NGK_SD_MAINTENANCE
         ",\"format_token\":%u"
 #endif
@@ -303,6 +329,9 @@ void printInfo() {
         simulationProtocol, simulation.enabled ? "true" : "false", simulation.live ? "true" : "false",
         unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false",
         screenCaptureProtocol
+#ifdef NGK_SD_IO_BENCH
+        , data.clockHz
+#endif
 #ifdef NGK_SD_MAINTENANCE
         , data.formatReady ? unsigned(bootToken) : 0U
 #endif
@@ -319,6 +348,38 @@ void printSimulationStatus() {
 #endif
 
 void command(const char* line) {
+#ifdef NGK_SD_IO_BENCH
+    if (!strcmp(line, "sd-io-status")) {
+        const auto state = ecu::sdbench::snapshot();
+        const auto& r = state.result;
+        queuePrintf("{\"kind\":\"sd_io_benchmark\",\"id\":%u,\"mode\":%u,\"state\":\"%s\","
+            "\"phase_started_us\":%llu,\"phase_finished_us\":%llu,\"okay\":%s,"
+            "\"created\":%s,\"removed\":%s,\"card_consistent\":%s,\"error\":%u,"
+            "\"setup_ms\":%u,\"duration_ms\":%u,\"stack_min_bytes\":%u,"
+            "\"read_ops\":%u,\"read_bytes\":%llu,\"read_total_us\":%llu,\"read_p95_upper_us\":%u,\"read_max_us\":%u,"
+            "\"write_ops\":%u,\"write_bytes\":%llu,\"write_total_us\":%llu,\"write_p95_upper_us\":%u,\"write_max_us\":%u,"
+            "\"sync_ops\":%u,\"sync_bytes\":%llu,\"sync_total_us\":%llu,\"sync_p95_upper_us\":%u,\"sync_max_us\":%u}\n",
+            state.request.id, unsigned(state.request.mode), ecu::sdbench::stateText(state.state),
+            static_cast<unsigned long long>(state.phaseStartedUs), static_cast<unsigned long long>(state.phaseFinishedUs),
+            r.okay ? "true" : "false", r.created ? "true" : "false", r.removed ? "true" : "false",
+            state.cardConsistent ? "true" : "false", r.error, r.setupMs, r.durationMs, state.stackMinBytes,
+            r.read.operations, static_cast<unsigned long long>(r.read.bytes), static_cast<unsigned long long>(r.read.totalUs), r.read.p95UpperUs, r.read.maxUs,
+            r.write.operations, static_cast<unsigned long long>(r.write.bytes), static_cast<unsigned long long>(r.write.totalUs), r.write.p95UpperUs, r.write.maxUs,
+            r.sync.operations, static_cast<unsigned long long>(r.sync.bytes), static_cast<unsigned long long>(r.sync.totalUs), r.sync.p95UpperUs, r.sync.maxUs);
+        return;
+    }
+    if (!strncmp(line, "sd-io-bench", 11)) {
+        ecu::sdbench::Request request{};
+        const auto sim = ecu::simulation::snapshot(); // This state belongs to main/UI.
+        ecu::radio::Snapshot radios{};
+        const bool radiosReady = ecu::radio::snapshot(radios) && radios.running;
+        const bool accepted = ecu::sdbench::parseRequest(line, request) &&
+            sim.enabled && sim.live && view.mounted && view.sectors == request.sectors &&
+            radiosReady && !radios.wifiEnabled && !radios.bleEnabled && ecu::sdbench::request(request);
+        queueLine(accepted ? "SD_IO_QUEUED" : "SD_IO_REFUSED");
+        return;
+    }
+#endif
 #ifndef NGK_SD_MAINTENANCE
     if (!strcmp(line, "screen-capture")) {
         // serialCommands accepts no next line while the bounded outbox is pending.
@@ -373,7 +434,14 @@ void command(const char* line) {
         return;
     }
     if (!strcmp(line, "motion-bench")) {
-        queueLine(ecu::ui::startMotionBenchmark() ? "MOTION_BENCH_STARTED" : "MOTION_BENCH_REFUSED");
+#ifdef NGK_SD_IO_BENCH
+        const uint64_t before = esp_timer_get_time();
+#endif
+        const bool started = ecu::ui::startMotionBenchmark();
+#ifdef NGK_SD_IO_BENCH
+        if (started) motionObservedStartUs = before;
+#endif
+        queueLine(started ? "MOTION_BENCH_STARTED" : "MOTION_BENCH_REFUSED");
         return;
     }
     if (!strcmp(line, "ui-smooth")) {
@@ -445,6 +513,9 @@ void setup() {
     snapshots = xQueueCreate(1, sizeof(Snapshot));
     if (!snapshots) halt("FATAL snapshot queue");
     if (!ecu::profiles::begin()) halt("FATAL profiles queue");
+#ifdef NGK_SD_IO_BENCH
+    if (!ecu::sdbench::begin()) halt("FATAL SD benchmark queues");
+#endif
     if (!ecu::ui::begin()) halt("FATAL UI initialization");
 #ifndef NGK_SD_MAINTENANCE
     // Radio work starts only after LVGL has its owner and initial allocation.
@@ -455,7 +526,13 @@ void setup() {
     formatQueue = xQueueCreate(1, sizeof(FormatRequest));
     if (!formatQueue) halt("FATAL storage queue");
 #endif
-    if (xTaskCreatePinnedToCore(storageWorker, "ngk-sd", 8192, nullptr, 1, nullptr, 0) != pdPASS) {
+    if (xTaskCreatePinnedToCore(storageWorker, "ngk-sd",
+#ifdef NGK_SD_IO_BENCH
+        12288,
+#else
+        8192,
+#endif
+        nullptr, 1, nullptr, 0) != pdPASS) {
         halt("FATAL storage worker");
     }
     queueLine("NGK ECU BENCH: sensor inputs and actuators disabled");
@@ -482,7 +559,12 @@ void loop() {
     }
     static ecu::ui::MotionBenchmarkReport motionReport{};
     static bool motionReportPending = false;
-    if (!motionReportPending) motionReportPending = ecu::ui::takeMotionBenchmarkReport(motionReport);
+    if (!motionReportPending) {
+        motionReportPending = ecu::ui::takeMotionBenchmarkReport(motionReport);
+#ifdef NGK_SD_IO_BENCH
+        if (motionReportPending) motionObservedEndUs = esp_timer_get_time();
+#endif
+    }
     if (motionReportPending) {
         if (queuePrintf("{\"kind\":\"ui_motion_benchmark\",\"synthetic\":true,\"duration_ms\":%u,"
             "\"presentations\":%u,\"interval_p95_us\":%u,\"interval_max_us\":%u,"
@@ -491,7 +573,11 @@ void loop() {
             "\"reduced_motion\":%s,\"ramp_updates\":%u,\"ramp_gap_p95_upper_us\":%u,"
             "\"ramp_gap_max_us\":%u,\"instrument_passes\":%u,\"number_passes\":%u,"
             "\"detail_passes\":%u,\"idle_skips\":%u,\"sample_presentations\":%u,"
-            "\"sample_to_present_p95_ms\":%u,\"sample_to_present_max_ms\":%u,\"interrupted\":%s}\n",
+            "\"sample_to_present_p95_ms\":%u,\"sample_to_present_max_ms\":%u,\"interrupted\":%s"
+#ifdef NGK_SD_IO_BENCH
+            ",\"observed_start_us\":%llu,\"observed_end_us\":%llu"
+#endif
+            "}\n",
             motionReport.durationMs, motionReport.presentations, motionReport.intervalP95Us,
             motionReport.intervalMaxUs, motionReport.maxPixels, motionReport.touchPollMaxGapUs,
             motionReport.uiTickTotalUs, motionReport.uiTickMaxUs,
@@ -500,7 +586,11 @@ void loop() {
             motionReport.instrumentPasses, motionReport.numberPasses, motionReport.detailPasses,
             motionReport.idleSkips, motionReport.samplePresentations,
             motionReport.sampleToPresentP95Ms, motionReport.sampleToPresentMaxMs,
-            motionReport.interrupted ? "true" : "false")) motionReportPending = false;
+            motionReport.interrupted ? "true" : "false"
+#ifdef NGK_SD_IO_BENCH
+            , static_cast<unsigned long long>(motionObservedStartUs), static_cast<unsigned long long>(motionObservedEndUs)
+#endif
+        )) motionReportPending = false;
     }
     static int lastFormatState = 0;
     if (view.formatState != lastFormatState) {

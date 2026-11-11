@@ -115,3 +115,16 @@ TTL e alarmes continuam observados em cada tick. Não há leitura SD por quadro.
 `motion-bench` mede separadamente o caminho de interpolação com fonte USB de
 20 Hz. Tempo decorrido de `ui::tick` inclui espera/preempção e não permite
 declarar percentual de CPU livre ou orçamento garantido para aquisição real.
+
+## Medição de I/O contínuo preparada
+
+O diagnóstico separado `ecu-sd-benchmark` compara escrita 512 B, escrita 4 KiB,
+sincronização por bloco ou por lote de 64 KiB e leitura 4 KiB. A fase SD 15 s
+envolve integralmente a janela UI 10 s, comprovada pelos relógios do dispositivo.
+O arquivo artificial exclusivo é limitado a 1 MiB, verificado e removido pela
+própria execução. Não há esse comando ou seus buffers no build normal.
+
+Em 2026-11-11, o software foi preparado e validado sem abrir porta física.
+A USB está sem ACL temporária; medição física pendente. Não usar os resultados
+anteriores de remount como evidência de I/O contínuo. Método, limites e comandos
+em [ensaio-sd.md](ensaio-sd.md).

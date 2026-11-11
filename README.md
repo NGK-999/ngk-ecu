@@ -162,3 +162,7 @@ O simulador permite continuar validando o painel. A proteção de produção
 suspende o envio se o modelo deixar de atualizar por 250 ms, preservando
 valores constantes que continuam sendo produzidos. Testes, limites e próximos
 ensaios estão em [validação sem sensores](docs/validacao-sem-sensores.md).
+
+O [ensaio de leitura/escrita do SD com a tela animando](docs/ensaio-sd.md)
+está preparado em um build temporário separado. A medição física aguarda
+liberação da USB pelo operador; ainda não há resultado de I/O contínuo.

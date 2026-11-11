@@ -860,3 +860,33 @@ Relatório privado contém somente agregados. Não houve USB física, ESP32,
 LCD, sensores ou veículo neste ensaio; a bancada da seção anterior é separada.
 Código de produção não foi alterado durante a execução. O aplicativo normal
 foi aberto separadamente, offline, para uso do operador.
+
+## Preparação do ensaio de I/O SD — 2026-11-11
+
+Usuário aprovou medir piores pausas de leitura e escrita enquanto o painel
+anima. Criados motor portátil, parser estrito, serviço isolado por flag de
+diagnóstico e cliente físico com execução explícita. Arquivo 1 MiB exclusivo,
+padrão por geração com readback e limpeza somente do caminho criado;
+CID confere continuidade em RAM, sem exportar identificação.
+
+**Sem hardware:** 18 executáveis nativos ASan/UBSan passaram, incluindo falhas
+de criação, escrita/leitura curta, seek/sync, close/remove, corrupção, timeout,
+relógio regressivo e gramática inválida. Revisão independente de motor e
+integração aprovou escopo/qualidade. Builds normal, manutenção e diagnóstico
+passaram. RAM estática normal 96712 B/flash 1416621 B; diagnóstico 96744 B/
+flash 1423649 B. Stack SD do diagnóstico 12 KiB, normal 8 KiB. Auditoria 14 sinais,
+zero erros e três avisos de strapping conhecidos; nenhum GPIO mudou.
+
+O runner canônico `sh scripts/test-simulator.sh` passou **86 testes**: 74
+anteriores e 12 novos do cliente, com transporte/relógio em memória. As regressões
+cobrem ACK perdido, falha após envio, limpeza desconhecida, janela SD 15 s,
+I/O efetivo, cadência 19–21 Hz/gap 100 ms e trabalho prévio ativo. Revisão
+independente do cliente aprovou as correções. Ctrl-C permanece um aborto do
+cliente, sem aguardar o worker; limitação documentada e resultado reprovado.
+
+**Bancada pendente:** porta existente sem ACL para esta sessão; leitura/escrita
+negadas pelo Linux. Liberação específica solicitada ao operador. Não houve
+gravação de firmware, criação de arquivo SD ou medição física nesta preparação.
+O normal 0.4.9 instalado anteriormente permanece como último estado observado.
+O firmware de diagnóstico deverá ser temporário e o normal preservado antes
+da gravação, restaurado ao fim. Ver [ensaio-sd.md](ensaio-sd.md).
