@@ -214,6 +214,11 @@ conserva sua pendência até apresentar o valor terminal; um slot ocioso não é
 emprestado ao outro. Urgência, TTL e pintura completa atualizam ambos
 imediatamente. DEMO usa agenda independente.
 
+Na 0.4.11, o relógio evita módulo de 64 bits no caso comum. O fator da escala
+RPM só muda quando a escala muda, e barra/número compartilham a mesma amostra
+da trajetória. Oráculos confirmam as fórmulas anteriores e o arredondamento Q8;
+[verificação e limites](otimizacao-recursos-0411.md).
+
 Modos 33/50 ms e Reduzir movimento continuam disponíveis. Quadros atrasados
 são descartados; não há recuperação acumulada que bloqueie o trabalho atual.
 O modo Suave foi ativado e salvo após a bancada identificar modo Econômico

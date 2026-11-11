@@ -705,7 +705,11 @@ void runWorker(void*) {
     worker.publish();
     for (;;) {
         Command command;
-        if (xQueueReceive(queue, &command, pdMS_TO_TICKS(20)) == pdTRUE) {
+        const auto wait = worker.state.wifiEnabled || worker.state.bleEnabled ?
+            pdMS_TO_TICKS(20) : portMAX_DELAY;
+        const bool received = xQueueReceive(queue, &command, wait) == pdTRUE;
+        ++worker.state.workerWakeups;
+        if (received) {
             worker.process(command);
             policy::erase(&command, sizeof(command));
         }

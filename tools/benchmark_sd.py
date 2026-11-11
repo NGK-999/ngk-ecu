@@ -9,7 +9,7 @@ import time
 
 
 INFO = set("firmware build mode sensor_inputs_enabled actuators_enabled simulation_protocol sd_io_benchmark_protocol simulation_enabled refresh_mode reduced_motion sd_present sd_mounted sd_rw_ok sd_sectors sd_mib sd_spi_hz profile_persisted".split())
-RADIOS = set("running wifi_enabled wifi_connected wifi_connecting wifi_scanning ble_enabled ble_advertising ble_connected ble_pairing_pending memory_failure".split())
+RADIOS = set("running wifi_enabled wifi_connected wifi_connecting wifi_scanning ble_enabled ble_advertising ble_connected ble_pairing_pending worker_wakeups memory_failure".split())
 UI = set("synthetic duration_ms presentations interval_p95_us interval_max_us max_pixels transferred_pixels touch_poll_max_gap_us ui_tick_total_us ui_tick_max_us refresh_mode reduced_motion ramp_updates ramp_gap_p95_upper_us ramp_gap_max_us interrupted ui_cpu_total_us ui_wait_total_us instrument_passes number_passes rpm_number_passes speed_number_passes rpm_number_gap_max_us speed_number_gap_max_us instrument_gap_max_us ramp_stable_passes ramp_gap_without_stable_max_us ramp_gap_with_stable_max_us detail_passes idle_skips sample_presentations sample_to_present_p95_ms sample_to_present_max_ms observed_start_us observed_end_us".split())
 SD = set("id mode state phase_started_us phase_finished_us okay created removed card_consistent error setup_ms duration_ms stack_min_bytes".split())
 for _prefix in ("read", "write", "sync"):
@@ -30,7 +30,7 @@ def bounded(value, keys):
 
 
 def validate_identity(info, radios, expected_mib):
-    expected = {"firmware": "0.4.10-sd-io-bench", "build": "normal", "mode": "bench",
+    expected = {"firmware": "0.4.11-sd-io-bench", "build": "normal", "mode": "bench",
                 "sensor_inputs_enabled": False, "actuators_enabled": False,
                 "simulation_protocol": 1, "sd_io_benchmark_protocol": 1,
                 "simulation_enabled": False, "sd_present": True,

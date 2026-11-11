@@ -92,7 +92,8 @@ std::array<lv_obj_t*, 18> keyLabels{}, keyButtons{};
 lv_obj_t* rpmRampObject = nullptr;
 unsigned rpmRampPosition = 0;  // Q8: fractional column coverage, no floating framebuffer.
 bool rpmRampValid = false, rpmRampSimulation = false;
-std::uint16_t rpmRampScale = 0;
+RpmRampScale rpmRampScale;
+static_assert(RpmRampScale::width == rpmBar.w, "Q8 ramp math must match the cockpit layout");
 std::uint8_t rpmRampYellow = 0, rpmRampRed = 0;
 std::array<lv_obj_t*, 4> menuIcons{};
 lv_obj_t* pairOverlay = nullptr;
@@ -607,15 +608,15 @@ void drawRpmGraduations(lv_event_t* event) {
 bool updateRpmBar(float rpm, bool valid, bool simulationMode = false) {
     if (!rpmRampObject) return false;
     const auto& settings = settingsEditor.values;
-    if (rpmRampScale != settings.rpmScale) refreshRpmScaleCaption();
-    const auto progress = valid ? static_cast<unsigned>(std::lround(
-        std::clamp(rpm, 0.0F, float(settings.rpmScale)) * (rpmBar.w * 256.0F / settings.rpmScale))) : 0U;
+    const bool scaleChanged = rpmRampScale.update(settings.rpmScale);
+    if (scaleChanged) refreshRpmScaleCaption();
+    const auto progress = valid ? rpmRampScale.progress(rpm) : 0U;
     const auto previous = rpmRampPosition;
     const bool recolor = valid != rpmRampValid || simulationMode != rpmRampSimulation ||
-        rpmRampScale != settings.rpmScale || rpmRampYellow != settings.rpmYellowPercent ||
+        scaleChanged || rpmRampYellow != settings.rpmYellowPercent ||
         rpmRampRed != settings.rpmRedPercent;
     rpmRampPosition = progress; rpmRampValid = valid; rpmRampSimulation = simulationMode;
-    rpmRampScale = settings.rpmScale; rpmRampYellow = settings.rpmYellowPercent; rpmRampRed = settings.rpmRedPercent;
+    rpmRampYellow = settings.rpmYellowPercent; rpmRampRed = settings.rpmRedPercent;
     if (recolor) lv_obj_invalidate(rpmRampObject);
     else if (previous != progress) {
         lv_area_t dirty{};
@@ -764,7 +765,7 @@ void renderPage(Page next) {
     demoNumberSchedule.reset(); demoNumbersFirstPaint = true;
     menuIconMotion.reset(); menuClock.reset(); usbPaintPending = usbDetailsPending = true;
     usbRampPending = true;
-    rpmRampPosition = 0; rpmRampValid = rpmRampSimulation = false; rpmRampScale = 0;
+    rpmRampPosition = 0; rpmRampValid = rpmRampSimulation = false; rpmRampScale.reset();
     dashboardGesture.reset(); debounce.reset(); gesturePosition = {};
     lv_obj_clean(pageContent);
     if (page != Page::Keyboard) {
@@ -1310,11 +1311,17 @@ void serviceUsbSimulation() {
     }
     if (page == Page::Panel) {
         bool instrumentChanged = false;
+        // Select the numeric slot before sampling. RPM is shared by the ramp
+        // and its number at this timestamp, after all urgent retargets above.
+        const auto numbers = usbNumberSchedule.select(now, instrumentFrameDue,
+            settingsEditor.values.refreshMode, settingsEditor.values.reducedMotion,
+            paintNumbers, enableStaggered);
+        const auto dispatchedAt = usbRampPending && motionCaptureActive ? clockUs() : 0U;
+        const auto rpmAtNow = usbRampPending || (numbers & NumberSchedule::Rpm) ? rpmMotion.value(now) : 0.0F;
         // Queue only an active moving edge; static instruments do no further
         // interpolation/formatting, while source TTL and touch keep running.
         if (usbRampPending) {
-            const auto dispatchedAt = motionCaptureActive ? clockUs() : 0U;
-            instrumentChanged = updateRpmBar(rpmMotion.value(now), view.rpmValid, source.enabled);
+            instrumentChanged = updateRpmBar(rpmAtNow, view.rpmValid, source.enabled);
             usbRampPending = rpmMotion.animating(now);
             if (motionCaptureActive) {
                 ++motionCaptureReport.instrumentPasses;
@@ -1330,12 +1337,9 @@ void serviceUsbSimulation() {
         }
         // The reference retains combined numeric frames. The candidate gives
         // each number its own alternating Smooth slot; the ramp keeps60Hz.
-        const auto numbers = usbNumberSchedule.select(now, instrumentFrameDue,
-            settingsEditor.values.refreshMode, settingsEditor.values.reducedMotion,
-            paintNumbers, enableStaggered);
         if (numbers & NumberSchedule::Rpm)
             instrumentChanged |= setNumber(rpmValue, view.rpmValid,
-                static_cast<std::int32_t>(std::lround(rpmMotion.value(now))));
+                static_cast<std::int32_t>(std::lround(rpmAtNow)));
         if (numbers & NumberSchedule::Speed)
             instrumentChanged |= setNumber(speedValue, view.speedValid,
                 static_cast<std::int32_t>(std::lround(speedMotion.value(now))));

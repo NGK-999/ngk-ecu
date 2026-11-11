@@ -88,6 +88,29 @@ private:
     std::uint32_t generation_ = 0, startedAt_ = 0, duration_ = 0;
     bool valid_ = false;
 };
+
+// The cockpit's304px ramp uses Q8 column positions. Keep the exact original
+// division result when the scale changes, then only clamp/multiply/round.
+class RpmRampScale {
+public:
+    static constexpr unsigned width = 304;
+    // Configure a positive UiSettings-validated scale before progress(); RPM
+    // comes from the finite presentation trajectory (NaN is outside contract).
+    bool update(std::uint16_t scale) {
+        if (scale_ == scale) return false;
+        factor_ = (width * 256.0F) / scale;
+        scale_ = scale;
+        return true;
+    }
+    unsigned progress(float rpm) const {
+        return static_cast<unsigned>(std::lround(std::clamp(rpm, 0.0F, float(scale_)) * factor_));
+    }
+    void reset() { *this = RpmRampScale{}; }
+private:
+    std::uint16_t scale_ = 0;
+    float factor_ = 0;
+};
+
 class FrameClock {
 public:
     // Smooth is rational 60Hz, not fixed17ms. Other modes retain33/50ms.
@@ -106,8 +129,15 @@ public:
         const std::uint32_t threshold = mode == RefreshMode::Smooth ? 1000 :
             (mode == RefreshMode::Economy ? 50 : 33);
         const auto accumulated = std::uint64_t(phase_) + std::uint64_t(elapsed) * units;
+        // Normal polling advances less than two frames. Prove the bound before
+        // narrowing: the remainder is either the value itself or one subtraction.
+        if (accumulated < std::uint64_t(threshold) * 2U) {
+            const bool due = accumulated >= threshold;
+            phase_ = static_cast<std::uint32_t>(due ? accumulated - threshold : accumulated);
+            return due;
+        }
         phase_ = static_cast<std::uint32_t>(accumulated % threshold);
-        return accumulated >= threshold;
+        return true;
     }
     void reset() { *this = FrameClock{}; }
 private:

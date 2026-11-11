@@ -934,3 +934,24 @@ Método, contadores, fases não idênticas da onda, custo de tempo e limites em
 [fluidez 0.4.10](fluidez-0410.md) e nos [agregados](measurements/frame-scheduling-2026-11-11.json).
 Sem validação óptica, aquisição real ou operação no veículo. NVS, cartão,
 calibração, partições e GPIOs preservados; SIM e rádios encerrados.
+
+
+## Trabalho repetido e serviços ociosos — 0.4.11
+
+Normal instalado em 2026-11-11 após 20 testes nativos ASan/UBSan, 87 do simulador,
+quatro builds e auditoria sem erros. Oráculo de 1.127.278 consultas do relógio,
+23 escalas RPM e equivalência de amostragem urgente/terminal passaram.
+Worker de rádio bloqueia na fila quando ambos desligados; o contador observou
+zero retornos durante os ensaios off e voltou a crescer nos casos ativos.
+
+Nove casos concluídos com cleanup: três bases e seis candidatos. Os cinco
+candidatos em movimento tiveram 600 apresentações; off p95 de 24,49–24,60 ms,
+tick máximo de 14,29–14,30 ms. Fases/binários diferentes impedem atribuir
+economia percentual de CPU ao tempo acumulado. Capturas normal/alertas
+permanecem byte a byte iguais aos PNGs anteriores.
+
+Método, footprint (+16 B de RAM estática), definição do contador e limites em
+[otimização 0.4.11](otimizacao-recursos-0411.md) e nos
+[agregados](measurements/resource-budget-2026-11-11.json). A cópia no RX BLE
+permanece; a API por referência é protegida no SDK instalado. Aquisição física,
+condicionamento e atuação não foram habilitados.

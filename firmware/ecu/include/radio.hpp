@@ -26,6 +26,8 @@ struct WifiNetwork {
 // Copy only to the local UI. SSIDs and ephemeral pairing digits must never be
 // copied into logs, SD profiles, telemetry or the BLE metadata channel.
 struct Snapshot {
+    // Completed queue waits (commands or timeouts); diagnostics compare deltas.
+    uint32_t workerWakeups = 0;
     WifiNetwork networks[maxNetworks]{};
     char wifiSsid[33]{};
     char savedSsid[33]{};

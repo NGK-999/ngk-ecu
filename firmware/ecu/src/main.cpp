@@ -32,12 +32,12 @@ namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
 #ifdef NGK_SD_IO_BENCH
-constexpr const char* Version = "0.4.10-sd-io-bench";
+constexpr const char* Version = "0.4.11-sd-io-bench";
 uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
 #elif defined(NGK_COMBINED_NUMBERS)
-constexpr const char* Version = "0.4.10-reference";
+constexpr const char* Version = "0.4.11-reference";
 #else
-constexpr const char* Version = "0.4.10-staggered";
+constexpr const char* Version = "0.4.11-resource";
 #endif
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
@@ -64,6 +64,7 @@ bool queuePrintf(const char* format, ...) {
 bool queueLine(const char* line) { return serialTx.append("%s\r\n", line); }
 
 void pumpSerial() {
+    if (!serialTx.pending()) return;
     const auto available = Serial.availableForWrite();
     if (available <= 0) return;
     const auto count = serialTx.chunkSize(static_cast<std::size_t>(available));
@@ -271,13 +272,13 @@ void printRadios() {
         "\"wifi_connected\":%s,\"wifi_connecting\":%s,\"wifi_scanning\":%s,"
         "\"ble_enabled\":%s,\"ble_advertising\":%s,\"ble_connected\":%s,"
         "\"ble_authenticated\":%s,\"ble_pairing_pending\":%s,\"memory_failure\":%s,"
-        "\"status\":%u,\"heap_free\":%u,\"heap_min\":%u,\"heap_largest\":%u}\n",
+        "\"status\":%u,\"worker_wakeups\":%u,\"heap_free\":%u,\"heap_min\":%u,\"heap_largest\":%u}\n",
         state.running ? "true" : "false", state.wifiEnabled ? "true" : "false",
         state.wifiConnected ? "true" : "false", state.wifiConnecting ? "true" : "false",
         state.wifiScanInProgress ? "true" : "false", state.bleEnabled ? "true" : "false",
         state.bleAdvertising ? "true" : "false", state.bleConnected ? "true" : "false",
         state.bleAuthenticated ? "true" : "false", state.blePairingPending ? "true" : "false",
-        state.memoryFailure ? "true" : "false", unsigned(state.status), ESP.getFreeHeap(),
+        state.memoryFailure ? "true" : "false", unsigned(state.status), state.workerWakeups, ESP.getFreeHeap(),
         ESP.getMinFreeHeap(), unsigned(heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT)));
 }
 
@@ -542,9 +543,10 @@ void setup() {
 }
 
 void loop() {
-    xQueuePeek(snapshots, &view, 0);
+    const bool storageChanged = xQueueReceive(snapshots, &view, 0) == pdTRUE;
     serialCommands();
-    ecu::ui::setStorage(view.mounted, uint32_t(uint64_t(view.sectors) * SectorBytes / (1024 * 1024)));
+    if (storageChanged)
+        ecu::ui::setStorage(view.mounted, uint32_t(uint64_t(view.sectors) * SectorBytes / (1024 * 1024)));
     ecu::ui::tick();
     static ecu::ui::BenchmarkReport report{};
     static bool reportPending = false;
