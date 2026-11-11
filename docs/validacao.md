@@ -916,3 +916,21 @@ Consulta final: normal 0.4.9, SD 30255 MiB montado, perfil persistido, SIM/rádi
 off, diagnóstico ausente, sensores/atuadores false. Sem formato, NVS, calibração
 ou partições alteradas. Heap livre 121124 B/maior bloco 94196 B na consulta final.
 Método, dados revisados e orientação em [ensaio-sd.md](ensaio-sd.md).
+
+
+## Agendamento alternado — 0.4.10
+
+Versão normal instalada em 2026-11-11, após 19 executáveis nativos com ASan/UBSan,
+87 testes do simulador, quatro builds e auditoria sem erros. Referência e candidato
+comparados no mesmo binário temporário: p95 entre apresentações −27%, maior tick
+−21,5%, tempo acumulado da UI +4,4%. Três casos no aplicativo final confirmaram
+p95 de 24,24–24,43 ms e tick máximo de 14,49–14,51 ms; repouso sem novo desenho.
+Refresh SD pontual e captura de dois estados também concluídos. Pixels das
+capturas coincidem byte a byte com a disposição anterior.
+
+O relatório conserva a distinção entre despacho, novo desenho da rampa e
+apresentação DMA, incluindo os gaps de 34 ms associados a passes estáveis.
+Método, contadores, fases não idênticas da onda, custo de tempo e limites em
+[fluidez 0.4.10](fluidez-0410.md) e nos [agregados](measurements/frame-scheduling-2026-11-11.json).
+Sem validação óptica, aquisição real ou operação no veículo. NVS, cartão,
+calibração, partições e GPIOs preservados; SIM e rádios encerrados.

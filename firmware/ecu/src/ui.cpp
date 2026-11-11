@@ -39,6 +39,11 @@ const lv_font_t* const rpmDigits = &ngk_cockpit_48;
 const lv_font_t* const speedDigits = &ngk_cockpit_84;
 constexpr const char* unknown = "--";
 constexpr const char* noSignal = "SEM SINAL";
+#ifdef NGK_COMBINED_NUMBERS
+const bool enableStaggered = false;
+#else
+const bool enableStaggered = true;
+#endif
 enum class Page : std::uint8_t { Menu, Panel, Sensors, Settings, System, Networks, Keyboard, Confirm, SettingsHome };
 
 Display display;
@@ -112,11 +117,13 @@ bool usbWasEnabled = false;
 RpmWarning usbRpmWarning = RpmWarning::Normal;
 std::uint32_t usbRpmSession = 0;
 ScalarMotion rpmMotion, speedMotion, menuIconMotion;
-FrameClock instrumentClock, numberClock, menuClock, demoClock;
+FrameClock instrumentClock, menuClock, demoClock;
+NumberSchedule usbNumberSchedule, demoNumberSchedule;
+bool demoNumbersFirstPaint = true;
 simulation::View usbView{};
 bool usbViewReady = false, usbPaintPending = true, usbDetailsPending = true;
 bool usbSourceEnabled = false, usbSourceLive = false;
-bool usbRampPending = true, usbNumbersPending = true;
+bool usbRampPending = true;
 std::uint32_t usbSourceSequence = 0;
 std::uint8_t usbSourceFaults = 0;
 SpeedUnit usbSpeedUnit = SpeedUnit::Kmh;
@@ -168,6 +175,10 @@ MotionBenchmarkReport motionCaptureReport{};
 std::uint32_t motionCaptureStarted = 0, motionCaptureLastFrame = 0, motionCapturePixels = 0;
 std::uint32_t motionCaptureTouchAt = 0;
 std::uint32_t motionRampAt = 0;
+std::uint32_t motionInstrumentAt = 0;
+bool motionInstrumentSeen = false, motionRampStableSincePresent = false;
+std::uint32_t motionRpmNumberAt = 0, motionSpeedNumberAt = 0;
+bool motionRpmNumberSeen = false, motionSpeedNumberSeen = false;
 std::array<std::uint16_t, 64> motionRampGapBins{};
 PerfWindow<128> samplePresentationTimes;
 bool samplePresentationPending = false, sampleObservedPending = false;
@@ -243,11 +254,15 @@ void completeFlush() {
             if (motionCaptureReport.rampUpdates) {
                 const auto gap = elapsedUs(now, motionRampAt);
                 motionCaptureReport.rampGapMaxUs = std::max(motionCaptureReport.rampGapMaxUs, gap);
+                auto& classifiedMax = motionRampStableSincePresent ?
+                    motionCaptureReport.rampGapWithStableMaxUs : motionCaptureReport.rampGapWithoutStableMaxUs;
+                classifiedMax = std::max(classifiedMax, gap);
                 auto& bin = motionRampGapBins[std::min(63U, gap / 1000U)];
                 if (bin != UINT16_MAX) ++bin;
             }
             ++motionCaptureReport.rampUpdates;
             motionRampAt = now;
+            motionRampStableSincePresent = false;
         }
         pendingFlush = nullptr;
         pendingFlushLast = false;
@@ -275,8 +290,11 @@ void flushDisplay(lv_disp_drv_t* driver, const lv_area_t* area, lv_color_t* pixe
     const auto rampBottom = rpmBar.y + rpmBar.h - 1;
     pendingRampFlush = motionCaptureActive && area->y1 <= rampBottom && area->y2 >= rampBottom &&
         area->x1 < rpmBar.x + rpmBar.w && area->x2 >= rpmBar.x;
-    if (motionCaptureActive) motionCapturePixels +=
-        static_cast<std::uint32_t>(area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1);
+    if (motionCaptureActive) {
+        const auto pixels = static_cast<std::uint32_t>(area->x2 - area->x1 + 1) * (area->y2 - area->y1 + 1);
+        motionCapturePixels += pixels;
+        motionCaptureReport.transferredPixels += pixels;
+    }
     display.startWrite();
     display.pushImageDMA(area->x1, area->y1, area->x2 - area->x1 + 1,
                          area->y2 - area->y1 + 1,
@@ -482,6 +500,7 @@ void refreshRpmScaleCaption() {
 
 void applyPreview() {
     usbPaintPending = true;
+    demoNumberSchedule.reset(); demoNumbersFirstPaint = true;
     refreshRpmScaleCaption();
     display.setBrightness(static_cast<std::uint8_t>(settingsEditor.values.brightness * 255U / 100U));
     if (registeredDisplay && benchmarkPhase == BenchmarkPhase::Idle) {
@@ -740,9 +759,11 @@ void renderPage(Page next) {
     settingValues.fill(nullptr); networkLabels.fill(nullptr); networkButtons.fill(nullptr);
     keyLabels.fill(nullptr); keyButtons.fill(nullptr); rpmRampObject = nullptr;
     menuIcons.fill(nullptr);
-    rpmMotion.reset(); speedMotion.reset(); instrumentClock.reset(); numberClock.reset(); demoClock.reset();
+    rpmMotion.reset(); speedMotion.reset(); instrumentClock.reset(); demoClock.reset();
+    usbNumberSchedule.reset(); usbNumberSchedule.request(NumberSchedule::Both);
+    demoNumberSchedule.reset(); demoNumbersFirstPaint = true;
     menuIconMotion.reset(); menuClock.reset(); usbPaintPending = usbDetailsPending = true;
-    usbRampPending = usbNumbersPending = true;
+    usbRampPending = true;
     rpmRampPosition = 0; rpmRampValid = rpmRampSimulation = false; rpmRampScale = 0;
     dashboardGesture.reset(); debounce.reset(); gesturePosition = {};
     lv_obj_clean(pageContent);
@@ -1200,6 +1221,7 @@ void serviceUsbSimulation() {
     if (!source.enabled && !usbWasEnabled) {
         usbViewReady = false;
         rpmMotion.reset(); speedMotion.reset();
+        usbNumberSchedule.reset();
         return;
     }
     const auto now = millis();
@@ -1241,35 +1263,39 @@ void serviceUsbSimulation() {
     // Snapshot observes TTL every tick; conversion and formatting happen only
     // for new data or a scheduled presentation. Safety/status never wait on easing.
     if (calibrating || pairOverlay) {
-        rpmMotion.reset(); speedMotion.reset(); numberClock.reset(); usbPaintPending = true;
+        rpmMotion.reset(); speedMotion.reset(); usbPaintPending = true;
+        usbNumberSchedule.reset();
         return;
     }
+    bool instrumentFrameDue = false;
     if (page == Page::Panel) {
         if (rawChanged || usbPaintPending) {
-            const MotionOptions options{source.frame.session, true, settingsEditor.values.reducedMotion, urgent};
+            const MotionOptions options{source.frame.session, true, settingsEditor.values.reducedMotion,
+                                        urgent || usbPaintPending};
             if (rpmChanged || usbPaintPending) {
                 auto rpmOptions = options; rpmOptions.valid = view.rpmValid;
                 const auto delta = float(view.rpm) - rpmMotion.value(now);
                 rpmMotion.retarget(float(view.rpm), now,
                     adaptiveMotionDuration(delta, float(settingsEditor.values.rpmScale), 100, 40), rpmOptions);
-                usbRampPending = usbNumbersPending = true;
+                usbRampPending = true;
+                usbNumberSchedule.request(NumberSchedule::Rpm);
             }
             if (speedChanged || usbPaintPending) {
                 auto speedOptions = options; speedOptions.valid = view.speedValid;
                 const auto delta = float(view.speed) - speedMotion.value(now);
                 speedMotion.retarget(float(view.speed), now,
                     adaptiveMotionDuration(delta, speedDisplay(250.0F, settingsEditor.values.speedUnit), 120, 60), speedOptions);
-                usbNumbersPending = true;
+                usbNumberSchedule.request(NumberSchedule::Speed);
             }
         }
         // Pending flags survive the end of easing until the final ramp AND
         // slower numeric presentation have each consumed the exact target.
-        if (!usbPaintPending && !usbDetailsPending && !usbRampPending && !usbNumbersPending) {
+        if (!usbPaintPending && !usbDetailsPending && !usbRampPending && !usbNumberSchedule.pending()) {
             if (motionCaptureActive) ++motionCaptureReport.idleSkips;
             return;
         }
-        const bool due = instrumentClock.due(now, settingsEditor.values.refreshMode);
-        if (!urgent && !usbPaintPending && !due) return;
+        instrumentFrameDue = instrumentClock.due(now, settingsEditor.values.refreshMode);
+        if (!urgent && !usbPaintPending && !instrumentFrameDue) return;
     } else if (!rawChanged && !usbPaintPending) return;
     const bool paintNumbers = urgent || usbPaintPending;
     const bool paintDetails = usbDetailsPending || usbPaintPending;
@@ -1287,17 +1313,54 @@ void serviceUsbSimulation() {
         // Queue only an active moving edge; static instruments do no further
         // interpolation/formatting, while source TTL and touch keep running.
         if (usbRampPending) {
+            const auto dispatchedAt = motionCaptureActive ? clockUs() : 0U;
             instrumentChanged = updateRpmBar(rpmMotion.value(now), view.rpmValid, source.enabled);
             usbRampPending = rpmMotion.animating(now);
-            if (motionCaptureActive) ++motionCaptureReport.instrumentPasses;
+            if (motionCaptureActive) {
+                ++motionCaptureReport.instrumentPasses;
+                if (motionInstrumentSeen)
+                    motionCaptureReport.instrumentGapMaxUs = std::max(motionCaptureReport.instrumentGapMaxUs,
+                        elapsedUs(dispatchedAt, motionInstrumentAt));
+                motionInstrumentAt = dispatchedAt; motionInstrumentSeen = true;
+                if (!instrumentChanged) {
+                    ++motionCaptureReport.rampStablePasses;
+                    motionRampStableSincePresent = true;
+                }
+            }
         }
-        const auto numericMode = settingsEditor.values.refreshMode == RefreshMode::Smooth ?
-            RefreshMode::Balanced : settingsEditor.values.refreshMode;
-        if (usbNumbersPending && (paintNumbers || numberClock.due(now, numericMode))) {
-            instrumentChanged |= setNumber(rpmValue, view.rpmValid, static_cast<std::int32_t>(std::lround(rpmMotion.value(now))));
-            instrumentChanged |= setNumber(speedValue, view.speedValid, static_cast<std::int32_t>(std::lround(speedMotion.value(now))));
-            usbNumbersPending = rpmMotion.animating(now) || speedMotion.animating(now);
-            if (motionCaptureActive) ++motionCaptureReport.numberPasses;
+        // The reference retains combined numeric frames. The candidate gives
+        // each number its own alternating Smooth slot; the ramp keeps60Hz.
+        const auto numbers = usbNumberSchedule.select(now, instrumentFrameDue,
+            settingsEditor.values.refreshMode, settingsEditor.values.reducedMotion,
+            paintNumbers, enableStaggered);
+        if (numbers & NumberSchedule::Rpm)
+            instrumentChanged |= setNumber(rpmValue, view.rpmValid,
+                static_cast<std::int32_t>(std::lround(rpmMotion.value(now))));
+        if (numbers & NumberSchedule::Speed)
+            instrumentChanged |= setNumber(speedValue, view.speedValid,
+                static_cast<std::int32_t>(std::lround(speedMotion.value(now))));
+        if (numbers) {
+            const auto moving = (rpmMotion.animating(now) ? NumberSchedule::Rpm : NumberSchedule::None) |
+                                (speedMotion.animating(now) ? NumberSchedule::Speed : NumberSchedule::None);
+            usbNumberSchedule.presented(numbers, moving);
+            if (motionCaptureActive) {
+                ++motionCaptureReport.numberPasses;
+                const auto dispatchedAt = clockUs();
+                if (numbers & NumberSchedule::Rpm) {
+                    ++motionCaptureReport.rpmNumberPasses;
+                    if (motionRpmNumberSeen)
+                        motionCaptureReport.rpmNumberGapMaxUs = std::max(motionCaptureReport.rpmNumberGapMaxUs,
+                            elapsedUs(dispatchedAt, motionRpmNumberAt));
+                    motionRpmNumberAt = dispatchedAt; motionRpmNumberSeen = true;
+                }
+                if (numbers & NumberSchedule::Speed) {
+                    ++motionCaptureReport.speedNumberPasses;
+                    if (motionSpeedNumberSeen)
+                        motionCaptureReport.speedNumberGapMaxUs = std::max(motionCaptureReport.speedNumberGapMaxUs,
+                            elapsedUs(dispatchedAt, motionSpeedNumberAt));
+                    motionSpeedNumberAt = dispatchedAt; motionSpeedNumberSeen = true;
+                }
+            }
         }
         // Only painted, changed instruments can arm a presentation sample.
         // A raw observation held by the frame clock cannot tag older dirty work.
@@ -1410,21 +1473,32 @@ void serviceMotionBenchmark() {
 void serviceDemo() {
     if (!demoEnabled || simulation::snapshot().enabled || page != Page::Panel || calibrating || pairOverlay || benchmarkPhase != BenchmarkPhase::Idle) return;
     const auto now = millis();
+    bool frameDue = false;
     if (settingsEditor.values.reducedMotion) {
-        if (std::uint32_t(now - demoUpdatedAt) < 250U) return;
-    } else if (!demoClock.due(now, settingsEditor.values.refreshMode)) return;
+        if (!demoNumbersFirstPaint && std::uint32_t(now - demoUpdatedAt) < 250U) return;
+    } else {
+        frameDue = demoClock.due(now, settingsEditor.values.refreshMode);
+        if (!demoNumbersFirstPaint && !frameDue) return;
+    }
     demoUpdatedAt = now;
     const auto position = std::uint32_t(now - demoStartedAt) % 10000U;
     const auto ramp = position < 5000 ? position : 10000 - position;
     updateRpmBar(float(800 + ramp), true);
-    const auto numericMode = settingsEditor.values.refreshMode == RefreshMode::Smooth ?
-        RefreshMode::Balanced : settingsEditor.values.refreshMode;
-    if (settingsEditor.values.reducedMotion || numberClock.due(now, numericMode)) {
+    demoNumberSchedule.request(NumberSchedule::Both);
+    const auto numbers = settingsEditor.values.reducedMotion ? static_cast<std::uint8_t>(NumberSchedule::Both) :
+        demoNumberSchedule.select(now, frameDue, settingsEditor.values.refreshMode, false,
+                                  demoNumbersFirstPaint, enableStaggered);
+    if (numbers & NumberSchedule::Speed) {
         char value[16];
         const auto speed = static_cast<unsigned>(std::lround(speedDisplay(float(ramp) / 50.0F, settingsEditor.values.speedUnit)));
         std::snprintf(value, sizeof(value), "%u", speed); setText(speedValue, value);
+    }
+    if (numbers & NumberSchedule::Rpm) {
+        char value[16];
         std::snprintf(value, sizeof(value), "%u", unsigned(800 + ramp)); setText(rpmValue, value);
     }
+    demoNumberSchedule.presented(numbers, NumberSchedule::Both);
+    demoNumbersFirstPaint = false;
     setText(modeLabel, "DEMO ATIVO"); setText(speedSignal, "SIMULADO"); setText(rpmSignal, "SIMULADO");
 }
 
@@ -1836,6 +1910,9 @@ bool startMotionBenchmark() {
     motionCaptureStarted = clockUs();
     motionCaptureLastFrame = motionCapturePixels = motionCaptureTouchAt = 0;
     motionRampAt = 0; motionRampGapBins.fill(0);
+    motionInstrumentAt = 0; motionInstrumentSeen = motionRampStableSincePresent = false;
+    motionRpmNumberAt = motionSpeedNumberAt = 0;
+    motionRpmNumberSeen = motionSpeedNumberSeen = false;
     motionCaptureActive = true;
     return true;
 }
@@ -1858,7 +1935,8 @@ bool startUsbSimulation() {
     usbRpmWarning = RpmWarning::Normal;
     usbRpmSession = 0;
     usbViewReady = false; usbPaintPending = usbDetailsPending = true;
-    rpmMotion.reset(); speedMotion.reset(); instrumentClock.reset(); numberClock.reset();
+    rpmMotion.reset(); speedMotion.reset(); instrumentClock.reset();
+    usbNumberSchedule.reset(); usbNumberSchedule.request(NumberSchedule::Both);
     demoEnabled = false;
     queuedAction = 0;
     requestPage(Page::Panel);

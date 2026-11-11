@@ -32,10 +32,12 @@ namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
 #ifdef NGK_SD_IO_BENCH
-constexpr const char* Version = "0.4.9-sd-io-bench";
+constexpr const char* Version = "0.4.10-sd-io-bench";
 uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
+#elif defined(NGK_COMBINED_NUMBERS)
+constexpr const char* Version = "0.4.10-reference";
 #else
-constexpr const char* Version = "0.4.9-layout-preview";
+constexpr const char* Version = "0.4.10-staggered";
 #endif
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
@@ -568,10 +570,14 @@ void loop() {
     if (motionReportPending) {
         if (queuePrintf("{\"kind\":\"ui_motion_benchmark\",\"synthetic\":true,\"duration_ms\":%u,"
             "\"presentations\":%u,\"interval_p95_us\":%u,\"interval_max_us\":%u,"
-            "\"max_pixels\":%u,\"touch_poll_max_gap_us\":%u,"
+            "\"max_pixels\":%u,\"transferred_pixels\":%u,\"touch_poll_max_gap_us\":%u,"
             "\"ui_tick_total_us\":%u,\"ui_tick_max_us\":%u,\"refresh_mode\":%u,"
             "\"reduced_motion\":%s,\"ramp_updates\":%u,\"ramp_gap_p95_upper_us\":%u,"
             "\"ramp_gap_max_us\":%u,\"instrument_passes\":%u,\"number_passes\":%u,"
+            "\"rpm_number_passes\":%u,\"speed_number_passes\":%u,"
+            "\"rpm_number_gap_max_us\":%u,\"speed_number_gap_max_us\":%u,"
+            "\"instrument_gap_max_us\":%u,\"ramp_stable_passes\":%u,"
+            "\"ramp_gap_without_stable_max_us\":%u,\"ramp_gap_with_stable_max_us\":%u,"
             "\"detail_passes\":%u,\"idle_skips\":%u,\"sample_presentations\":%u,"
             "\"sample_to_present_p95_ms\":%u,\"sample_to_present_max_ms\":%u,\"interrupted\":%s"
 #ifdef NGK_SD_IO_BENCH
@@ -579,11 +585,15 @@ void loop() {
 #endif
             "}\n",
             motionReport.durationMs, motionReport.presentations, motionReport.intervalP95Us,
-            motionReport.intervalMaxUs, motionReport.maxPixels, motionReport.touchPollMaxGapUs,
+            motionReport.intervalMaxUs, motionReport.maxPixels, motionReport.transferredPixels, motionReport.touchPollMaxGapUs,
             motionReport.uiTickTotalUs, motionReport.uiTickMaxUs,
             unsigned(ecu::ui::presentationRefreshMode()), ecu::ui::reducedMotionEnabled() ? "true" : "false",
             motionReport.rampUpdates, motionReport.rampGapP95UpperUs, motionReport.rampGapMaxUs,
-            motionReport.instrumentPasses, motionReport.numberPasses, motionReport.detailPasses,
+            motionReport.instrumentPasses, motionReport.numberPasses,
+            motionReport.rpmNumberPasses, motionReport.speedNumberPasses,
+            motionReport.rpmNumberGapMaxUs, motionReport.speedNumberGapMaxUs,
+            motionReport.instrumentGapMaxUs, motionReport.rampStablePasses,
+            motionReport.rampGapWithoutStableMaxUs, motionReport.rampGapWithStableMaxUs, motionReport.detailPasses,
             motionReport.idleSkips, motionReport.samplePresentations,
             motionReport.sampleToPresentP95Ms, motionReport.sampleToPresentMaxMs,
             motionReport.interrupted ? "true" : "false"

@@ -208,6 +208,12 @@ A barra evolui com cadência alvo de 60 Hz no modo Suave; números, cerca de
 glifos sem atrasar falhas/validade. Os números principais
 usam dois buffers fixos de 16 bytes com `lv_label_set_text_static`, evitando
 realocações de texto por quadro. Não há framebuffer completo extra.
+Na 0.4.10, o modo Suave distribui os números em slots alternados: cerca de 30 Hz
+por número não urgente enquanto houver pendência, com a rampa em alvo de 60 Hz. Cada número
+conserva sua pendência até apresentar o valor terminal; um slot ocioso não é
+emprestado ao outro. Urgência, TTL e pintura completa atualizam ambos
+imediatamente. DEMO usa agenda independente.
+
 Modos 33/50 ms e Reduzir movimento continuam disponíveis. Quadros atrasados
 são descartados; não há recuperação acumulada que bloqueie o trabalho atual.
 O modo Suave foi ativado e salvo após a bancada identificar modo Econômico

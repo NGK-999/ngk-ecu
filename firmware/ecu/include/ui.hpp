@@ -11,9 +11,14 @@ struct BenchmarkReport {
 struct MotionBenchmarkReport {
     std::uint32_t durationMs = 0, presentations = 0, intervalP95Us = 0, intervalMaxUs = 0;
     std::uint32_t maxPixels = 0, touchPollMaxGapUs = 0;
+    std::uint32_t transferredPixels = 0;
     std::uint32_t uiTickTotalUs = 0, uiTickMaxUs = 0;
     std::uint32_t rampUpdates = 0, rampGapP95UpperUs = 0, rampGapMaxUs = 0;
     std::uint32_t instrumentPasses = 0, numberPasses = 0, detailPasses = 0, idleSkips = 0;
+    std::uint32_t rpmNumberPasses = 0, speedNumberPasses = 0;
+    std::uint32_t rpmNumberGapMaxUs = 0, speedNumberGapMaxUs = 0;
+    std::uint32_t instrumentGapMaxUs = 0, rampStablePasses = 0;
+    std::uint32_t rampGapWithoutStableMaxUs = 0, rampGapWithStableMaxUs = 0;
     std::uint32_t samplePresentations = 0, sampleToPresentP95Ms = 0, sampleToPresentMaxMs = 0;
     bool interrupted = false;
 };

@@ -1,6 +1,6 @@
 # NGK ECU
 
-> Esta branch contém a **prévia de disposição e tamanhos 0.4.9-layout-preview**.
+> Esta branch contém a **prévia 0.4.10-staggered, com atualizações numéricas distribuídas entre quadros**.
 > Velocidade maior à direita e marcha menor à esquerda.
 > [Veja a proposta e as imagens](docs/proposta-painel-disposicao.md).
 > Prévia instalada e medida na ESP32 em bancada em 2026-11-11.
@@ -49,7 +49,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.9-layout-preview. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.10-staggered. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -106,7 +106,7 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.4.9-layout-preview** está instalada em bancada. Tela preta com laranja e
+A versão **0.4.10-staggered** está instalada em bancada. Tela preta com laranja e
 vermelho, menu 2×2, instrumentos grandes e barra RPM contínua em rampa curva.
 O redesenho afeta somente a ESP32; o visual do simulador foi preservado.
 A revisão 0.4.3 acrescenta ícones Lucide consistentes, números ancorados pela
@@ -124,6 +124,11 @@ A revisão 0.4.8 passou nos dezesseis executáveis nativos, três builds e no
 renderer LVGL em host. Bancada e limites das medidas estão no
 [relatório de validação](docs/validacao.md#fluidez-graduação-e-falhas-simultâneas--048).
 Sensores, atuação e uso no veículo continuam sem validação.
+
+A 0.4.10 alterna RPM e velocidade no modo Suave para distribuir o custo entre
+quadros. No A/B, p95 entre apresentações caiu cerca de 27% e o pior tick da UI,
+21,5%, com aumento de 4,4% no tempo acumulado. Medições, limites e capturas em
+[fluidez 0.4.10](docs/fluidez-0410.md).
 
 Wi-Fi e BLE estão disponíveis sob demanda e começam desligados. Nesta unidade,
 a proteção de memória recusou ambos simultaneamente: usar um por vez.

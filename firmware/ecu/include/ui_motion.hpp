@@ -115,4 +115,55 @@ private:
     RefreshMode mode_ = RefreshMode::Smooth;
     bool started_ = false;
 };
+
+// UI scheduling only. A field stays pending until its own terminal value has
+// actually been sampled/presented. Smooth slots never borrow the other field's
+// allocation, so one moving number also remains at30Hz instead of rising to60Hz.
+class NumberSchedule {
+public:
+    enum : std::uint8_t { None = 0, Rpm = 1, Speed = 2, Both = Rpm | Speed };
+
+    void request(std::uint8_t fields) { pending_ |= fields & Both; }
+    std::uint8_t pending() const { return pending_; }
+    void reset() { *this = NumberSchedule{}; }
+
+    // Call only after reading value(now)/attempting the selected labels. Never
+    // clear an unselected field just because its easing finished meanwhile.
+    void presented(std::uint8_t selected, std::uint8_t moving) {
+        selected &= Both;
+        pending_ = static_cast<std::uint8_t>((pending_ & ~selected) | (selected & moving));
+    }
+
+    std::uint8_t select(std::uint32_t now, bool instrumentFrameDue, RefreshMode mode,
+                        bool reducedMotion, bool urgent, bool enableStaggered = true) {
+        if (!configured_ || mode != mode_ || reducedMotion != reducedMotion_ ||
+            enableStaggered != enableStaggered_) {
+            mode_ = mode;
+            reducedMotion_ = reducedMotion;
+            enableStaggered_ = enableStaggered;
+            configured_ = true;
+            next_ = Rpm;
+            combinedClock_.reset();
+        }
+        if (urgent) {
+            request(Both);
+            next_ = Rpm;
+            return Both;
+        }
+        if (!pending_ || !instrumentFrameDue) return None;
+        if (enableStaggered && mode == RefreshMode::Smooth && !reducedMotion) {
+            const auto slot = next_;
+            next_ = slot == Rpm ? Speed : Rpm;
+            return slot & pending_;
+        }
+        const auto numericMode = mode == RefreshMode::Smooth ? RefreshMode::Balanced : mode;
+        return combinedClock_.due(now, numericMode) ? Both : None;
+    }
+
+private:
+    FrameClock combinedClock_;
+    RefreshMode mode_ = RefreshMode::Smooth;
+    std::uint8_t pending_ = None, next_ = Rpm;
+    bool configured_ = false, reducedMotion_ = false, enableStaggered_ = true;
+};
 }

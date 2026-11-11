@@ -2,8 +2,10 @@
 
 Prévia publicada a pedido do responsável após esclarecer que a insatisfação
 está na disposição e nos tamanhos. Base: 0.4.8, commit
-`2099014b97c548d40811b48ac56597c90a452184`. Código nesta branch:
-`preview/painel-disposicao`, versão `0.4.9-layout-preview`.
+`2099014b97c548d40811b48ac56597c90a452184`. Publicação inicial nesta branch:
+`preview/painel-disposicao`, versão `0.4.9-layout-preview`. A versão atual
+`0.4.10-staggered` conserva esses pixels e distribui atualizações numéricas
+entre quadros; [medição de fluidez](fluidez-0410.md).
 
 A publicação inicial de 2026-11-10 salvou código e imagens para revisão, sem
 gravar a placa. Em **2026-11-11**, após autorização dos ensaios sem sensores e
