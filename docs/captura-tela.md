@@ -87,3 +87,13 @@ Duas capturas recebidas da própria ESP32, fonte sintética claramente identific
 
 ![Painel 0.4.8 com graduação recebido da ESP32](images/esp32-painel-048.png)
 ![Painel 0.4.8 com três alertas e contador +2](images/esp32-painel-falhas-048.png)
+
+## Velocidade maior à direita — prévia 0.4.9
+
+Em 2026-11-11, duas capturas recebidas da própria ESP32 com dados SIM e
+153600 B cada, CRC32 conferido. Normal: `d508fbca`, 13,364 s; falhas:
+`7fb2f473`, 13,362 s. PNGs inspecionados: velocidade maior, marcha menor,
+temperatura/óleo e prioridade dos alertas preservados.
+
+![Prévia 0.4.9 recebida da ESP32](images/esp32-painel-049.png)
+![Prévia 0.4.9 com óleo baixo e outras duas falhas](images/esp32-painel-falhas-049.png)

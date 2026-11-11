@@ -3,7 +3,7 @@
 > Esta branch contém a **prévia de disposição e tamanhos 0.4.9-layout-preview**.
 > Velocidade maior à direita e marcha menor à esquerda.
 > [Veja a proposta e as imagens](docs/proposta-painel-disposicao.md).
-> A versão instalada na placa continua sendo a 0.4.8; esta prévia não foi gravada.
+> Prévia instalada e medida na ESP32 em bancada em 2026-11-11.
 
 Projeto experimental de painel e futura ECU para um motor boxer Volkswagen
 Fusca **1300 carburado**, de ano desconhecido, em uma gaiola de uso fora de
@@ -49,7 +49,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.8-cockpit. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware 0.4.9-layout-preview. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -57,6 +57,10 @@ Lenta com oscilação suave, partida fria e temperatura automática; avisos de g
 a 4.000/4.500 RPM com histerese. São referências de bancada, sem corte de motor.
 O modo manual aceita 9.000 RPM para ensaiar alertas. Consulte as
 [referências do motor e limites do modelo](docs/referencias-motor-e-simulacao.md).
+
+**Iniciar ciclo** percorre partida, quatro marchas, frenagem, falhas e
+recuperação em 60 segundos. **Repetir** mantém as voltas; **Parar** restaura os
+controles anteriores. O ciclo também funciona offline.
 
 ```sh
 ./scripts/simulator
@@ -102,7 +106,7 @@ O painel começa sem saídas de atuação. Não conectar sinal de bobina, rede d
 condicionamento de sinais e alimentação adequada ao ambiente veicular.
 Montagem USB em bancada não valida operação no veículo.
 
-A versão **0.4.8-cockpit** está instalada em bancada. Tela preta com laranja e
+A versão **0.4.9-layout-preview** está instalada em bancada. Tela preta com laranja e
 vermelho, menu 2×2, instrumentos grandes e barra RPM contínua em rampa curva.
 O redesenho afeta somente a ESP32; o visual do simulador foi preservado.
 A revisão 0.4.3 acrescenta ícones Lucide consistentes, números ancorados pela
@@ -112,6 +116,7 @@ A 0.4.6 ampliou marcha e temperatura, aproximou velocidade/unidade e manteve a
 escala RPM visível. A 0.4.7 remove texto e barra TPS do painel a pedido do responsável.
 A 0.4.8 acrescenta graduação na rampa, animação adaptativa, repouso dos
 instrumentos estáveis e contador de falhas simultâneas.
+A prévia 0.4.9 amplia a velocidade à direita e reduz a marcha à esquerda.
 A barra usa interpolação com cadência alvo de 60 Hz; os números, cerca de
 30 Hz no modo Suave. Alarmes e perda de sinal têm prioridade imediata.
 
@@ -133,7 +138,7 @@ Capturas recebidas diretamente dos pixels enviados pela ESP32 ao LCD,
 com dados sintéticos; não são fotografias:
 
 ![Menu recebido da ESP32](docs/images/esp32-menu.png)
-![Painel com RPM compacto e rampa maior, recebido da ESP32](docs/images/esp32-painel-048.png)
+![Prévia com velocidade maior à direita, recebida da ESP32](docs/images/esp32-painel-049.png)
 
 Prévia adicional renderizada com LVGL no host:
 

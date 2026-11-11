@@ -42,23 +42,63 @@ O segundo ensaio levou aproximadamente 1,4 s de execução. São duas horas
 CPU da ESP32 ou veículo. Apenas resumos agregados foram preservados; sem
 amostras ou conteúdo serial bruto em arquivos.
 
-## Desempenho conhecido e próximos ensaios
+## Ciclo automático
 
-A 0.4.8 teve aproximadamente 599–601 apresentações parciais em dez segundos
-nos cenários com movimento; em repouso, deixou de calcular/formatar os
-instrumentos depois de estabilizar. A prévia 0.4.9 teve testes de layout e
-compilação, mas ainda não tem nova medição física. Dados e limites completos
-em [validação da 0.4.8](validacao.md#fluidez-graduação-e-falhas-simultâneas--048).
+Implementado em 2026-11-11: dez fases em 60 segundos, com partida/lenta,
+quatro marchas, frenagem, falhas simultâneas, recuperação e desligamento.
+**Iniciar ciclo**, **Parar** e **Repetir** ficam em Cenários rápidos. A fase e
+a volta aparecem na janela; os controles anteriores retornam ao parar,
+finalizar uma volta única ou fechar. Cada volta reinicia o estado do modelo.
+O ciclo não conecta USB e continua sendo uma dinâmica ilustrativa.
 
-Próximos incrementos propostos, ainda não implementados:
+Validação atual: **74 testes passaram**, sem hardware. Janelas Qt offscreen
+em 980×680 e 1120×760 inspecionadas, com opções de falha legíveis. Revisão
+independente não encontrou defeito material.
 
-1. Um roteiro temporizado no simulador: partida, aceleração, troca de marchas,
-   frenagem, falhas simultâneas e recuperação, repetível com os mesmos tempos.
-2. Um ensaio de 30–60 minutos reais com Qt e transporte em memória, acompanhando
-   crescimento de memória, threads, atrasos dos timers e recuperação de link.
-3. Medir a prévia na própria ESP32 com dados sintéticos antes de novas
-   otimizações: regularidade dos quadros, latência, maior pausa de toque e
-   memória disponível. Esse ensaio requer placa conectada, mas não sensores.
+## Ensaio prolongado
+
+O script `scripts/soak-simulator.py` exercita a janela, o modelo, o codec e o
+worker reais com Qt offscreen e transporte MEMORY limitado. A cada minuto,
+provoca pausa USB simulada, interrupção do produtor e desconexão/reconexão.
+Somente contadores e agregados de memória, threads e intervalos são guardados.
+Não usa USB física, LCD ou sensores. Comando e limites em
+[simulator/README.md](../simulator/README.md#ensaio-prolongado-em-memória).
+
+**Ensaio concluído:** 1.800,006 segundos reais, 54.710 produções sintéticas e
+33.782 frames aceitos, sem erros de protocolo, sequência ou valores inválidos.
+As 30 pausas, 30 paradas do produtor e 30 desconexões tiveram recuperação
+confirmada. Dez fases observadas; controles restaurados, 31 sessões encerradas
+e worker finalizado. Threads Python: pico de duas, uma ao terminar.
+
+RSS inicial 85.000.192 B, final 90.877.952 B e máximo 91.140.096 B. Houve
+crescimento de 5,61 MiB desde o início, que inclui aquecimento do Qt. Nas
+leituras de progresso após o primeiro minuto, a faixa foi
+90.832.896–90.935.296 B: não apareceu crescimento contínuo nesse trecho.
+Isso é uma observação de 30 minutos, sem comprovar ausência de vazamentos.
+
+O observador de 50 ms teve intervalo máximo de 55,424 ms. A maior lacuna de
+produção foi 1,713 s e inclui as interrupções intencionais do produtor.
+TTL vencido foi observado nos dois tipos de pausa; o critério exige ao menos
+uma observação por tipo durante o ensaio, não uma por interrupção.
+Somente agregados foram preservados; esse resultado não valida hardware.
+
+## Desempenho medido na ESP32
+
+A prévia **0.4.9-layout-preview** foi instalada e medida em bancada em
+2026-11-11, com dados sintéticos e aquisição/atuação físicas desabilitadas.
+Foram **598–601 apresentações parciais em dez segundos** com movimento,
+inclusive com SD e busca Wi-Fi ou anúncio BLE, separadamente. Em repouso,
+não houve redesenho/formatação dos instrumentos após estabilizar.
+
+A rampa teve p95 superior de 23 ms nos três casos com movimento. A maior pausa
+de consulta do toque foi 30,055 ms. A latência amostra→primeira mudança chegou
+a 32 ms; o p95 sem rádio foi 31 ms nesta execução, contra 22 ms no ensaio
+histórico da 0.4.8. Não se conclui ganho global de desempenho. A média próxima
+de 60 apresentações parciais/s não significa 60 telas completas/s, nem mede
+CPU livre ou resposta óptica do LCD. Carga SD foi um remount pontual.
+
+Métricas completas, metodologia e capturas da placa em
+[validação da prévia](validacao.md#ciclo-automático-e-bancada-da-prévia--2026-11-11).
 
 Para acompanhar fragmentação de memória na ESP32, comparar heap livre e maior
 bloco livre, conforme a [documentação da Espressif](https://docs.espressif.com/projects/esp-idf/en/v4.4.8/esp32/api-reference/system/heap_debug.html).

@@ -68,6 +68,66 @@ class WindowTests(unittest.TestCase):
         self.assertIsNotNone(result, name)
         return result
 
+    def test_drive_cycle_is_explicit_offline_and_restores_operator_controls(self):
+        from dataclasses import replace
+        from PySide6.QtWidgets import QFrame
+        self.window._timer.stop()
+        self.widget(QCheckBox, "engine_switch").setChecked(True)
+        self.widget(QCheckBox, "manual_switch").setChecked(True)
+        self.widget(QDoubleSpinBox, "rpm_spin").setValue(3210)
+        original = replace(self.window.controls)
+        self.assertFalse(self.window._cycle.running)
+        QTest.mouseClick(self.widget(QPushButton, "cycle_start_button"), Qt.MouseButton.LeftButton)
+        self.assertTrue(self.window._cycle.running)
+        self.assertEqual(self.link.connected, [])
+        self.assertFalse(self.widget(QFrame, "control_panel").isEnabled())
+        self.assertFalse(self.widget(QFrame, "fault_panel").isEnabled())
+        self.assertTrue(self.widget(QCheckBox, "pause_usb_switch").isEnabled())
+        self.assertTrue(self.widget(QPushButton, "connect_button").isEnabled())
+        QTest.mouseClick(self.widget(QPushButton, "cycle_stop_button"), Qt.MouseButton.LeftButton)
+        self.assertFalse(self.window._cycle.running)
+        self.assertEqual(self.window.controls, original)
+        self.assertTrue(self.widget(QFrame, "control_panel").isEnabled())
+        self.assertTrue(self.widget(QFrame, "fault_panel").isEnabled())
+
+    def test_drive_cycle_phases_repeat_and_single_cycle_end_with_control_restoration(self):
+        from dataclasses import replace
+        from ngk_simulator.model import Fault
+        self.window._timer.stop()
+        with patch("ngk_simulator.window.time.monotonic", return_value=100):
+            self.window._start_cycle()
+        with patch("ngk_simulator.window.time.monotonic", return_value=145):
+            self.window._advance()
+        self.assertEqual(self.window._cycle_frame.phase_name, "Falhas")
+        self.assertEqual(self.window.controls.faults, Fault.LOW_OIL | Fault.OVERHEAT)
+        self.assertIn("Falhas", self.widget(QLabel, "cycle_status_label").text())
+        with patch("ngk_simulator.window.time.monotonic", return_value=161):
+            self.window._advance()
+        self.assertEqual(self.window._cycle_frame.cycle_number, 2)
+        self.assertEqual(self.link.sample.rpm, 0)
+        self.assertEqual(self.link.sample.block_c, 25)
+        self.window._stop_cycle()
+        self.widget(QCheckBox, "cycle_repeat_switch").setChecked(False)
+        original = replace(self.window.controls)
+        with patch("ngk_simulator.window.time.monotonic", return_value=200):
+            self.window._start_cycle()
+        with patch("ngk_simulator.window.time.monotonic", return_value=260):
+            self.window._advance()
+        self.assertFalse(self.window._cycle.running)
+        self.assertEqual(self.window.controls, original)
+        self.assertTrue(self.widget(QPushButton, "cycle_start_button").isEnabled())
+        self.assertEqual(self.link.connected, [])
+
+    def test_closing_active_cycle_restores_controls_and_closes_link(self):
+        from dataclasses import replace
+        self.window._timer.stop()
+        original = replace(self.window.controls)
+        self.window._start_cycle()
+        self.window.close()
+        self.assertFalse(self.window._cycle.running)
+        self.assertEqual(self.window.controls, original)
+        self.assertTrue(self.window._closed)
+
     def test_connection_requires_explicit_click_and_disconnection_updates_controls(self):
         self.assertEqual(self.link.connected, [])
         connect = self.widget(QPushButton, "connect_button")
@@ -219,6 +279,8 @@ class WindowTests(unittest.TestCase):
         self.app.processEvents()
         self.assertEqual(self.window.size().width(), 980)
         self.assertEqual(self.window.size().height(), 680)
+        for checkbox in self.window._fault_boxes.values():
+            self.assertGreaterEqual(checkbox.height(), 22, checkbox.objectName())
         for name in ("rpm_value", "speed_value"):
             value = self.widget(QLabel, name)
             self.assertGreaterEqual(value.height(), value.fontMetrics().height(), name)

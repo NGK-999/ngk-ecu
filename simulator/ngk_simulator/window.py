@@ -16,6 +16,7 @@ from PySide6.QtWidgets import (
 
 from .model import Controls, Fault, VehicleModel, set_fault
 from .alerts import RpmWarning, rpm_warning
+from .scenario import DriveCycle
 
 
 def available_ports() -> list[str]:
@@ -138,6 +139,8 @@ class SimulatorWindow(QMainWindow):
         self._link = link
         self.controls = Controls(thermal_auto=True)
         self.model = VehicleModel()
+        self._cycle = DriveCycle()
+        self._cycle_frame = None
         self._rpm_warning = RpmWarning.NORMAL
         self._closed = False
         self._last_step = time.monotonic()
@@ -387,6 +390,8 @@ class SimulatorWindow(QMainWindow):
 
     def _presets(self) -> QWidget:
         frame, layout = card("preset_panel")
+        layout.setContentsMargins(14, 8, 14, 8)
+        layout.setSpacing(5)
         layout.addWidget(label("Cenários rápidos", "section"))
         self.preset_combo = QComboBox()
         self.preset_combo.setObjectName("preset_combo")
@@ -394,11 +399,33 @@ class SimulatorWindow(QMainWindow):
                              ("Cruzeiro em 3ª", "cruise"), ("Giro alto · teste de alerta", "high_rpm"),
                              ("Motor quente · falha", "hot"), ("Falha de RPM", "rpm_loss")):
             self.preset_combo.addItem(caption, key)
-        layout.addWidget(self.preset_combo)
-        self.preset_button = QPushButton("Aplicar cenário")
+        preset_row = QHBoxLayout()
+        self.preset_combo.setSizeAdjustPolicy(QComboBox.SizeAdjustPolicy.AdjustToMinimumContentsLengthWithIcon)
+        self.preset_combo.setMinimumContentsLength(12)
+        preset_row.addWidget(self.preset_combo, 1)
+        self.preset_button = QPushButton("Aplicar")
         self.preset_button.setObjectName("preset_button")
         self.preset_button.clicked.connect(self._apply_preset)
-        layout.addWidget(self.preset_button)
+        preset_row.addWidget(self.preset_button)
+        layout.addLayout(preset_row)
+        row = QHBoxLayout()
+        row.setSpacing(6)
+        self.cycle_start_button = QPushButton("Iniciar ciclo")
+        self.cycle_start_button.setObjectName("cycle_start_button")
+        self.cycle_start_button.clicked.connect(self._start_cycle)
+        row.addWidget(self.cycle_start_button)
+        self.cycle_stop_button = QPushButton("Parar")
+        self.cycle_stop_button.setObjectName("cycle_stop_button")
+        self.cycle_stop_button.setEnabled(False)
+        self.cycle_stop_button.clicked.connect(self._stop_cycle)
+        row.addWidget(self.cycle_stop_button)
+        self.cycle_repeat_switch = QCheckBox("Repetir")
+        self.cycle_repeat_switch.setObjectName("cycle_repeat_switch")
+        self.cycle_repeat_switch.setChecked(True)
+        row.addWidget(self.cycle_repeat_switch)
+        layout.addLayout(row)
+        self.cycle_status_label = label("Ciclo parado · 60 s por volta", "muted", "cycle_status_label")
+        layout.addWidget(self.cycle_status_label)
         return frame
 
     def _transport_pause(self) -> QWidget:
@@ -443,6 +470,48 @@ class SimulatorWindow(QMainWindow):
         self.connection_detail.setWordWrap(True)
         layout.addWidget(self.connection_detail)
         return frame
+
+    def _set_cycle_controls(self, running: bool) -> None:
+        # Connection/transport pause remain accessible independently of the cycle.
+        for name in ("control_panel", "fault_panel"):
+            self.findChild(QFrame, name).setEnabled(not running)
+        self.preset_combo.setEnabled(not running)
+        self.preset_button.setEnabled(not running)
+        self.cycle_start_button.setEnabled(not running)
+        self.cycle_stop_button.setEnabled(running)
+        self.cycle_repeat_switch.setEnabled(not running)
+        if not running:
+            self._sync_thermal_controls()
+
+    def _start_cycle(self) -> None:
+        if self._cycle.running or self._closed:
+            return
+        now = time.monotonic()
+        self._cycle_frame = self._cycle.start(now, self.controls, repeat=self.cycle_repeat_switch.isChecked())
+        self.controls = self._cycle_frame.controls
+        self.model.reset()
+        self._rpm_warning = RpmWarning.NORMAL
+        self._last_step = now
+        self._sync_controls()
+        self._set_cycle_controls(True)
+        self._update_cycle_label()
+
+    def _stop_cycle(self) -> None:
+        restored = self._cycle.stop()
+        self._cycle_frame = None
+        if restored is not None:
+            self.controls = restored
+            self._sync_controls()
+        self._set_cycle_controls(False)
+        self.cycle_status_label.setText("Ciclo parado · controles restaurados")
+
+    def _update_cycle_label(self) -> None:
+        if self._cycle_frame is None:
+            return
+        frame = self._cycle_frame
+        text = f"Volta {frame.cycle_number} · {frame.phase_name}"
+        if self.cycle_status_label.text() != text:
+            self.cycle_status_label.setText(text)
 
     def _manual_changed(self, checked: bool) -> None:
         self.controls.manual = checked
@@ -560,6 +629,22 @@ class SimulatorWindow(QMainWindow):
         now = time.monotonic()
         delta = max(0.0, min(0.1, now - self._last_step))
         self._last_step = now
+        if self._cycle.running:
+            frame = self._cycle.update(now)
+            if frame is None:
+                self._stop_cycle()
+            else:
+                changed = self._cycle_frame is None or (frame.index, frame.cycle_number) != (
+                    self._cycle_frame.index, self._cycle_frame.cycle_number)
+                new_cycle = self._cycle_frame is not None and frame.cycle_number != self._cycle_frame.cycle_number
+                if new_cycle:
+                    self.model.reset()
+                    self._rpm_warning = RpmWarning.NORMAL
+                self._cycle_frame = frame
+                self.controls = frame.controls
+                if changed:
+                    self._sync_controls()
+                    self._update_cycle_label()
         sample = self.model.step(self.controls, delta)
         self._link.set_sample(sample, paused=self.pause_usb_switch.isChecked())
         faults = sample.faults
@@ -588,6 +673,7 @@ class SimulatorWindow(QMainWindow):
 
     def closeEvent(self, event: QCloseEvent) -> None:
         if not self._closed:
+            self._stop_cycle()
             self._closed = True
             self._timer.stop()
             self._link.close()

@@ -61,6 +61,26 @@ Aplicar cenário substitui os controles/falhas pelo cenário escolhido.
 O histórico RPM retém até10 s somente em memória e é ocultado em janelas menores.
 Nenhuma amostra ou conteúdo serial é gravado em arquivo/log.
 
+## Ciclo automático
+
+Em **Cenários rápidos**, clique **Iniciar ciclo** para executar uma volta de
+60 segundos. A indicação mostra a volta e a fase atual. **Repetir** começa
+marcado; desmarque antes de iniciar para executar uma única volta.
+
+O ciclo percorre dez fases: parado, partida/lenta, primeira, segunda, terceira,
+quarta, frenagem, falhas de óleo e superaquecimento simultâneas, recuperação e
+desligamento. Usa o modelo automático e temperatura inicial de 25 °C; o estado
+do modelo é reiniciado no início e a cada nova volta para repetir o ensaio.
+As durações e os valores são sintéticos, sem reproduzir uma condução calibrada
+do Fusca.
+
+Durante o ciclo, os controles de condução, falhas e cenários ficam bloqueados.
+**Parar**, o fim de uma volta única ou fechar a janela restauram os controles
+que estavam selecionados antes do início; o estado dinâmico do motor simulado
+não é restaurado. Conexão USB e **Simular perda USB** continuam acessíveis.
+Iniciar ou parar o ciclo não conecta nem desconecta a placa: funciona offline
+e usa a sessão USB existente somente se o operador já tiver conectado.
+
 ## Falhas
 
 - SemRPM/velocidade: o instrumento correspondente mostra `--`.
@@ -126,3 +146,32 @@ Testes de Python/Qt usam transporte em memória e plataformaoffscreen; não abre
 serial física. Testes nativos usam relógios sintéticos para sessões/TTL/voltas
 deuint32. BancadaUSB e inspeção de janela visível são etapas separadas em
 [validacao.md](../docs/validacao.md). Nenhum ensaio no veículo foi realizado.
+
+### Ensaio prolongado em memória
+
+Para executar 30 minutos reais, na raiz do projeto:
+
+```sh
+.venv/bin/python scripts/soak-simulator.py --seconds 1800 --output local/soak-1800.json
+```
+
+O script usa a janela, o modelo, o codec e o worker reais, com Qt **offscreen**
+e transporte **MEMORY** injetado. Não enumera nem abre portas USB físicas.
+O ciclo se repete pelo tempo solicitado, medido pelo relógio monotônico real;
+uma execução curta ou um teste de tempo virtual não substitui os 1.800 segundos.
+
+A cada minuto, o ensaio pausa a transmissão, para temporariamente o produtor
+e desconecta/reconecta o transporte em memória. Confere expiração do TTL,
+recuperação, fases, validade do protocolo e encerramento de sessão/worker.
+O arquivo final e os indicadores de progresso contêm somente agregados:
+contadores, intervalos dos timers, memória residente e threads, sem amostras,
+conteúdo serial bruto ou tokens de sessão.
+A contagem de threads usa `threading.active_count()` do Python; não inclui
+necessariamente as threads internas do Qt ou de outras bibliotecas nativas.
+
+No Linux, a memória observada é RSS atual; em outros sistemas pode ser o pico
+informado pelo sistema. O resultado de aprovação não aplica um limite de
+crescimento de memória: examine os agregados e a evolução antes de concluir
+sobre estabilidade. Esse ensaio não mede FPS do LCD, CPU da ESP32, USB física,
+sensores ou comportamento no veículo. Resultados executados e seus limites
+ficam registrados separadamente em [validacao.md](../docs/validacao.md).

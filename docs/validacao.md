@@ -771,3 +771,92 @@ Capturas reais dos pixels enviados ao LCD, conferidas e inspecionadas:
 normal CRC32 `bc04c979`, 13.363 s; múltiplas
 falhas CRC32 `b4c8e2d4`, 13.363 s; 153600 B cada.
 Simulador Linux restaurado após os ensaios. Sem teste veicular/óptico.
+
+## Ciclo automático e bancada da prévia — 2026-11-11
+
+**Sistema e testes locais:** Python 3.12/PySide6 na `.venv`; 74 testes passaram,
+com Qt offscreen e transporte em memória, sem portas físicas. Oito contratos
+do ciclo cobrem fronteiras, salto de tempo, repetição, término, cópias e relógio
+inválido; integração cobre início offline, bloqueio/restauração dos controles
+e fechamento. Revisão independente: nenhum defeito material encontrado.
+
+**Inspeção Qt:** janelas offscreen em 980×680 e 1120×760 inspecionadas. A linha
+compacta de cenários mantém as opções de falha com pelo menos 23 px de altura
+na janela mínima. Isso verifica composição, não interação de uma janela visível
+no desktop nem fluidez óptica.
+
+O aplicativo de produção foi aberto no desktop Wayland, inicialmente offline,
+e o processo permaneceu ativo. A ferramenta de inspeção nativa desta sessão
+não oferece screenshots; a inspeção de composição registrada acima é offscreen.
+
+**Bancada física:** após liberação da USB pelo operador, 0.4.8 normal foi
+identificada e o aplicativo preservado em backup privado. Normal
+**0.4.9-layout-preview** compilada e gravada somente em app 0x10000, com hash de
+escrita verificado. Imagem 1423200 B, SHA-256
+`fa78da65dc6d7452948c53371c240a7d571e64be1de7c1c4beb86dd5c07b59b1`.
+NVS/calibração/partições e formato do cartão preservados. Após a carga inicial,
+perfil persistido e SD montado; não foi realizado novo teste de escrita no SD.
+Entradas/atuadores físicos permaneceram desabilitados.
+
+Fonte sintética USB 20 Hz, modo Suave, dois segundos para estabilizar e dez
+segundos de medição por caso. SD significa remount pontual observado; busca
+Wi-Fi e anúncio BLE ocorreram separadamente, sem conectar/parear com terceiros.
+SIM e rádios foram restaurados ao fim de cada caso. Nenhuma captura de tela
+ocorreu durante a medição.
+
+| Cenário 0.4.9 | Apresentações parciais / duração | Rampa p95 superior / máximo | Maior intervalo touch | Amostra→primeira mudança p95 / máximo |
+| --- | --- | --- | --- | --- |
+| Movimento, rádios off | 600 / 10000 ms | 23 / 23,067 ms | 30,055 ms | 31 / 32 ms |
+| Valores estáveis | 0 / 10000 ms | — | 10,136 ms | — |
+| Movimento + SD + busca Wi-Fi | 601 / 10001 ms | 23 / 23,298 ms | 29,084 ms | 31 / 32 ms |
+| Movimento + SD + anúncio BLE | 598 / 10000 ms | 23 / 34,802 ms | 28,221 ms | 25 / 32 ms |
+
+Em repouso: zero passagens de instrumentos, números e detalhes, com 9800
+retornos antecipados; tick acumulado 322003 µs em 10 s. O trabalho de desenho
+continua suspenso quando os valores são constantes e frescos. Em movimento,
+tick acumulado 4389977–4400430 µs: tempo decorrido incluindo esperas/preempção,
+sem atribuir percentual de CPU livre.
+
+Heap livre/maior bloco após a medição: 121124/94196 B sem rádio,
+71724/38900 B com Wi-Fi e 102508/65524 B com BLE. Após restaurar os rádios,
+uma consulta final confirmou novamente 121124/94196 B, SD montado, perfil
+persistido e SIM desativada. São observações pontuais, não ensaio prolongado
+de fragmentação na ESP32.
+
+A cadência média ficou próxima dos resultados históricos da 0.4.8. Isso não
+comprova ganho global: latência p95 sem rádio foi 31 ms nesta execução, contra
+22 ms no ensaio anterior, realizado em outro momento. A latência cobre as 128
+últimas primeiras mudanças visíveis até o último DMA, não chegada ao alvo,
+resposta óptica ou caminho completo do computador. Apresentações parciais não
+equivalem a telas completas por segundo nem certificam folga com aquisição real.
+
+Capturas posteriores: 153600 B cada, normal CRC32 `d508fbca`/13,364 s e múltiplas
+falhas CRC32 `7fb2f473`/13,362 s. Pixels/PNGs inspecionados em
+[captura-tela.md](captura-tela.md#velocidade-maior-à-direita--prévia-049).
+Sem ensaio de sensores, motor ou veículo.
+
+### Estabilidade real do simulador — 30 minutos
+
+Em 2026-11-11, execução offscreen de `scripts/soak-simulator.py --seconds 1800`
+concluída em **1800,005759 s reais**, saída 0 e todos os 16 critérios aprovados.
+54.710 produções, 33.782 frames aceitos, zero amostras inválidas/erros de
+sequência/comandos inválidos/overflow. Todas as dez fases foram observadas,
+até a volta 30. As 30 pausas de transmissão, 30 paradas do produtor e 30
+reconexões tiveram recuperação confirmada. TTL vencido observado nos dois
+modos; o critério comprova ao menos uma observação por tipo durante o ensaio.
+
+31 transportes/sessões abertos e fechados; zero ativos ao fim. Controles
+originais restaurados e ciclo encerrado. Worker encerrado e aguardado com join;
+contagem de threads Python: pico 2, final 1, sem incluir threads nativas do Qt.
+
+RSS inicial 85000192 B, final 90877952 B, máximo 91140096 B. Aumento total
+5877760 B (5,61 MiB), incluindo aquecimento. Progresso após 60 s:
+90832896–90935296 B, sem crescimento contínuo observado nesse trecho.
+Não equivale a prova de ausência de vazamento; não há limiar automático de
+RSS no critério de aprovação. Observador 50 ms: intervalo máximo 55,424 ms;
+produtor: maior intervalo 1,713 s, incluindo as paradas intencionais.
+
+Relatório privado contém somente agregados. Não houve USB física, ESP32,
+LCD, sensores ou veículo neste ensaio; a bancada da seção anterior é separada.
+Código de produção não foi alterado durante a execução. O aplicativo normal
+foi aberto separadamente, offline, para uso do operador.

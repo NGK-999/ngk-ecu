@@ -5,9 +5,13 @@ está na disposição e nos tamanhos. Base: 0.4.8, commit
 `2099014b97c548d40811b48ac56597c90a452184`. Código nesta branch:
 `preview/painel-disposicao`, versão `0.4.9-layout-preview`.
 
-A publicação salva o código e as imagens para revisão. Esta versão **não foi
-gravada na ESP32**. A unidade permanece com o firmware 0.4.8; não houve acesso
-USB, alteração de calibração/NVS ou formato do cartão nesta publicação.
+A publicação inicial de 2026-11-10 salvou código e imagens para revisão, sem
+gravar a placa. Em **2026-11-11**, após autorização dos ensaios sem sensores e
+liberação da USB pelo operador, a prévia foi instalada na ESP32 para medir
+fluidez e capturar os pixels reais. Gravação somente do aplicativo em 0x10000,
+com hash verificado; NVS, calibração, partições e formato do SD preservados.
+
+![Composição recebida da ESP32 em bancada, dados SIM](images/esp32-painel-049.png)
 
 ## Distribuição proposta
 
@@ -45,7 +49,8 @@ O ensaio em host verificou seis estados: normal, extremos, ré, neutro,
 alertas simultâneos e perda de link. Os glifos e contêineres numéricos ficaram
 dentro das áreas reservadas. A validação desta publicação inclui testes
 nativos, reprodução/leitura das fontes e builds PlatformIO, registrados abaixo.
-Não houve nova medição de fluidez/CPU nem validação física da proposta.
+Na publicação inicial não houve nova medição de fluidez/CPU ou validação física.
+Os ensaios posteriores estão em [validação sem sensores](validacao-sem-sensores.md).
 
 A fonte adicional é o subconjunto numérico NGK Cockpit84, derivado da mesma
 Barlow Condensed Bold fixada e sob a mesma licença OFL. Reprodução e licença em
@@ -63,4 +68,5 @@ conhecidos. A revisão independente conferiu layout, configuração e as imagens
 
 Build normal: 96712 B de RAM estática (igual à 0.4.8), 1416621 B de flash
 (+592 B). Esses números são do linker, sem inferir ganho de FPS ou uso real
-de CPU. A composição continua aguardando avaliação visual no dispositivo.
+de CPU. A composição foi posteriormente capturada no dispositivo; a preferência
+do responsável pela nova disposição continua sujeita à avaliação dele.
