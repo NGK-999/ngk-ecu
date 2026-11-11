@@ -877,16 +877,42 @@ passaram. RAM estática normal 96712 B/flash 1416621 B; diagnóstico 96744 B/
 flash 1423649 B. Stack SD do diagnóstico 12 KiB, normal 8 KiB. Auditoria 14 sinais,
 zero erros e três avisos de strapping conhecidos; nenhum GPIO mudou.
 
-O runner canônico `sh scripts/test-simulator.sh` passou **86 testes**: 74
+Na preparação, o runner canônico `sh scripts/test-simulator.sh` passou **86 testes**: 74
 anteriores e 12 novos do cliente, com transporte/relógio em memória. As regressões
 cobrem ACK perdido, falha após envio, limpeza desconhecida, janela SD 15 s,
 I/O efetivo, cadência 19–21 Hz/gap 100 ms e trabalho prévio ativo. Revisão
 independente do cliente aprovou as correções. Ctrl-C permanece um aborto do
 cliente, sem aguardar o worker; limitação documentada e resultado reprovado.
 
-**Bancada pendente:** porta existente sem ACL para esta sessão; leitura/escrita
-negadas pelo Linux. Liberação específica solicitada ao operador. Não houve
-gravação de firmware, criação de arquivo SD ou medição física nesta preparação.
-O normal 0.4.9 instalado anteriormente permanece como último estado observado.
-O firmware de diagnóstico deverá ser temporário e o normal preservado antes
-da gravação, restaurado ao fim. Ver [ensaio-sd.md](ensaio-sd.md).
+**Bancada concluída após liberação pelo operador:** NGK ECU normal 0.4.9,
+flash 4 MiB/cartão 30255 MiB identificados; aplicativo original preservado em
+backup privado de 1966080 B. Diagnóstico 1430224 B instalado somente em app 0x10000,
+SHA-256 `532cbc841762ed17736d637b2d1b5b7c36d081c6c2a041c07232c5766f2e56ae`,
+hash de escrita verificado. SD montado 8 MHz; base e quatro modos executados.
+
+Antes da medição, corrigido um confundidor: base e casos agora seguem a mesma
+política de consultas de status + pausa 50 ms. Payload idle é um pouco menor, sem
+prometer igualdade byte a byte de carga UART. Regressão RED→GREEN cobre UI
+chegando antes/junto do status, consultas, job ativo e timeout. Runner canônico
+final: **87 testes passaram**, revisão dirigida aprovada.
+
+Taxas efetivas (incluem seek/sync/yield): escrita 512 B 39,84 KiB/s; escrita 4 KiB
+com sync por bloco 281,08 KiB/s; mesma escrita com sync 64 KiB 424,19 KiB/s;
+leitura 4 KiB 637,25 KiB/s. O modo em lote teve 50,9% mais vazão que sync por
+bloco 4 KiB nesta execução. Não representa ganho de CPU/FPS ou velocidade bruta.
+Fonte 20,009 Hz, maior gap 52,072 ms. Base 600 apresentações/10001 ms;
+casos 600/599/597/600 em aproximadamente 10 s. Rampa p95 superior 22 ms todos,
+máximo 34,685 ms (base 22,425); touch máximo 27,338 ms; latência p95 20 ms todos,
+máximo 29 ms (base 21). Read/write máximo 117,161 ms e sync 109,992 ms são tempos
+das chamadas no worker, cobrindo 15 s; UI mede 10 s internos, sem assegurar
+coincidência dos máximos. Uma execução por modo, fixture 1 MiB, fonte sintética.
+
+Todos os quatro jobs: okay/created/removed/card_consistent=true/error 0. SIM,
+rádios e porta encerrados. Stack mínimo diagnóstico 4832 B desde boot, sem
+inferir margem do normal. Aplicativo original restaurado integralmente em
+app 0x10000 com hash verificado; prefixo 1423200 B SHA-256
+`fa78da65dc6d7452948c53371c240a7d571e64be1de7c1c4beb86dd5c07b59b1`.
+Consulta final: normal 0.4.9, SD 30255 MiB montado, perfil persistido, SIM/rádios
+off, diagnóstico ausente, sensores/atuadores false. Sem formato, NVS, calibração
+ou partições alteradas. Heap livre 121124 B/maior bloco 94196 B na consulta final.
+Método, dados revisados e orientação em [ensaio-sd.md](ensaio-sd.md).

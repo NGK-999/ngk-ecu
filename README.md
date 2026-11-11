@@ -164,5 +164,6 @@ valores constantes que continuam sendo produzidos. Testes, limites e próximos
 ensaios estão em [validação sem sensores](docs/validacao-sem-sensores.md).
 
 O [ensaio de leitura/escrita do SD com a tela animando](docs/ensaio-sd.md)
-está preparado em um build temporário separado. A medição física aguarda
-liberação da USB pelo operador; ainda não há resultado de I/O contínuo.
+foi concluído em bancada. Blocos de 4 KiB com sincronização por lote de 64 KiB
+tiveram 51% mais vazão efetiva que sincronizar cada bloco de 4 KiB nesta execução.
+O firmware normal original foi restaurado após o diagnóstico temporário.

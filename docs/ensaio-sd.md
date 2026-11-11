@@ -1,9 +1,10 @@
 # Ensaio do SD com painel animado
 
-Preparado a pedido do responsável em 2026-11-11. **Medição física pendente:**
-o Linux retirou a ACL temporária da porta; nenhum firmware foi gravado nem
-arquivo criado no cartão nesta preparação. Resultados de remount anteriores
-não representam leitura/escrita contínua.
+**Ensaio físico concluído em 2026-11-11**, após liberação da USB pelo operador.
+Cartão de 30.255 MiB, SPI de 8 MHz, quatro modalidades aprovadas com readback,
+continuidade do cartão e remoção dos arquivos próprios confirmados. O aplicativo
+normal original 0.4.9 foi preservado e restaurado após o diagnóstico temporário.
+[Agregados revisados desta execução](measurements/sd-io-2026-11-11.json).
 
 ## O que o ensaio compara
 
@@ -17,7 +18,10 @@ não representam leitura/escrita contínua.
 
 Cada fase SD dura 15 s; a janela de medição da UI dura 10 s inteiramente dentro
 dela. Os timestamps são do mesmo dispositivo, registrados antes/depois do
-intervalo da UI. O cliente reprova sobreposição incompleta, alteração de página
+intervalo da UI. A base e os casos usam a mesma política de consulta de status seguida de pausa
+de 50 ms. O payload idle da base é um pouco menor: isso reduz o confundidor de
+comunicação sem igualar a carga UART byte a byte.
+O cliente reprova sobreposição incompleta, alteração de página
 ou interrupção. Fonte USB sintética 20 Hz, rampa/números e toque continuam ativos.
 O ensaio mede apresentações parciais e consultas de toque, sem medição óptica.
 O cliente exige operações e bytes efetivos na modalidade, fase SD de pelo
@@ -107,4 +111,73 @@ O motor portátil e o parser possuem testes nativos com arquivo/relógio em
 memória, incluindo colisão, falhas de I/O/limpeza, corrupção, gerações, deadline
 e relógio regressivo. O cliente usa porta e relógio falsos nos testes Python.
 Builds e resultados desta preparação ficam em [validacao.md](validacao.md).
-A recomendação de tamanho de lote depende da futura medição física.
+A medição executada e seus limites estão abaixo.
+
+## Resultados físicos
+
+Uma execução por modalidade, no mesmo build diagnóstico, com fonte observada
+em 20,009 Hz e maior intervalo de envio de 52,072 ms. Cada fase SD envolveu a
+janela UI de dez segundos, conforme os timestamps do dispositivo. Os números
+abaixo são taxas efetivas do ensaio, incluindo pausas cooperativas por bloco,
+seek e sync; não são velocidade bruta do cartão.
+
+| Modalidade | Vazão efetiva | Read/write p95 superior / máximo | Sync p95 superior / máximo |
+| --- | --- | --- | --- |
+| Escrita 512 B + sync por bloco | 39,84 KiB/s | 45 / 96,476 ms | 3 / 109,992 ms |
+| Escrita 4 KiB + sync por bloco | 281,08 KiB/s | 9 / 117,161 ms | 6 / 95,602 ms |
+| Escrita 4 KiB + sync por 64 KiB | 424,19 KiB/s | 8 / 80,882 ms | 6 / 54,844 ms |
+| Leitura 4 KiB | 637,25 KiB/s | 6 / 6,272 ms | — |
+
+| Caso | Apresentações parciais / duração | Rampa p95 superior / máximo | Maior intervalo touch | Amostra→primeira mudança p95 / máximo |
+| --- | --- | --- | --- | --- |
+| Base sem I/O SD | 600 / 10001 ms | 22 / 22,425 ms | 26,232 ms | 20 / 21 ms |
+| Escrita 512 B | 600 / 10000 ms | 22 / 24,182 ms | 27,327 ms | 20 / 22 ms |
+| Escrita 4 KiB | 599 / 10000 ms | 22 / 34,685 ms | 26,265 ms | 20 / 29 ms |
+| Lotes de 64 KiB | 597 / 10001 ms | 22 / 33,032 ms | 27,338 ms | 20 / 22 ms |
+| Leitura 4 KiB | 600 / 10000 ms | 22 / 22,819 ms | 27,232 ms | 20 / 22 ms |
+
+A sincronização por lote de 64 KiB teve **50,9% mais vazão efetiva** que sync
+por bloco de 4 KiB nesta execução. Esses dois modos mantêm bloco e pausa por
+bloco iguais. A comparação de 512 B com 4 KiB muda também a quantidade de
+pausas/sync por byte, portanto não isola somente o tamanho do bloco.
+
+O painel ficou entre 59,694 e 60 apresentações parciais/s; isso não equivale
+a FPS de tela inteira ou resposta óptica. O máximo da rampa chegou a 34,685 ms,
+acima dos 22,425 ms da base: não se conclui ausência de engasgos. Latência
+primeira mudança tem relógio local aceitação SIM→último DMA, sem medir caminho
+completo do computador ou chegada ao alvo. Tempo de tick não é CPU livre.
+Os máximos SD cobrem a fase de 15 s; os máximos UI, sua janela de 10 s.
+Eles não necessariamente ocorreram no mesmo instante.
+
+Todos os quatro arquivos foram criados, verificados e removidos; error=0 e
+card_consistent=true nos quatro resultados. SIM e rádios ficaram desligados,
+porta fechada. A margem mínima de stack reportada foi 4.832 B, referente ao
+worker diagnóstico desde o boot, sem inferir margem do build normal.
+
+### Aplicação recomendada
+
+Para futuras gravações agregadas, usar blocos de 4 KiB em fila limitada e
+sincronização por volume **e tempo**, sempre no worker SD. O volume de 64 KiB
+é o intervalo entre sincronizações, não uma exigência de buffer RAM de 64 KiB.
+A política temporal depende da perda de dados aceitável; sincronizar menos
+frequentemente deixa mais dados pendentes em uma interrupção de energia.
+
+O maior read/write observado foi 117,161 ms e o maior sync, 109,992 ms. O
+caminho de medição/desenho não deve esperar por essas operações. Recursos
+visuais opcionais devem ser carregados antes do uso e mantidos em cache
+limitado; os instrumentos principais continuam residentes. Esta etapa mediu
+o cartão e orienta a implementação futura; não adicionou logs de sensores,
+recursos SD por quadro, overclock ou controle de motor.
+
+### Firmware e restauração
+
+Diagnóstico 0.4.9-sd-io-bench: imagem de 1.430.224 B, SHA-256
+`532cbc841762ed17736d637b2d1b5b7c36d081c6c2a041c07232c5766f2e56ae`,
+base de firmware c7d1c47; cliente com correção de polling da base descrita acima.
+Backup privado do slot original de 1.966.080 B; prefixo da imagem normal
+1.423.200 B confere SHA-256
+`fa78da65dc6d7452948c53371c240a7d571e64be1de7c1c4beb86dd5c07b59b1`.
+Instalação e restauração somente em app 0x10000, hashes de escrita verificados.
+Consulta final confirmou 0.4.9-layout-preview, SD montado/30.255 MiB, perfil
+persistido, SIM/radios off e entradas/atuadores desabilitados; protocolo de
+diagnóstico ausente. Sem formato, NVS, calibração ou partições alteradas.

@@ -133,6 +133,9 @@ class ScriptedBench:
     def ui_report(self, timeout=15):
         return ui_fixture()
 
+    def baseline_report(self, timeout=15):
+        return ui_fixture()
+
     def send(self, command):
         if command.startswith("sd-io-bench "):
             self.mode = int(command.split()[-1])
@@ -160,6 +163,34 @@ class ScriptedBench:
 
 
 class SdBenchClientTests(unittest.TestCase):
+    def test_baseline_polls_status_without_losing_ui_and_rejects_active_sd(self):
+        class StatusPort(FakePort):
+            def __init__(self, state="idle", with_ui=True):
+                super().__init__()
+                self.queries = 0
+                self.state, self.with_ui = state, with_ui
+
+            def write(self, data):
+                super().write(data)
+                if data == b"sd-io-status\n":
+                    self.queries += 1
+                    # UI can precede the queried response in the same read.
+                    if self.queries == 3 and self.with_ui:
+                        self.data.extend(json.dumps(ui_fixture()).encode() + b"\n")
+                    self.data.extend(json.dumps({"kind": "sd_io_benchmark", "state": self.state}).encode() + b"\n")
+
+        port, clock = StatusPort(), FakeClock()
+        bench = client.Bench(port, clock)
+        self.assertEqual(bench.baseline_report(), ui_fixture())
+        self.assertEqual(port.queries, 3)
+        self.assertLess(clock.monotonic(), .3)
+        with self.assertRaisesRegex(client.BenchError, "baseline_sd_not_idle"):
+            client.Bench(StatusPort(state="measuring"), FakeClock()).baseline_report()
+        timed = FakeClock()
+        with self.assertRaisesRegex(client.BenchError, "baseline_ui_timeout"):
+            client.Bench(StatusPort(with_ui=False), timed).baseline_report(timeout=.2)
+        self.assertLess(timed.monotonic(), .3)
+
     def test_help_and_missing_flag_do_not_import_serial_or_create_output(self):
         with tempfile.TemporaryDirectory() as directory:
             root = Path(directory)

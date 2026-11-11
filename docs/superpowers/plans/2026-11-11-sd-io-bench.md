@@ -4,7 +4,7 @@
 
 **Goal:** Medir latência e vazão do cartão real, incluindo sincronização, junto da cadência/toque do painel.
 
-**Architecture:** Build de diagnóstico temporário `ecu-sd-benchmark`, com UI normal e aquisição/atuação desabilitadas. Trabalho SD no worker existente; arquivo próprio exclusivo e limitado. Cliente físico explícito mantém SIM20Hz e mede UI por10s dentro de uma fase SD15s. Restaurar imagem normal0.4.9 ao concluir.
+**Architecture:** Build de diagnóstico temporário `ecu-sd-benchmark`, com UI normal e aquisição/atuação desabilitadas. Trabalho SD no worker existente; arquivo próprio exclusivo e limitado. Cliente físico explícito mantém SIM20Hz e mede UI por10s dentro de uma fase SD15s. Restaurar imagem normal 0.4.9 ao concluir.
 
 **Tech Stack:** C++17/Arduino2.0.17/PlatformIO, LVGL8.4, POSIX VFS/FAT no SD já montado, Python3.12/.venv.
 
@@ -17,7 +17,7 @@
 - Conteúdo artificial determinístico, sem amostras/serial bruto/identificadores/credenciais em arquivos públicos ou memória.
 - Mesmo worker é dono do SD; UI não faz I/O. Build normal sem comando/buffer de diagnóstico.
 - Timeout global60s por trabalho, pausas cooperativas por bloco, snapshot limitado; uma chamada individual do driver pode exceder o prazo e será relatada, sem prometer preempção.
-- Guardar e restaurar aplicativo normal somente em0x10000, hash verificado, preservando NVS/calibração/partições.
+- Guardar e restaurar aplicativo normal somente em 0x10000, hash verificado, preservando NVS/calibração/partições.
 - Acesso USB depende da ACL temporária concedida pelo operador; preparar software enquanto indisponível.
 
 ## Review Focus
@@ -33,7 +33,7 @@
 - [x] Criar `firmware/ecu/include/sd_io_benchmark.hpp` e `tests/native/test_sd_io_benchmark.cpp`; testes primeiro, sem hardware.
 - [x] Namespace `ecu::sdbench`: `enum class Mode { Write512, Write4096, Batch4096, Read4096 }`; `Metrics {uint32_t operations,maxUs,p95UpperUs; uint64_t bytes,totalUs;}`; `Result {bool okay,created,removed; uint32_t error,setupMs,durationMs; Metrics read,write,sync;}`.
 - [x] `template<class Backend> Result run(Backend&,Mode,uint32_t durationMs=15000)`; backend possui `createExclusive()`, `write(const uint8_t*,size_t)->size_t`, `read(uint8_t*,size_t)->size_t`, `seek(uint32_t)->bool`, `sync()->bool`, `close()->bool`, `removeOwn()->bool`, `nowUs()->uint64_t`, `yield()`, `measurementStarted()`, `measurementFinished()`.
-- [x] Buffer4KiB limitado em run; preparar1MiB determinístico com blocos4KiB, sincronizar, seek0, então chamar measurementStarted. Medir fase15s, seek0 no limite1MiB. Read valida cada byte; writes usam o mesmo padrão por offset. Write512/Write4096 sincronizam cada bloco; Batch4096 sincroniza cada64KiB e ao fim. Separar estatísticas de setup, read/write e sync. Timeout60s inclui setup; erro interrompe. Nada é alocado dinamicamente pelo motor.
+- [x] Buffer4KiB limitado em run; preparar1MiB determinístico com blocos 4KiB, sincronizar, seek0, então chamar measurementStarted. Medir fase15s, seek0 no limite1MiB. Read valida cada byte; writes usam o mesmo padrão por offset. Write512/Write4096 sincronizam cada bloco; Batch4096 sincroniza cada64KiB e ao fim. Separar estatísticas de setup, read/write e sync. Timeout60s inclui setup; erro interrompe. Nada é alocado dinamicamente pelo motor.
 - [x] Métricas usam histograma64bins de1ms (último overflow usa máximo observado como limite superior); sem guardar duração por operação. Cobrir todas as falhas, limpeza, limite de tamanho e timeout em transporte de arquivo em memória.
 
 ## Task 2 — Integração de diagnóstico e cliente
@@ -46,9 +46,9 @@
 ## Task 3 — Evidência e entrega
 
 - [x] Revisões independentes do motor/integração; testes nativos ASan/UBSan, builds normal/diagnóstico/manutenção e auditoria de pinos.
-- [ ] ACL, identificação da placa/cartão e backup normal. Gravar diagnóstico, executar baseline/casos, conferir arquivo removido e integridade, restaurar normal e verificar hash/estado.
-- [ ] Se a USB permanecer inacessível, registrar claramente o bloqueio e preservar ferramentas prontas; não inventar medições.
-- [ ] Documentação com agregados, limites e recomendação baseada na medição; publicação na branch atual e AI Memory com leitura de volta.
+- [x] ACL, identificação da placa/cartão e backup normal. Gravar diagnóstico, executar baseline/casos, conferir arquivo removido e integridade, restaurar normal e verificar hash/estado.
+- [x] Acesso concedido pelo operador; caminho de bloqueio não se aplica ao resultado final.
+- [x] Documentação com agregados, limites e recomendação baseada na medição; publicação na branch atual e AI Memory com leitura de volta.
 
 ## Decisões após revisão prévia
 
@@ -73,7 +73,7 @@
 - Antes da base, status SD deve estar idle ou terminado com sucesso/limpeza;
   um trabalho anterior ativo contaminaria a base.
 
-## Checkpoint final de software
+## Histórico do checkpoint de software
 
 18 testes nativos e 86 testes do runner canônico passaram. Revisões C++/cliente
 aprovaram escopo/qualidade após correções. Ctrl-C é cancelamento explícito do
@@ -82,3 +82,29 @@ consultar estado antes de reset/retirada do cartão. Limite documentado.
 
 Sem acesso USB até este checkpoint; nenhuma medição física ou flash realizada.
 Resta executar bancada após liberação do operador e então registrar resultados.
+
+## Histórico do início da bancada
+
+Operador concedeu ACL e acesso foi confirmado. NGK ECU normal 0.4.9 identificado,
+flash 4 MiB, SD 30255 MiB/61962240 setores, perfil persistido, rádios/SIM off e flags
+inputs/atuadores false. App privado de 1966080 B preservado; prefixo 1423200 B
+igual à imagem instalada fa78da65dc6d7452948c53371c240a7d571e64be1de7c1c4beb86dd5c07b59b1.
+Diagnóstico 1430224 B/SHA 532cbc841762ed17736d637b2d1b5b7c36d081c6c2a041c07232c5766f2e56ae
+instalado somente em 0x10000, hash verificado; SD montado 8 MHz e job idle.
+
+Correção metodológica antes da medição: baseline agora usa a mesma política
+request status + pausa 50 ms dos casos SD. Payload idle é um pouco menor, então não
+se promete igualdade byte a byte da carga UART. Um teste RED→GREEN novo cobre
+relatório UI antes da resposta SD, consultas, job ativo e deadline. Runner 87 testes
+passou; revisão dirigida aprovou. Cliente físico em execução; ainda sem resultado
+final. Restaurar o app privado ao terminar e validar estado.
+
+## Resultado final
+
+Cinco cenários concluídos: base e quatro modalidades SD. Conteúdo verificado,
+arquivos próprios removidos e continuidade do cartão confirmada. Lotes 64 KiB
+com blocos 4 KiB tiveram +50,9% de vazão efetiva frente a sync por bloco 4 KiB;
+UI 59,7–60 apresentações parciais/s, sem certificar CPU livre/ausência de engasgos.
+Aplicativo original do backup restaurado em 0x10000, hash conferido e normal 0.4.9/
+SD montado/perfil persistido/flags false/diagnóstico ausente confirmados. Somente
+agregados revisados publicados. Relatório completo em docs/ensaio-sd.md.

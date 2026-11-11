@@ -116,7 +116,7 @@ TTL e alarmes continuam observados em cada tick. Não há leitura SD por quadro.
 20 Hz. Tempo decorrido de `ui::tick` inclui espera/preempção e não permite
 declarar percentual de CPU livre ou orçamento garantido para aquisição real.
 
-## Medição de I/O contínuo preparada
+## Medição de I/O contínuo executada
 
 O diagnóstico separado `ecu-sd-benchmark` compara escrita 512 B, escrita 4 KiB,
 sincronização por bloco ou por lote de 64 KiB e leitura 4 KiB. A fase SD 15 s
@@ -124,7 +124,12 @@ envolve integralmente a janela UI 10 s, comprovada pelos relógios do dispositiv
 O arquivo artificial exclusivo é limitado a 1 MiB, verificado e removido pela
 própria execução. Não há esse comando ou seus buffers no build normal.
 
-Em 2026-11-11, o software foi preparado e validado sem abrir porta física.
-A USB está sem ACL temporária; medição física pendente. Não usar os resultados
-anteriores de remount como evidência de I/O contínuo. Método, limites e comandos
-em [ensaio-sd.md](ensaio-sd.md).
+Em 2026-11-11, bancada concluída em SPI de 8 MHz: escrita 4 KiB com sync por
+64 KiB teve 424,19 KiB/s, contra 281,08 KiB/s com sync por bloco (+50,9%).
+São taxas efetivas com pausas cooperativas, sem medir velocidade bruta ou CPU
+livre. Painel manteve 59,7–60 apresentações parciais/s, com máximos da rampa
+até 34,685 ms. As operações SD chegaram a 117,161 ms, reforçando o uso do
+worker e de fila limitada. A sincronização por volume deve ter também um
+prazo temporal conforme a perda aceitável de dados; 64 KiB não exige buffer
+RAM desse tamanho. Todos os arquivos próprios foram verificados/removidos e
+normal original restaurado. Método e limites em [ensaio-sd.md](ensaio-sd.md).

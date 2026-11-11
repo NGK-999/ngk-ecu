@@ -209,6 +209,23 @@ class Bench:
             return self.pending_ui.pop(0)
         return self.wait(lambda event: isinstance(event, dict) and event.get("kind") == "ui_motion_benchmark", timeout)
 
+    def baseline_report(self, timeout=15):
+        # Apply the same status-query load as the SD cases during UI measurement.
+        end = self.clock.monotonic() + timeout
+        while self.clock.monotonic() < end:
+            if self.pending_ui:
+                return self.ui_report(0)
+            state = self.request("sd-io-status", "sd_io_benchmark",
+                                 min(2, max(0, end - self.clock.monotonic())))
+            if state.get("state") != "idle" and not (
+                    state.get("state") == "finished" and state.get("okay") is True
+                    and state.get("removed") is True and state.get("card_consistent") is True):
+                raise BenchError("baseline_sd_not_idle")
+            if self.pending_ui:
+                return self.ui_report(0)
+            self.delay(min(.05, max(0, end - self.clock.monotonic())))
+        raise BenchError("baseline_ui_timeout")
+
     def startup(self):
         end = self.clock.monotonic() + 8
         while self.clock.monotonic() < end:
@@ -308,7 +325,7 @@ def run_bench(bench, expected_mib, result):
         if bench.request("sim-status", "sim").get("live") is not True:
             raise BenchError("sim_not_live")
         bench.motion()
-        baseline = bench.ui_report()
+        baseline = bench.baseline_report()
         if baseline.get("synthetic") is not True or baseline.get("interrupted") is not False or baseline.get("duration_ms", 0) < 9900:
             raise BenchError("baseline_ui_incomplete")
         result["baseline"] = {key: val for key, val in baseline.items() if key in UI and key not in
