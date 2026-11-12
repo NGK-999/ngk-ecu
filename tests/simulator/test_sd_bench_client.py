@@ -44,7 +44,7 @@ class FakePort:
 
 
 def info_fixture():
-    return {"firmware": "0.4.11-sd-io-bench", "build": "normal", "mode": "bench",
+    return {"firmware": "0.4.12-sd-io-bench", "build": "normal", "mode": "bench",
             "sensor_inputs_enabled": False, "actuators_enabled": False,
             "simulation_protocol": 1, "sd_io_benchmark_protocol": 1,
             "simulation_enabled": False, "sd_present": True, "sd_mounted": True,

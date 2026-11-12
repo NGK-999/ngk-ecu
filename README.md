@@ -144,6 +144,12 @@ Wi-Fi e BLE estão disponíveis sob demanda e começam desligados. Nesta unidade
 a proteção de memória recusou ambos simultaneamente: usar um por vez.
 O SD guarda perfis visuais; não substitui RAM nem buffers DMA.
 
+Preparação do agente e referências por versão: [ambiente ESP32](docs/desenvolvimento-esp32.md).
+A prévia local usa a tela real com `sh scripts/preview-ui`. A candidata
+[0.4.12-rx](docs/serial-rx-0412.md) melhora a drenagem serial e passou no modelo
+em memória; não foi instalada nesta etapa, e a última versão confirmada
+na placa continua sendo a 0.4.11.
+
 Todos os pedidos estão organizados em [cinco etapas](docs/plano-geral.md).
 A [skill ESP32](docs/ferramentas-esp32.md) foi instalada localmente e auditada;
 o [ESP-MCP e as alternativas de IA](docs/avaliacao-ferramentas-ia.md) foram

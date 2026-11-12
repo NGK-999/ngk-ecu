@@ -28,7 +28,7 @@ STATES = {"idle", "queued", "running", "stopping", "done", "stopped", "error"}
 MONOTONIC = {"elapsed_us", "produced", "consumed", "overwritten", "sequence_gaps",
              "missed_periods", "dispatch_max_us", "consume_max_us", "kernel_total_us",
              "kernel_max_us"}
-STRINGS = {"firmware": {"0.4.11-load-bench"}, "build": {"load-benchmark"},
+STRINGS = {"firmware": {"0.4.12-load-bench"}, "build": {"load-benchmark"},
            "mode": {"bench"}, "state": STATES | {"off", "ready", "live", "stale", "busy", "rejected"}}
 BOOLS = {"sensor_inputs_enabled", "actuators_enabled", "simulation_enabled",
          "reduced_motion", "sd_mounted", "profile_persisted", "synthetic",
@@ -55,7 +55,7 @@ def bounded(value, keys):
 
 
 def validate_identity(info, radios, load):
-    required = {"firmware": "0.4.11-load-bench", "build": "load-benchmark",
+    required = {"firmware": "0.4.12-load-bench", "build": "load-benchmark",
                 "mode": "bench", "sensor_inputs_enabled": False,
                 "actuators_enabled": False, "simulation_protocol": 1,
                 "load_benchmark_protocol": 1, "simulation_enabled": False,

@@ -10,6 +10,7 @@ namespace ecu {
 template<std::size_t Capacity = 2048> class SerialTxBuffer {
     static_assert(Capacity > 1, "TX storage includes a trailing NUL");
 public:
+    static constexpr std::size_t capacity = Capacity - 1;
     bool append(const char* format, ...) {
         std::va_list arguments;
         va_start(arguments, format);
@@ -25,7 +26,7 @@ public:
         va_copy(measured, arguments);
         const int needed = std::vsnprintf(nullptr, 0, format, measured);
         va_end(measured);
-        if (needed < 0 || static_cast<std::size_t>(needed) > Capacity - 1 - pending()) return false;
+        if (needed < 0 || static_cast<std::size_t>(needed) > free()) return false;
         const auto retained = pending();
         if (begin_) std::memmove(bytes_.data(), data(), retained);
         begin_ = 0;
@@ -41,6 +42,7 @@ public:
     }
     const char* data() const { return bytes_.data() + begin_; }
     std::size_t pending() const { return end_ - begin_; }
+    std::size_t free() const { return capacity - pending(); }
     std::size_t chunkSize(std::size_t available) const {
         return std::min({pending(), available, std::size_t(64)});
     }

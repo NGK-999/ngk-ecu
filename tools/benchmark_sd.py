@@ -30,7 +30,7 @@ def bounded(value, keys):
 
 
 def validate_identity(info, radios, expected_mib):
-    expected = {"firmware": "0.4.11-sd-io-bench", "build": "normal", "mode": "bench",
+    expected = {"firmware": "0.4.12-sd-io-bench", "build": "normal", "mode": "bench",
                 "sensor_inputs_enabled": False, "actuators_enabled": False,
                 "simulation_protocol": 1, "sd_io_benchmark_protocol": 1,
                 "simulation_enabled": False, "sd_present": True,

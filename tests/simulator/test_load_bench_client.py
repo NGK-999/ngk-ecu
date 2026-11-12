@@ -34,7 +34,7 @@ class Clock:
 
 
 def info_fixture():
-    return {"project": "NGK ECU", "firmware": "0.4.11-load-bench",
+    return {"project": "NGK ECU", "firmware": "0.4.12-load-bench",
             "build": "load-benchmark", "mode": "bench",
             "sensor_inputs_enabled": False, "actuators_enabled": False,
             "simulation_protocol": 1, "load_benchmark_protocol": 1,

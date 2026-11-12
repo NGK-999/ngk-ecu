@@ -1,0 +1,27 @@
+
+
+# BEGIN NGK ESP32 MCP SETUP
+
+[mcp_servers.espressif-docs]
+url = "https://mcp.espressif.com/docs"
+startup_timeout_sec = 30
+tool_timeout_sec = 90
+
+[mcp_servers.espressif-engineering]
+url = "https://ts-mcp.espressif.com/mcp"
+startup_timeout_sec = 30
+tool_timeout_sec = 90
+
+[mcp_servers.lvgl-docs]
+url = "https://lvgl.mcp.kapa.ai/"
+startup_timeout_sec = 30
+tool_timeout_sec = 90
+
+# Read-only discovery explicitly requested for this setup.
+[mcp_servers.espressif-engineering.tools.ts_skill_list]
+approval_mode = "approve"
+
+# Read-only skill retrieval explicitly requested for this setup.
+[mcp_servers.espressif-engineering.tools.ts_skill_get]
+approval_mode = "approve"
+# END NGK ESP32 MCP SETUP

@@ -79,3 +79,18 @@ Fonte USB é sempre identificada como SIM USB no firmware; TTL750ms retira
 valores/alertas antigos. Nenhum frame/controlador do simulador habilita GPIO,
 sensor físico, atuador, injeção ou ignição. Não persistir amostras/serial bruto.
 Atalho é do usuário local; dependências ficam na .venv, sem instalação no sistema.
+
+## Desenvolvimento assistido de ESP32
+
+Antes de alterar firmware ou ferramentas, consultar `docs/desenvolvimento-esp32.md`.
+Usar MCPs Documentation/Engineering/LVGL quando pertinentes, confrontando fontes
+atuais com Arduino2.0.17/ESP-IDF4.4.7 e LVGL8.4 do projeto. Preservar o perfil
+`board_profile.hpp`, os três barramentos e a propriedade única do LVGL.
+Após mudanças relevantes, compilar com o PlatformIO local. Para mudanças visuais,
+executar `sh scripts/preview-ui` e inspecionar as capturas; host não valida hardware.
+A skill `.agents/skills/esp32/SKILL.md` já é a orientação embarcada local; exemplos
+genéricos não substituem os headers do SDK. Mudanças no ingress serial precisam
+respeitar reservas/ordem documentadas em `docs/serial-rx-0412.md`.
+O setup autorizado permite somente sua configuração local de MCP e a confiança
+desta raiz no Codex; preservar as demais configurações globais. USB/flash/reset
+são uma etapa separada e dependem da autorização do trabalho em andamento.

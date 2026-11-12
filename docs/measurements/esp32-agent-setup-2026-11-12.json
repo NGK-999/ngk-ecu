@@ -1,0 +1,165 @@
+{
+  "date": "2026-11-12",
+  "base_commit": "2e27aa4940468e3e87daa74e8cc6536070bbf70c",
+  "scope": {
+    "project": "NGK ECU",
+    "other_project_untouched": "InterfaceNeural",
+    "hardware_access": false,
+    "firmware_flash": false,
+    "board_reset": false
+  },
+  "environment": {
+    "os": "Ubuntu 26.04.1 LTS",
+    "architecture": "x86_64",
+    "client": "Codex CLI",
+    "client_version": "0.167.2",
+    "python": "3.12.3",
+    "platformio": "6.1.18",
+    "platform": "espressif32@6.9.0",
+    "arduino_esp32": "2.0.17",
+    "esp_idf_sdk": "4.4.7",
+    "xtensa_toolchain": "8.4.0+2021r2-patch5",
+    "lvgl": "8.4.0",
+    "lovyangfx": "1.2.7",
+    "nimble_arduino": "2.5.1"
+  },
+  "mcp": {
+    "documentation": {
+      "status": "verified",
+      "url": "https://mcp.espressif.com/docs",
+      "oauth_separate": true,
+      "read_tool": "search_espressif_sources",
+      "actual_read_succeeded": true,
+      "source_version_caveat": "MCP returned latest/master; checked against local SDK4.4.7"
+    },
+    "engineering": {
+      "status": "verified",
+      "url": "https://ts-mcp.espressif.com/mcp",
+      "oauth_separate": true,
+      "read_tools": [
+        "ts_skill_list",
+        "ts_skill_get"
+      ],
+      "actual_read_succeeded": true,
+      "read_package": "setup/espressif-env-setup",
+      "package_sha256": "f098b5bbdcc5d886eb721f7df163e36111970f1f3788d6c2ab0cbdfa641cf4c9",
+      "package_applied": false,
+      "reason": "fresh-install workflow does not apply to existing Arduino project"
+    },
+    "lvgl": {
+      "status": "verified",
+      "url": "https://lvgl.mcp.kapa.ai/",
+      "oauth_separate": true,
+      "read_tool": "search_lvgl_light_and_versatile_graphics_library_knowledge_sources",
+      "actual_read_succeeded": true,
+      "source_version_caveat": "Current/forum results cross-checked with LVGL8.4 docs and local headers"
+    },
+    "validation_client": "fresh ephemeral Codex CLI using trusted project config; old interactive tool catalog needs reload"
+  },
+  "configuration": {
+    "project": ".codex/config.toml",
+    "user": "~/.codex/config.toml (project trust entry only)",
+    "other_user_settings_preserved": true,
+    "repeat_apply_byte_identical": true,
+    "credentials_versioned": false,
+    "setup_tests": 13
+  },
+  "skill": {
+    "name": "esp32",
+    "path": ".agents/skills/esp32/SKILL.md",
+    "source_commit": "124d298e4ccaa737dbf6d26bbae47722e17f3097",
+    "reused_existing": true,
+    "generic_stm32_skill_installed": false
+  },
+  "not_applicable": [
+    "ESP-IDF6 local MCP on this Arduino/SDK4.4.7 project",
+    "ESP Component Registry for Arduino dependency resolution",
+    "EEZ/SquareLine without existing editor project"
+  ],
+  "build_before": {
+    "environment": "ecu-normal",
+    "status": "success",
+    "static_ram_bytes": 96848,
+    "flash_bytes": 1417833,
+    "seconds": 3.839
+  },
+  "build_after": {
+    "status": "success",
+    "environments": [
+      "ecu-normal",
+      "ecu-render-reference",
+      "ecu-sd-benchmark",
+      "ecu-load-benchmark",
+      "ecu-maintenance"
+    ],
+    "static_ram_bytes": [
+      96848,
+      96848,
+      96880,
+      97216,
+      65248
+    ],
+    "flash_bytes": [
+      1417901,
+      1418045,
+      1424929,
+      1422393,
+      729853
+    ],
+    "candidate_version": "0.4.12-rx",
+    "normal_binary_bytes": 1424480,
+    "normal_binary_sha256": "f3a58a5df29cf06d5fffc7801331c33f92e10407547a54532764eefa89a22ea5",
+    "flashed": false
+  },
+  "verification": {
+    "native_asan_ubsan_executables": 22,
+    "simulator_tests_memory_headless": 102,
+    "setup_temporary_config_tests": 13,
+    "preview_driver_tests": 3,
+    "preview_scenes": 11,
+    "pin_audit_errors": 0,
+    "pin_audit_known_warnings": 3
+  },
+  "serial_model": {
+    "transport": "memory only",
+    "rx_capacity_bytes": 256,
+    "uart_baud": 115200,
+    "loop_us": 6000,
+    "tx_chunk_bytes": 64,
+    "source_hz": 100,
+    "frames": 250,
+    "old_dropped_bytes": 175,
+    "new_dropped_bytes": 0,
+    "new_rx_peak_bytes": 43,
+    "physical_timeout_resolved": null,
+    "physical_100hz_retest": "not performed"
+  },
+  "preview": {
+    "kind": "static host rendering of real firmware UI",
+    "lvgl_version": "8.4.0",
+    "resolution": [
+      320,
+      240
+    ],
+    "source_sha256": "ab3144f800b3635aee68abda09106fb3b6f02181ea1f80c3b51001869693ef2b",
+    "public_images": [
+      "docs/images/preview-setup-painel.png",
+      "docs/images/preview-setup-alertas.png",
+      "docs/images/preview-setup-contato.png"
+    ],
+    "pixel_output_unchanged_after_serial_fix": true,
+    "interactive_window": false,
+    "physical_display_or_touch_validated": false
+  },
+  "rea": {
+    "version": "6.8.0",
+    "operation": "section_headers",
+    "result": {
+      "artifact_changed": false,
+      "completion_status": "complete",
+      "exit_code": 0
+    },
+    "candidate_elf_sha256": "653f6bc2981fbf92eb96bacc34d117e599ae7732d9a7216203eca76c1558e91f"
+  },
+  "last_documented_installed_firmware": "0.4.11-resource; not queried or changed in this setup"
+}

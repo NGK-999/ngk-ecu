@@ -10,7 +10,7 @@ extern "C" {
 #include <ff.h>
 #include <diskio.h>
 }
-#include "command_line.hpp"
+#include "serial_ingress.hpp"
 #include "profile_service.hpp"
 #include "radio.hpp"
 #include "storage_schedule.hpp"
@@ -36,14 +36,14 @@ namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
 #ifdef NGK_LOAD_BENCH
-constexpr const char* Version = "0.4.11-load-bench";
+constexpr const char* Version = "0.4.12-load-bench";
 TaskHandle_t loadMainTask = nullptr, loadSdTask = nullptr;
 #elif defined(NGK_SD_IO_BENCH)
-constexpr const char* Version = "0.4.11-sd-io-bench";
+constexpr const char* Version = "0.4.12-sd-io-bench";
 #elif defined(NGK_COMBINED_NUMBERS)
-constexpr const char* Version = "0.4.11-reference";
+constexpr const char* Version = "0.4.12-reference";
 #else
-constexpr const char* Version = "0.4.11-resource";
+constexpr const char* Version = "0.4.12-rx";
 #endif
 #if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
 uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
@@ -435,8 +435,8 @@ void command(const char* line) {
 #endif
 #ifndef NGK_SD_MAINTENANCE
     if (!strcmp(line, "screen-capture")) {
-        // serialCommands accepts no next line while the bounded outbox is pending.
-        // Drain bytes already owned by UART before sending the binary header.
+        // Binary capture requires the text outbox to be empty. Refuse a busy
+        // outbox; drain bytes owned by UART before sending the binary header.
         if (serialTx.pending() || uart_wait_tx_done(UART_NUM_0, pdMS_TO_TICKS(1000)) != ESP_OK) {
             queueLine("{\"kind\":\"screen_capture\",\"error\":\"screen_capture_tx_busy\"}");
         } else if (!ecu::ui::captureScreen()) {
@@ -546,16 +546,14 @@ void command(const char* line) {
 }
 
 void serialCommands() {
-    static ecu::CommandLine parser;
-    if (serialTx.pending()) return;
-    for (unsigned consumed = 0; consumed < 128 && Serial.available(); ++consumed) {
-        const auto character = char(Serial.read());
-        const auto result = parser.push(character);
-        if (result == ecu::CommandLine::Result::Ready) command(parser.value());
-        else if (result == ecu::CommandLine::Result::Rejected) queueLine("ERROR invalid command line");
-        // One terminal line per UI iteration, including an empty line.
-        if (character == '\n') return;
-    }
+    static ecu::SerialIngress ingress;
+    // Current text reply bounds, with numeric maxima and CR/LF: info <= 996,
+    // load-status <= 893, sd-io-status <= 778; all fit the 1024-byte reserve.
+    // Asynchronous UI reports use their existing retry path below.
+    // SIM1 can be consumed with only its 64-byte rejection reserve while a
+    // longer reply drains. No LVGL/service ownership crosses the main task.
+    ingress.poll(Serial, serialTx, [](const char* line) { command(line); },
+        [] { queueLine("ERROR invalid command line"); });
 }
 } // namespace
 
