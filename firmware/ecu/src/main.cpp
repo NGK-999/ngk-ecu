@@ -17,6 +17,10 @@ extern "C" {
 #include "serial_tx.hpp"
 #include "ui.hpp"
 #include "simulation_service.hpp"
+#ifdef NGK_LOAD_BENCH
+#include "load_bench.hpp"
+#include <esp_timer.h>
+#endif
 #ifdef NGK_SD_IO_BENCH
 #include "sd_io_service.hpp"
 #include "card_probe.hpp"
@@ -31,13 +35,18 @@ extern "C" {
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
-#ifdef NGK_SD_IO_BENCH
+#ifdef NGK_LOAD_BENCH
+constexpr const char* Version = "0.4.11-load-bench";
+TaskHandle_t loadMainTask = nullptr, loadSdTask = nullptr;
+#elif defined(NGK_SD_IO_BENCH)
 constexpr const char* Version = "0.4.11-sd-io-bench";
-uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
 #elif defined(NGK_COMBINED_NUMBERS)
 constexpr const char* Version = "0.4.11-reference";
 #else
 constexpr const char* Version = "0.4.11-resource";
+#endif
+#if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
+uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
 #endif
 struct Snapshot {
     bool present = false, mounted = false, verified = false, formatReady = false;
@@ -306,6 +315,9 @@ void printInfo() {
         "\"profile_status\":%u,\"profile_revision\":%u,\"profile_persisted\":%s,"
         "\"simulation_protocol\":%u,\"simulation_enabled\":%s,\"simulation_live\":%s,"
         "\"refresh_mode\":%u,\"reduced_motion\":%s,\"screen_capture_protocol\":%u"
+#ifdef NGK_LOAD_BENCH
+        ",\"load_benchmark_protocol\":1"
+#endif
 #ifdef NGK_SD_IO_BENCH
         ",\"sd_io_benchmark_protocol\":1,\"sd_spi_hz\":%u"
 #endif
@@ -316,6 +328,8 @@ void printInfo() {
         Version,
 #ifdef NGK_SD_MAINTENANCE
         "maintenance",
+#elif defined(NGK_LOAD_BENCH)
+        "load-benchmark",
 #else
         "normal",
 #endif
@@ -351,6 +365,42 @@ void printSimulationStatus() {
 #endif
 
 void command(const char* line) {
+#ifdef NGK_LOAD_BENCH
+    if (!strcmp(line, "load-status")) {
+        const auto state = ecu::loadbench::snapshot();
+        const auto parameters = ecu::loadbench::config(state.control.request.mode);
+        const auto& counts = state.mailbox;
+        queuePrintf("{\"kind\":\"load_benchmark\",\"protocol\":1,\"id\":%u,\"mode\":%u,\"state\":\"%s\","
+            "\"duration_ms\":%u,\"elapsed_us\":%llu,\"phase_started_us\":%llu,\"phase_finished_us\":%llu,"
+            "\"channels\":%u,\"rate_hz\":%u,\"iterations\":%u,"
+            "\"produced\":%llu,\"consumed\":%llu,\"overwritten\":%llu,\"pending\":%u,\"sequence_gaps\":%llu,"
+            "\"missed_periods\":%llu,\"dispatch_max_us\":%llu,\"consume_max_us\":%llu,"
+            "\"kernel_total_us\":%llu,\"kernel_max_us\":%llu,\"checksum\":%u,"
+            "\"heap_free_bytes\":%u,\"heap_min_bytes\":%u,\"heap_largest_bytes\":%u,"
+            "\"stack_main_min_bytes\":%u,\"stack_sd_min_bytes\":%u,"
+            "\"stack_radio_min_bytes\":%u,\"stack_load_min_bytes\":%u}\n",
+            state.control.request.id, unsigned(state.control.request.mode), ecu::loadbench::stateText(state.control.state),
+            state.control.request.durationMs, static_cast<unsigned long long>(state.elapsedUs),
+            static_cast<unsigned long long>(state.startedUs), static_cast<unsigned long long>(state.finishedUs),
+            parameters.channels, parameters.rateHz, parameters.iterations,
+            static_cast<unsigned long long>(counts.produced), static_cast<unsigned long long>(counts.consumed),
+            static_cast<unsigned long long>(counts.overwritten), unsigned(counts.pending), static_cast<unsigned long long>(counts.sequenceGaps),
+            static_cast<unsigned long long>(state.schedule.missed), static_cast<unsigned long long>(state.schedule.maxLateUs),
+            static_cast<unsigned long long>(counts.consumeMaxUs), static_cast<unsigned long long>(state.kernelTotalUs),
+            static_cast<unsigned long long>(state.kernelMaxUs), state.checksum, state.heapFreeBytes, state.heapMinBytes,
+            state.heapLargestBytes, state.stackMainMinBytes, state.stackSdMinBytes, state.stackRadioMinBytes, state.stackLoadMinBytes);
+        return;
+    }
+    if (!strcmp(line, "load-start") || !strncmp(line, "load-start ", 11)) {
+        ecu::loadbench::Request request;
+        queueLine(ecu::loadbench::parseRequest(line, request) && ecu::loadbench::start(request) ? "LOAD_QUEUED" : "LOAD_REFUSED");
+        return;
+    }
+    if (!strcmp(line, "load-stop")) {
+        queueLine(ecu::loadbench::stop() ? "LOAD_STOP_QUEUED" : "LOAD_REFUSED");
+        return;
+    }
+#endif
 #ifdef NGK_SD_IO_BENCH
     if (!strcmp(line, "sd-io-status")) {
         const auto state = ecu::sdbench::snapshot();
@@ -437,11 +487,11 @@ void command(const char* line) {
         return;
     }
     if (!strcmp(line, "motion-bench")) {
-#ifdef NGK_SD_IO_BENCH
+#if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
         const uint64_t before = esp_timer_get_time();
 #endif
         const bool started = ecu::ui::startMotionBenchmark();
-#ifdef NGK_SD_IO_BENCH
+#if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
         if (started) motionObservedStartUs = before;
 #endif
         queueLine(started ? "MOTION_BENCH_STARTED" : "MOTION_BENCH_REFUSED");
@@ -510,6 +560,9 @@ void serialCommands() {
 } // namespace
 
 void setup() {
+#ifdef NGK_LOAD_BENCH
+    loadMainTask = xTaskGetCurrentTaskHandle();
+#endif
     Serial.begin(115200);
     bootToken = esp_random();
     if (!bootToken) bootToken = 1;
@@ -535,14 +588,26 @@ void setup() {
 #else
         8192,
 #endif
-        nullptr, 1, nullptr, 0) != pdPASS) {
+        nullptr, 1,
+#ifdef NGK_LOAD_BENCH
+        &loadSdTask,
+#else
+        nullptr,
+#endif
+        0) != pdPASS) {
         halt("FATAL storage worker");
     }
+#ifdef NGK_LOAD_BENCH
+    if (!ecu::loadbench::begin(loadMainTask, loadSdTask)) halt("FATAL load benchmark worker");
+#endif
     queueLine("NGK ECU BENCH: sensor inputs and actuators disabled");
     printInfo();
 }
 
 void loop() {
+#ifdef NGK_LOAD_BENCH
+    ecu::loadbench::poll();
+#endif
     const bool storageChanged = xQueueReceive(snapshots, &view, 0) == pdTRUE;
     serialCommands();
     if (storageChanged)
@@ -565,7 +630,7 @@ void loop() {
     static bool motionReportPending = false;
     if (!motionReportPending) {
         motionReportPending = ecu::ui::takeMotionBenchmarkReport(motionReport);
-#ifdef NGK_SD_IO_BENCH
+#if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
         if (motionReportPending) motionObservedEndUs = esp_timer_get_time();
 #endif
     }
@@ -582,7 +647,7 @@ void loop() {
             "\"ramp_gap_without_stable_max_us\":%u,\"ramp_gap_with_stable_max_us\":%u,"
             "\"detail_passes\":%u,\"idle_skips\":%u,\"sample_presentations\":%u,"
             "\"sample_to_present_p95_ms\":%u,\"sample_to_present_max_ms\":%u,\"interrupted\":%s"
-#ifdef NGK_SD_IO_BENCH
+#if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
             ",\"observed_start_us\":%llu,\"observed_end_us\":%llu"
 #endif
             "}\n",
@@ -599,7 +664,7 @@ void loop() {
             motionReport.idleSkips, motionReport.samplePresentations,
             motionReport.sampleToPresentP95Ms, motionReport.sampleToPresentMaxMs,
             motionReport.interrupted ? "true" : "false"
-#ifdef NGK_SD_IO_BENCH
+#if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
             , static_cast<unsigned long long>(motionObservedStartUs), static_cast<unsigned long long>(motionObservedEndUs)
 #endif
         )) motionReportPending = false;

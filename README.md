@@ -134,6 +134,12 @@ A 0.4.11 evita contas repetidas, deixa o worker de rádio bloqueado quando
 desligado e só copia novos estados do SD. A fluidez foi preservada em bancada;
 [otimizações, testes e limites](docs/otimizacao-recursos-0411.md).
 
+A [bateria de carga sintética](docs/bateria-carga-sintetica.md) acrescenta um
+build temporário de diagnóstico: nove casos completos e dois timeouts USB a
+100 Hz registrados. A carga nominal de 100 lotes/s completou dois minutos sem
+perder prazos; o pico de 1.000 lotes/s não foi sustentado pelo scheduler ensaiado.
+O aplicativo normal original foi restaurado após a bateria.
+
 Wi-Fi e BLE estão disponíveis sob demanda e começam desligados. Nesta unidade,
 a proteção de memória recusou ambos simultaneamente: usar um por vez.
 O SD guarda perfis visuais; não substitui RAM nem buffers DMA.

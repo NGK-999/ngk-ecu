@@ -745,6 +745,12 @@ bool snapshot(Snapshot& output) {
     return output.running;
 }
 
+#ifdef NGK_LOAD_BENCH
+uint32_t workerStackMinBytes() {
+    return workerTask ? uxTaskGetStackHighWaterMark(workerTask) : 0;
+}
+#endif
+
 bool enableWifi(bool enabled) {
     Command command;
     command.kind = Kind::WifiEnable;

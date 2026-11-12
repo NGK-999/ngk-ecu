@@ -55,6 +55,10 @@ struct Snapshot {
 // invoked by this module. The queue holds at most eight small command tokens.
 bool begin();
 bool snapshot(Snapshot& output);
+#ifdef NGK_LOAD_BENCH
+// Public ESP-IDF watermark, bytes since this worker was created.
+uint32_t workerStackMinBytes();
+#endif
 const char* statusText(Status status);
 
 // These methods copy bounded input and enqueue without waiting. A true return
