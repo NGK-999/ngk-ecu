@@ -1,0 +1,252 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-12",
+  "source_commit": "40626184d754dd9b4e12a37ed68a74d3690ca8e0",
+  "validation_scope": "physical_board_synthetic_usb_no_vehicle",
+  "local_verification": {
+    "native_asan_ubsan_executables": 22,
+    "simulator_memory_tests": 102,
+    "platformio_builds": [
+      "ecu-normal",
+      "ecu-load-benchmark"
+    ],
+    "note": "Initial sandbox LeakSanitizer/ptrace failure; native tests then passed on host with sanitizers enabled."
+  },
+  "firmware_delivery": {
+    "before": "0.4.11-resource",
+    "after": "0.4.12-rx",
+    "build": "normal",
+    "offset": "0x10000",
+    "slot_bytes": 1966080,
+    "backup_verified": true,
+    "write_and_verify_flash_passed": true,
+    "partition_table_unchanged": true,
+    "normal_binary_bytes": 1424480,
+    "normal_binary_sha256": "f3a58a5df29cf06d5fffc7801331c33f92e10407547a54532764eefa89a22ea5",
+    "static_ram_bytes": 96848,
+    "linked_flash_bytes": 1417901
+  },
+  "cases": [
+    {
+      "case": "control100",
+      "completed": true,
+      "producer": {
+        "producer_frames": 1719,
+        "producer_hz_observed": 100.02533567854354,
+        "producer_max_gap_us": 11991,
+        "producer_skipped_slots": 0,
+        "status_polls": 16
+      },
+      "ui": {
+        "duration_ms": 10000,
+        "synthetic": true,
+        "interrupted": false,
+        "presentations": 600,
+        "interval_p95_us": 25637,
+        "interval_max_us": 28959,
+        "ui_tick_max_us": 16512,
+        "touch_poll_max_gap_us": 29840,
+        "sample_to_present_p95_ms": 22,
+        "sample_to_present_max_ms": 29
+      },
+      "cleanup": {
+        "load_cleanup_confirmed": true,
+        "sim_off_confirmed": true,
+        "radios_restored": true,
+        "port_closed": true
+      },
+      "load": {
+        "mode": 0,
+        "duration_ms": 15000,
+        "channels": 0,
+        "rate_hz": 0,
+        "iterations": 0,
+        "produced": 0,
+        "consumed": 0,
+        "overwritten": 0,
+        "pending": 0,
+        "sequence_gaps": 0,
+        "missed_periods": 0,
+        "dispatch_max_us": 0,
+        "consume_max_us": 0,
+        "heap_min_bytes": 102348,
+        "stack_main_min_bytes": 4732,
+        "state": "done"
+      }
+    },
+    {
+      "case": "nominal100",
+      "completed": true,
+      "producer": {
+        "producer_frames": 1722,
+        "producer_hz_observed": 100.01976898866033,
+        "producer_max_gap_us": 11874,
+        "producer_skipped_slots": 0,
+        "status_polls": 16
+      },
+      "ui": {
+        "duration_ms": 10001,
+        "synthetic": true,
+        "interrupted": false,
+        "presentations": 600,
+        "interval_p95_us": 25672,
+        "interval_max_us": 27984,
+        "ui_tick_max_us": 16858,
+        "touch_poll_max_gap_us": 28902,
+        "sample_to_present_p95_ms": 21,
+        "sample_to_present_max_ms": 28
+      },
+      "cleanup": {
+        "load_cleanup_confirmed": true,
+        "sim_off_confirmed": true,
+        "radios_restored": true,
+        "port_closed": true
+      },
+      "load": {
+        "mode": 1,
+        "duration_ms": 15000,
+        "channels": 16,
+        "rate_hz": 100,
+        "iterations": 32,
+        "produced": 1500,
+        "consumed": 1380,
+        "overwritten": 120,
+        "pending": 0,
+        "sequence_gaps": 120,
+        "missed_periods": 0,
+        "dispatch_max_us": 2008,
+        "consume_max_us": 9975,
+        "heap_min_bytes": 102348,
+        "stack_main_min_bytes": 4700,
+        "state": "done"
+      }
+    },
+    {
+      "case": "nominal50",
+      "completed": true,
+      "producer": {
+        "producer_frames": 860,
+        "producer_hz_observed": 50.05373927466703,
+        "producer_max_gap_us": 22103,
+        "producer_skipped_slots": 0,
+        "status_polls": 16
+      },
+      "ui": {
+        "duration_ms": 10000,
+        "synthetic": true,
+        "interrupted": false,
+        "presentations": 600,
+        "interval_p95_us": 25377,
+        "interval_max_us": 27849,
+        "ui_tick_max_us": 16639,
+        "touch_poll_max_gap_us": 28282,
+        "sample_to_present_p95_ms": 22,
+        "sample_to_present_max_ms": 24
+      },
+      "cleanup": {
+        "load_cleanup_confirmed": true,
+        "sim_off_confirmed": true,
+        "radios_restored": true,
+        "port_closed": true
+      },
+      "load": {
+        "mode": 1,
+        "duration_ms": 15000,
+        "channels": 16,
+        "rate_hz": 100,
+        "iterations": 32,
+        "produced": 1500,
+        "consumed": 1383,
+        "overwritten": 117,
+        "pending": 0,
+        "sequence_gaps": 117,
+        "missed_periods": 0,
+        "dispatch_max_us": 2008,
+        "consume_max_us": 9986,
+        "heap_min_bytes": 102348,
+        "stack_main_min_bytes": 4700,
+        "state": "done"
+      }
+    },
+    {
+      "case": "normal100",
+      "completed": true,
+      "producer": {
+        "producer_frames": 1554,
+        "producer_hz_observed": 100.03071649132869,
+        "producer_max_gap_us": 11844,
+        "producer_skipped_slots": 0,
+        "status_polls": 12
+      },
+      "ui": {
+        "duration_ms": 10000,
+        "synthetic": true,
+        "interrupted": false,
+        "presentations": 600,
+        "interval_p95_us": 25929,
+        "interval_max_us": 28091,
+        "ui_tick_max_us": 14591,
+        "touch_poll_max_gap_us": 27469,
+        "sample_to_present_p95_ms": 21,
+        "sample_to_present_max_ms": 25
+      },
+      "cleanup": {
+        "load_cleanup_confirmed": true,
+        "sim_off_confirmed": true,
+        "radios_restored": true,
+        "port_closed": true
+      },
+      "ttl_stale_confirmed": true
+    }
+  ],
+  "capture_order": {
+    "completed": true,
+    "firmware": "0.4.12-rx",
+    "text_before_binary_confirmed": true,
+    "capture_bytes": 153600,
+    "crc32": "d93988db",
+    "port_closed": true
+  },
+  "final_state": {
+    "info": {
+      "actuators_enabled": false,
+      "build": "normal",
+      "cpu_mhz": 240,
+      "firmware": "0.4.12-rx",
+      "flash_bytes": 4194304,
+      "mode": "bench",
+      "profile_persisted": true,
+      "profile_status": 1,
+      "psram_bytes": 0,
+      "reduced_motion": false,
+      "refresh_mode": 0,
+      "sd_mounted": true,
+      "sensor_inputs_enabled": false,
+      "simulation_enabled": false,
+      "simulation_protocol": 1
+    },
+    "radios": {
+      "ble_advertising": false,
+      "ble_connected": false,
+      "ble_enabled": false,
+      "ble_pairing_pending": false,
+      "memory_failure": false,
+      "running": true,
+      "wifi_connected": false,
+      "wifi_connecting": false,
+      "wifi_enabled": false,
+      "wifi_scanning": false,
+      "worker_wakeups": 0
+    },
+    "sim_off": true
+  },
+  "limits": [
+    "Producer rate and skipped slots describe host transmission, not exact USB accepted-frame count.",
+    "SIM sequence watermark is not a loss counter; mailbox overwrites are synthetic-load coalescing, not USB losses.",
+    "UI presentations count partial DMA transfers; no optical FPS or free CPU percentage was measured.",
+    "No physical sensors, automotive conditioning, ignition, injection or vehicle test.",
+    "No NVS, calibration or partition-table write commands; no SD format.",
+    "Three diagnostic cases used 15-second load windows with reset before each; normal case measured one ten-second UI window with 12 concurrent status polls and a separate 900-ms TTL pause.",
+    "Physical retest did not include SD refresh, Wi-Fi or BLE load; previous results remain historical."
+  ]
+}

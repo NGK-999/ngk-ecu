@@ -1,0 +1,277 @@
+{
+  "base_commit": "40626184d754dd9b4e12a37ed68a74d3690ca8e0",
+  "branch": "preview/painel-disposicao",
+  "builds": {
+    "ecu-benchmark": {
+      "linker_flash_bytes": 1418857,
+      "passed": true,
+      "static_ram_bytes": 96848
+    },
+    "ecu-load-benchmark": {
+      "linker_flash_bytes": 1423305,
+      "passed": true,
+      "static_ram_bytes": 97216
+    },
+    "ecu-maintenance": {
+      "linker_flash_bytes": 730129,
+      "passed": true,
+      "static_ram_bytes": 65256
+    },
+    "ecu-normal": {
+      "linker_flash_bytes": 1418809,
+      "passed": true,
+      "static_ram_bytes": 96848
+    },
+    "ecu-render-reference": {
+      "linker_flash_bytes": 1418953,
+      "passed": true,
+      "static_ram_bytes": 96848
+    },
+    "ecu-sd-benchmark": {
+      "linker_flash_bytes": 1425893,
+      "passed": true,
+      "static_ram_bytes": 96880
+    }
+  },
+  "date": "2026-11-12",
+  "firmware": {
+    "bytes": 1425392,
+    "firmware": "0.4.15-audit",
+    "sha256": "869078a1e6ae92ea41139754e767d9bf797a933be087238318938e7ce5fb4bf6"
+  },
+  "fixes": {
+    "A1": "implemented-and-software-verified",
+    "A2": "implemented-and-software-verified",
+    "A3": "implemented-and-software-verified",
+    "A4": "implemented-and-software-verified",
+    "A5": "implemented-and-software-verified",
+    "A6": "implemented-and-software-verified"
+  },
+  "hardware": {
+    "app_offset": "0x10000",
+    "app_write_and_verify_passed": true,
+    "backup_source_firmware": "0.4.14-fastboot",
+    "backup_verified": true,
+    "boot_capture": {
+      "bytes": 153600,
+      "crc32": "eaa0e4ed",
+      "firmware": "0.4.15-audit",
+      "no_navigation_commands": true,
+      "port_closed": true
+    },
+    "candidate_uploaded": true,
+    "explicit_nvs_profile_calibration_writes_sent": false,
+    "final_capture": {
+      "bytes": 153600,
+      "completed": true,
+      "crc32": "eaa0e4ed",
+      "firmware": "0.4.15-audit",
+      "pixel_image_identical_to_inspected_boot": true,
+      "port_closed": true,
+      "stage": "after_bench_and_partition_readback_reset"
+    },
+    "final_state": {
+      "actuators_enabled": false,
+      "ble_advertising": false,
+      "ble_connected": false,
+      "ble_enabled": false,
+      "firmware": "0.4.15-audit",
+      "memory_failure": false,
+      "port_closed": true,
+      "profile_persisted": true,
+      "sd_mounted": true,
+      "sensor_inputs_enabled": false,
+      "simulation_enabled": false,
+      "wifi_connected": false,
+      "wifi_connecting": false,
+      "wifi_enabled": false,
+      "wifi_scanning": false
+    },
+    "firmware_installed": "0.4.15-audit",
+    "partition_bytes_compared": 4096,
+    "partition_table_byte_identical": true,
+    "performed": true,
+    "physical_formatting_performed": false,
+    "usb100": {
+      "completed": true,
+      "final_flags_safe": true,
+      "port_closed": true,
+      "producer_frames": 1607,
+      "producer_hz_observed": 99.994804,
+      "producer_max_gap_us": 12100,
+      "producer_sequence_proves_usb_delivery": false,
+      "producer_skipped_slots": 0,
+      "radios_off_confirmed": true,
+      "sim_off_confirmed": true,
+      "status_polls": 12,
+      "target_rate_hz": 100,
+      "ttl_pause_ms": 900,
+      "ttl_stale_confirmed": true,
+      "ui_metrics": {
+        "detail_passes": 0,
+        "duration_ms": 10000,
+        "idle_skips": 0,
+        "instrument_gap_max_us": 19363,
+        "instrument_passes": 600,
+        "interrupted": false,
+        "interval_max_us": 26915,
+        "interval_p95_us": 24675,
+        "max_pixels": 11779,
+        "number_passes": 555,
+        "presentations": 600,
+        "ramp_gap_max_us": 22199,
+        "ramp_gap_p95_upper_us": 22000,
+        "ramp_gap_with_stable_max_us": 0,
+        "ramp_gap_without_stable_max_us": 22199,
+        "ramp_stable_passes": 0,
+        "ramp_updates": 600,
+        "reduced_motion": false,
+        "refresh_mode": 0,
+        "rpm_number_gap_max_us": 36660,
+        "rpm_number_passes": 300,
+        "sample_presentations": 582,
+        "sample_to_present_max_ms": 24,
+        "sample_to_present_p95_ms": 20,
+        "speed_number_gap_max_us": 467305,
+        "speed_number_passes": 255,
+        "synthetic": true,
+        "touch_poll_max_gap_us": 26659,
+        "transferred_pixels": 2367408,
+        "ui_tick_max_us": 13781,
+        "ui_tick_total_us": 4459757
+      }
+    },
+    "wifi": {
+      "cancel_off_ms": [
+        96,
+        98,
+        96,
+        99,
+        99
+      ],
+      "cancellations_observed": 5,
+      "complete_scan_ms": [
+        2539,
+        2468
+      ],
+      "complete_scans_observed": 2,
+      "completed": true,
+      "final_flags_safe": true,
+      "memory_bounds": {
+        "heap_free": {
+          "max": 120940,
+          "min": 70740
+        },
+        "heap_largest": {
+          "max": 94196,
+          "min": 57332
+        },
+        "heap_min": {
+          "max": 119148,
+          "min": 69944
+        }
+      },
+      "physical_interleaving_deterministic": false,
+      "port_closed": true,
+      "radios_off_confirmed": true,
+      "restart_after_cancellations_confirmed": true,
+      "scan_start_ms": [
+        37,
+        36,
+        35,
+        35,
+        35,
+        37,
+        35
+      ],
+      "sim_off_confirmed": true
+    }
+  },
+  "kind": "audit-fixes-local-validation",
+  "limits": [
+    "WiFi SDK/lifecycle race schedules are deterministic on host; physical cancellation timing does not force the internal callback interleaving",
+    "Missing SCAN_DONE retains ownership and pending shutdown; restart/diagnosis required",
+    "No new touch, optical cold-boot, real sensors, actuation, SD import/formatting or vehicle validation",
+    "USB producer sequence/counts do not establish receipt of every frame; presentations count partial DMA transfers, not optical FPS",
+    "Conditional SDK NVS autoerase observation remains outside these six fixes",
+    "No commit or push"
+  ],
+  "local_tests": {
+    "all_passed": true,
+    "capture_codec": 6,
+    "fonts": 15,
+    "icons": 2,
+    "native_executables": 24,
+    "native_sanitizers": [
+      "address",
+      "undefined"
+    ],
+    "physical_ports_opened_by_automated_suites": false,
+    "preview_driver": 3,
+    "setup": 13,
+    "simulator": 107
+  },
+  "pin_audit": {
+    "canonical_script_passed": true,
+    "errors": 0,
+    "known_strapping_gpio": [
+      15,
+      2,
+      5
+    ],
+    "pins": 14,
+    "snapshot_guard_preserved": true,
+    "warnings": 3
+  },
+  "preview": {
+    "checks": [
+      "boot dashboard and late saved units without object deletion",
+      "asynchronous imperial import after menu/dashboard navigation",
+      "RPM graduation pixels match forced redraw",
+      "unchanged settings remain idle",
+      "calibration and pairing overlays preserved",
+      "imperial 155 mph and 392 F labels"
+    ],
+    "contact_sha256": "4f7d44362e1d8d63b4d507a46eea3ad3971f8ed89beb785d7f58678658618010",
+    "inspected": true,
+    "lvgl": "8.4.0",
+    "scenes": 11,
+    "source_sha256": "86f3b2ec391dff2f9e244f3cb1cf43b67e7c6dc93e54a417dd7688d20bd2f900",
+    "validation_sha256": "5f055162cb193ee2f74b94b5b58f906a006bb9806c574defb2033483a791e0f2"
+  },
+  "rea": {
+    "artifact_changed": false,
+    "artifact_sha256_after": "cc6a64fbfa50af3a25d4f8953b31c682e3987b0b5387c1f3d6ed0915dea9b03c",
+    "completion_status": "complete",
+    "exit_code": 0
+  },
+  "review": {
+    "final_adjustments": [
+      "IDF scan start avoids Arduino late status writes",
+      "explicit diagnostic client release allowlists"
+    ],
+    "maintenance": "approved after result-backpressure regression fix",
+    "whole_change": "approved after one final adjustment round"
+  },
+  "schema": 1,
+  "source_sha256": {
+    "firmware/ecu/include/maintenance_submission.hpp": "b9b8f0fdb125c160b1897f9bf65f0976b2d9ee4816437143f81e2c0eaa2f2149",
+    "firmware/ecu/include/wifi_scan_lifecycle.hpp": "6e5a66c5dea8b499c82c95cb168d5f7d108bb66e513c80c6556355ec44c2db85",
+    "firmware/ecu/src/main.cpp": "6b0a61a6bca259b941df99e0f6a867c68bf070ee9c02550025c4cfaa20ac03e2",
+    "firmware/ecu/src/radio.cpp": "58c7521da9c2b4a5531f2cd57004ac05d486c929c586937839422e4d919a799d",
+    "firmware/ecu/src/ui.cpp": "69ad6ffc165b47b670e6657aaa1d32dac94344cf206409ded0f4ee7f73f763b7",
+    "tests/native/test_maintenance_submission.cpp": "a99f27df59fae44ad761db6898c17760f00fff3651b6c84e8d483993d3ed69ae",
+    "tests/native/test_wifi_scan_lifecycle.cpp": "857e945f5a0f7aaf8465b6e24fb5d5bdc0289108866c22efe8161482993fbc94",
+    "tools/benchmark_load.py": "43b1d7c563a6746fce33f6ef3540e2fd9bf28ff87a1613566e11c7f331dba205",
+    "tools/benchmark_sd.py": "7ade080caf934a4be4820fa98d0910a8fd2426c46da24df8e10f3f3dca091f7a",
+    "tools/esp32-audit-board.sha256": "a033697e3aff876e882f3c3b761f27f0673e3e9b7e8bbf5d4d59235e93e342d4"
+  },
+  "uncommitted_changes_preserved": true,
+  "versions_preserved": {
+    "arduino": "2.0.17",
+    "esp_idf": "4.4.7",
+    "lovyangfx": "1.2.7",
+    "lvgl": "8.4.0",
+    "nimble": "2.5.1"
+  }
+}

@@ -1,11 +1,13 @@
 # Ambiente de desenvolvimento ESP32 touch
 
 Verificado em 2026-11-12 no projeto **NGK ECU**, base `2e27aa4`.
-A pasta InterfaceNeural é outro projeto Python e foi preservada. Este setup
+A pasta InterfaceNeural é outro projeto Python e foi preservada. A etapa de setup
 não abriu serial, gravou firmware, reiniciou a placa ou alterou partições.
 O pedido posterior autorizou aplicar os recursos à melhoria do código:
-a recepção serial foi corrigida na candidata 0.4.12-rx, com teste em memória e build;
-ver [alteração e limites](serial-rx-0412.md).
+a recepção serial foi alterada na candidata 0.4.12-rx, com teste em memória e build.
+Em uma etapa física autorizada posterior, ainda em 2026-11-12, quatro casos USB
+concluíram e o normal 0.4.12-rx foi instalado e verificado;
+ver [alteração, bancada e limites](serial-rx-0412.md).
 
 ## Ambiente e versões preservadas
 
@@ -46,7 +48,7 @@ O código em [board_profile.hpp](../firmware/ecu/include/board_profile.hpp) e
 Essa tabela descreve o firmware verificado em bancada no histórico, não um
 esquema elétrico universal de todas as placas 2432S028. Os ensaios posteriores de
 [validação](validacao.md) superam a pendência histórica de simultaneidade UI/SD;
-nesta etapa não houve novo teste físico de display, touch, SD ou veículo.
+na etapa de setup não houve novo teste físico de display, touch, SD ou veículo.
 
 ## Comandos essenciais
 
@@ -161,7 +163,7 @@ credenciais compartilhadas com outros projetos sem verificar seu uso.
 O código e os arquivos de prévia ficam no Git; podem ser revertidos separadamente.
 Apagar `local/ui-preview/` remove apenas o cache e as imagens geradas no host.
 
-## Resultado final desta execução
+## Resultado da etapa inicial, sem hardware
 
 Cinco variantes compilaram após a correção, incluindo normal, referência,
 diagnóstico de carga, diagnóstico SD e manutenção. Normal: RAM estática de 96.848 B
@@ -171,7 +173,53 @@ do renderer. Onze cenas foram geradas novamente e as capturas mantiveram os
 mesmos pixels. Auditoria dos 14 sinais: zero erros e três avisos conhecidos.
 
 REA 6.8.0 inspecionou o ELF candidato: exit 0, complete, sem alterar artefato.
-O teste em RAM de 100 Hz passou; o timeout físico anterior ainda exige reteste
-na placa. Não houve gravação nesta etapa.
+O teste em RAM de 100 Hz passou; naquele momento o timeout físico anterior ainda
+exigia reteste na placa. Não houve gravação na etapa inicial.
 
 [Resumo sanitizado e evidências](measurements/esp32-agent-setup-2026-11-12.json).
+
+## Bancada posterior e entrega — 2026-11-12
+
+Após nova execução dos 22 executáveis nativos ASan/UBSan, 102 testes do simulador
+em memória e dois builds locais (`ecu-normal` e `ecu-load-benchmark`), a etapa
+física foi executada com ACL temporária concedida pelo operador. Backup privado
+do aplicativo 0.4.11 e prefixo conhecido conferidos antes da escrita; entrega
+somente em app `0x10000`, com `write-flash`/`verify-flash` aprovados para o novo
+normal `0.4.12-rx` de 1.424.480 B.
+
+Controle USB100, nominal USB100 e nominal USB50 no diagnóstico, mais USB100 no
+normal, concluíram sem timeout e com cleanup confirmado. As quatro janelas
+tiveram 600 apresentações em aproximadamente 10 s. No normal: produtor
+100,031 Hz, p95 do intervalo UI 25,929 ms e tick máximo 14,591 ms; a pausa de
+900 ms confirmou invalidação pelo TTL antes de encerrar a sessão.
+Na carga nominal USB100, 120 dos 1500 lotes foram substituídos no mailbox
+sintético; isso não conta perdas USB. Slots pulados pelo produtor foram zero,
+mas a sequência SIM é watermark e não comprova recepção integral.
+
+`info` e `screen-capture` enviados na mesma escrita também confirmaram ordem
+texto→imagem e captura de 153600 B com CRC32 `d93988db`. PNG privado inspecionado,
+sem publicação nem alegação de equivalência com capturas antigas. A prévia host
+descrita acima não foi reexecutada nesta bancada.
+
+Estado final: normal 0.4.12-rx, SD montado, perfil persistido, SIM/rádios off e
+sensores/atuadores false; tabela de partições byte a byte igual. Sem comandos
+de escrita de NVS/calibração/tabela ou formato SD. Apresentações são contadores
+de transferências parciais DMA, não FPS óptico ou percentual de CPU livre.
+Nenhum sensor real, condicionamento automotivo ou veículo foi validado.
+
+[Método e limites](serial-rx-0412.md) ·
+[Agregados revisados](measurements/serial-rx-2026-11-12.json).
+
+## Correções posteriores e entrega 0.4.15
+
+A [auditoria da 0.4.14](auditoria-codigo-2026-11-12.md) e suas
+[correções 0.4.15](correcoes-auditoria-0415.md) preservaram o ambiente acima.
+Os seis builds, 24 executáveis nativos, 107 testes do simulador, 39 auxiliares
+e 11 cenas/regressões de UI passaram. O snapshot de pinagem foi renovado após
+revisão, mantendo sua trava e os três avisos conhecidos.
+
+Normal 0.4.15-audit instalado com backup, escrita e verificação somente do app;
+tabela preservada, boot direto no painel capturado. A bancada passou cinco
+cancelamentos/duas buscas Wi-Fi e USB100 com TTL/cleanup confirmados. Esses
+ensaios não validam sensores, veículo, formatação, boot óptico ou todas as
+ordens internas do callback. Estado e agregados estão no relatório da 0.4.15.

@@ -17,6 +17,7 @@ for _prefix in ("read", "write", "sync"):
 ACK = {"MOTION_BENCH_STARTED", "MOTION_BENCH_REFUSED", "SD_IO_QUEUED", "SD_IO_REFUSED"}
 RADIO_OFF = ("wifi_enabled", "wifi_connected", "wifi_connecting", "wifi_scanning",
              "ble_enabled", "ble_advertising", "ble_connected", "ble_pairing_pending")
+FIRMWARE_VERSIONS = {"0.4.12-sd-io-bench", "0.4.15-sd-io-bench"}
 
 
 class BenchError(RuntimeError):
@@ -30,15 +31,16 @@ def bounded(value, keys):
 
 
 def validate_identity(info, radios, expected_mib):
-    expected = {"firmware": "0.4.12-sd-io-bench", "build": "normal", "mode": "bench",
+    expected = {"build": "normal", "mode": "bench",
                 "sensor_inputs_enabled": False, "actuators_enabled": False,
                 "simulation_protocol": 1, "sd_io_benchmark_protocol": 1,
                 "simulation_enabled": False, "sd_present": True,
                 "sd_mounted": True,
                 "profile_persisted": True, "refresh_mode": 0,
                 "reduced_motion": False, "sd_mib": expected_mib}
-    if any(info.get(key) != value or type(info.get(key)) is not type(value)
-           for key, value in expected.items()):
+    if (type(info.get("firmware")) is not str or info["firmware"] not in FIRMWARE_VERSIONS
+            or any(info.get(key) != value or type(info.get(key)) is not type(value)
+                   for key, value in expected.items())):
         raise BenchError("identity_or_card_mismatch")
     sectors = info.get("sd_sectors")
     if type(sectors) is not int or not 0 < sectors <= 0xffffffff:

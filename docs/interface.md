@@ -156,7 +156,18 @@ sem voltar como instrumento no painel.
 
 ## Fluxos
 
-Menu → Painel ocupa toda a tela, sem barra fixa de navegação. Duplo toque
+Desde a 0.4.13, o firmware inicia diretamente no painel por pedido do responsável,
+para uso como painel da gaiola. Não habilita DEMO/SIM nem fabrica leituras no boot:
+sem dados, os instrumentos indicam `--`. Se faltar calibração do touch, o fluxo
+obrigatório continua e termina no painel; recalibração manual conserva o retorno
+ao menu. O menu permanece disponível pelo duplo toque e permite reabrir Painel.
+
+Na 0.4.14, o primeiro perfil pronto é aplicado no próximo ciclo, sem aguardar o
+polling periódico de 500 ms; esse intervalo permanece após a carga inicial.
+O painel só é reconstruído se as unidades iniciais realmente mudarem. Quando
+forem iguais, os objetos existentes são preservados para não atrasar o desenho.
+
+O painel ocupa toda a tela, sem barra fixa de navegação. Duplo toque
 retorna ao menu: dois contatos completos em até 400ms, hold até 350ms, arraste
 até 18px e distância entre toques até 48px. Mudança de página somente fora do
 callback LVGL. A calibração e os GPIOs do touch não foram modificados.

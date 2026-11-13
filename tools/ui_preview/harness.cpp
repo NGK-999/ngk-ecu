@@ -15,19 +15,33 @@ void previewRequire(bool, const char*);
 void previewShow(unsigned);
 void previewBounds();
 void previewUnits(bool);
+void previewScreenSettings();
 void previewReadings(const char*, const char*, const char*, const char*);
+void previewBoot();
+void previewPanelUnits(const char*, const char*);
+void previewManualCalibration();
+void previewStartImport();
+void previewWatchDashboard();
+void previewDashboardPreserved();
+void previewRpmPixelsBefore();
+void previewRpmPixelsAfter();
+void previewRampIdle();
+void previewWatchOverlay(bool);
+void previewOverlayPreserved(bool);
 void previewStale();
 }
 namespace ecu::profiles {
-bool snapshot(Snapshot& out) { out = {}; out.ready = true; out.revision = 1; return true; }
+Snapshot previewSnapshot{};
+bool snapshot(Snapshot& out) { out = previewSnapshot; return true; }
 bool apply(const UiSettings&) { return false; }
 bool exportSd() { return false; }
-bool importSd() { return false; }
+bool importSd() { return true; } // Queue accepted; completion is published separately below.
 bool refreshSd() { return false; }
 const char* statusText(Status) { return "PREVIA: sem persistencia"; }
 }
 namespace ecu::radio {
-bool snapshot(Snapshot& out) { out = {}; out.running = true; return true; }
+Snapshot previewSnapshot{};
+bool snapshot(Snapshot& out) { out = previewSnapshot; out.running = true; return true; }
 bool enableWifi(bool) { return false; }
 bool scanWifi() { return false; }
 bool connectWifi(const char*, const char*) { return false; }
@@ -68,6 +82,85 @@ int main(int argc, char** argv) {
     if (argc != 2) return 2;
     using namespace ecu;
     ui::previewRequire(ui::begin(), "initialize real UI with host display");
+    ui::previewBoot();
+    ui::previewWatchDashboard();
+    // Like the SD worker, publish the saved profile after UI initialization.
+    profiles::previewSnapshot.ready = profiles::previewSnapshot.persisted = true;
+    profiles::previewSnapshot.revision = 1;
+    profiles::previewSnapshot.settings.speedUnit = SpeedUnit::Mph;
+    profiles::previewSnapshot.settings.tempUnit = TempUnit::Fahrenheit;
+    headless_time_us += 10000; ui::tick();
+    ui::previewPanelUnits("mph", "°F");
+    ui::previewDashboardPreserved();
+    std::puts("PASS late saved profile updates boot dashboard units");
+    // Restore metric fixtures before the existing scene suite.
+    profiles::previewSnapshot.settings = UiSettings{};
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    ui::previewRequire(ui::startUsbSimulation(), "select in-memory source for async import regression");
+    ui::previewRequire(simulation::beginSession(98), "start import regression session");
+    ui::previewStartImport();
+    ui::previewWatchDashboard();
+    ui::previewRequire(simulation::submit({98, 1, 2400, 1000, 1000, 350, 3, 0, simulation::None}),
+                       "submit 100 km/h and 100 Celsius before profile completion");
+    profiles::previewSnapshot.settings.speedUnit = SpeedUnit::Mph;
+    profiles::previewSnapshot.settings.tempUnit = TempUnit::Fahrenheit;
+    profiles::previewSnapshot.status = profiles::Status::Imported;
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    for (int frame = 0; frame < 20; ++frame) {
+        headless_time_us += 10000; ui::tick();
+    }
+    ui::previewReadings("2400", "62", "3", "212");
+    ui::previewPanelUnits("mph", "°F");
+    ui::previewDashboardPreserved();
+    std::puts("PASS asynchronous import after menu/dashboard navigation keeps numbers and units consistent");
+    simulation::endAnySession();
+    profiles::previewSnapshot.settings = UiSettings{};
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    for (int frame = 0; frame < 20; ++frame) {
+        headless_time_us += 10000; ui::tick();
+    }
+    ui::previewRpmPixelsBefore();
+    profiles::previewSnapshot.settings.rpmScale = 10000;
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    for (int frame = 0; frame < 20; ++frame) {
+        headless_time_us += 10000; ui::tick();
+    }
+    ui::previewRpmPixelsAfter();
+    // A completion revision with identical settings must cause no ramp draw.
+    ++profiles::previewSnapshot.revision;
+    for (int frame = 0; frame < 120; ++frame) {
+        headless_time_us += 10000; ui::tick();
+    }
+    ui::previewRampIdle();
+    std::puts("PASS late RPM scale repaints graduations once and stays idle for unchanged settings");
+    profiles::previewSnapshot.settings = UiSettings{};
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    ui::previewWatchOverlay(true);
+    profiles::previewSnapshot.settings.speedUnit = SpeedUnit::Mph;
+    profiles::previewSnapshot.settings.tempUnit = TempUnit::Fahrenheit;
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    ui::previewPanelUnits("mph", "°F");
+    ui::previewOverlayPreserved(true);
+    radio::previewSnapshot.blePairingPending = true;
+    radio::previewSnapshot.blePairingId = 1;
+    radio::previewSnapshot.blePasskey = 123456;
+    headless_time_us += 500000; ui::tick();
+    ui::previewWatchOverlay(false);
+    profiles::previewSnapshot.settings = UiSettings{};
+    ++profiles::previewSnapshot.revision;
+    headless_time_us += 500000; ui::tick();
+    ui::previewPanelUnits("km/h", "°C");
+    ui::previewOverlayPreserved(false);
+    radio::previewSnapshot = {};
+    headless_time_us += 500000; ui::tick();
+    std::puts("PASS profile unit changes preserve calibration and pairing overlays");
+    ui::previewManualCalibration();
     ui::previewShow(0);
     save(argv[1], "menu", false);
     ui::previewShow(1); save(argv[1], "painel-sem-sinal", true);
@@ -92,6 +185,7 @@ int main(int argc, char** argv) {
     ++frame.sequence; frame.rpm = 2400; frame.speed10 = 2500; frame.temp10 = 2000; frame.gear = 3;
     submit(); save(argv[1], "painel-imperial", true);
     ui::previewReadings("2400", "155", "3", "392");
+    ui::previewPanelUnits("mph", "°F");
     ui::previewUnits(false);
     ++frame.sequence; frame.rpm = 12000; frame.faults = simulation::LowOil | simulation::Overheat; frame.oil = 1;
     submit(); save(argv[1], "painel-alertas", true);
@@ -99,6 +193,6 @@ int main(int argc, char** argv) {
     save(argv[1], "painel-sem-link", true); ui::previewStale();
     simulation::endAnySession();
     ui::previewShow(8); save(argv[1], "ajustes", false);
-    ui::previewShow(3); save(argv[1], "ajustes-tela", false);
+    ui::previewScreenSettings(); save(argv[1], "ajustes-tela", false);
     std::puts("PASS real LVGL 8.4 UI; synthetic services only; no hardware validation");
 }

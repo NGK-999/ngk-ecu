@@ -1,0 +1,86 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-12",
+  "source_base_commit": "40626184d754dd9b4e12a37ed68a74d3690ca8e0",
+  "source_sha256": {
+    "firmware/ecu/src/ui.cpp": "3b48cacf0b6bebd5bdb5943456eff94ec997f60017f020f02ceaa77c2dfe1ff6",
+    "firmware/ecu/src/main.cpp": "1a45b0a5e990f72fb654368ef701653d5bd2fe19f8517608535e25b2c62485f9"
+  },
+  "local_verification": {
+    "native_asan_ubsan_executables": 22,
+    "simulator_memory_tests": 102,
+    "preview_driver_tests": 3,
+    "preview_scenes": 11,
+    "preview_source_sha256": "dca6f6edc2a95bc24eeee6469cf1b7508df14ad21deee7f616946a1082d970fa",
+    "boot_default_red_green": true,
+    "late_profile_units_red_green": true,
+    "synthetic_calibration_navigation_passed": true,
+    "native_double_tap_tests_passed": true,
+    "normal_build_passed": true,
+    "static_ram_bytes": 96848,
+    "linked_flash_bytes": 1417933
+  },
+  "delivery": {
+    "app_write_and_verify_passed": true,
+    "backup_verified": true,
+    "binary": {
+      "bytes": 1424512,
+      "firmware": "0.4.13-panel",
+      "sha256": "59b3d1341247adacfa068a13f38e0ff57d71d16f7a5cff911431a0e6cabc9b41"
+    },
+    "boot_panel_visually_confirmed": true,
+    "capture_crc32": "eaa0e4ed",
+    "completed": true,
+    "firmware": "0.4.13-panel",
+    "port_closed": true,
+    "sd_startup_settled": true
+  },
+  "capture": {
+    "bytes": 153600,
+    "completed": true,
+    "crc32": "eaa0e4ed",
+    "navigation_commands_sent": false,
+    "port_closed": true
+  },
+  "final_state": {
+    "info": {
+      "actuators_enabled": false,
+      "build": "normal",
+      "cpu_mhz": 240,
+      "firmware": "0.4.13-panel",
+      "flash_bytes": 4194304,
+      "mode": "bench",
+      "profile_persisted": true,
+      "profile_status": 1,
+      "psram_bytes": 0,
+      "reduced_motion": false,
+      "refresh_mode": 0,
+      "sd_mounted": true,
+      "sensor_inputs_enabled": false,
+      "simulation_enabled": false,
+      "simulation_protocol": 1
+    },
+    "radios": {
+      "ble_advertising": false,
+      "ble_connected": false,
+      "ble_enabled": false,
+      "ble_pairing_pending": false,
+      "memory_failure": false,
+      "running": true,
+      "wifi_connected": false,
+      "wifi_connecting": false,
+      "wifi_enabled": false,
+      "wifi_scanning": false,
+      "worker_wakeups": 0
+    },
+    "sd_mount_stable_observations": 3,
+    "sim_off": true
+  },
+  "limits": [
+    "Only normal app at0x10000 was written; no NVS/calibration/partition-table write commands or SD format.",
+    "First post-capture precondition check failed while SD was not yet mounted; later bounded polling confirmed three stable mounted/profile-persisted observations. No SD refresh was requested.",
+    "Capture is LCD transfer pixels, not a photograph or optical FPS measurement.",
+    "Calibration completion was synthesized in the host; physical touch was not retested.",
+    "No physical sensors, automotive startup power or vehicle test."
+  ]
+}

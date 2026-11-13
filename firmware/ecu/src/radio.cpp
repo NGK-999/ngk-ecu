@@ -1,5 +1,6 @@
 #include "radio.hpp"
 #include "radio_policy.hpp"
+#include "wifi_scan_lifecycle.hpp"
 
 #include <Arduino.h>
 #include <NimBLEDevice.h>
@@ -23,6 +24,10 @@ namespace ecu::radio {
 namespace {
 
 constexpr uint8_t queueDepth = 8;
+constexpr uint32_t scanChannelMs = 200;
+// Match Arduino 2.0.17's max_ms_per_chan * 20 timeout without reading its
+// mutable scan state concurrently with _scanDone on the other core.
+constexpr uint32_t scanTimeoutMs = scanChannelMs * 20;
 constexpr uint16_t noPeer = BLE_HS_CONN_HANDLE_NONE;
 constexpr char privateNamespace[] = "ngk-radio";
 constexpr char serviceUuid[] = "6e400001-b5a3-f393-e0a9-e50e24dcca9e";
@@ -64,6 +69,14 @@ CredentialSlot credentialPool[queueDepth];
 portMUX_TYPE sharedMux = portMUX_INITIALIZER_UNLOCKED;
 Snapshot sharedSnapshot;
 bool started = false;
+ScanLifecycle wifiScanLifecycle;
+
+void wifiScanCompleted(WiFiEvent_t) {
+    // Arduino 2.0.17 invokes user SCAN_DONE hooks after its _scanDone(). This
+    // release/acquire mailbox cannot lose completion when the command queue is
+    // full and performs no driver, UI or allocation work on the event task.
+    wifiScanLifecycle.completed();
+}
 
 struct Reply {
     char text[64]{};
@@ -89,6 +102,7 @@ struct Worker {
     bool discoveryOpen = false;
     bool acceptedPairing = false;
     bool peerWasBonded = false;
+    bool wifiDisablePending = false;
     Reply replies[4];
     uint8_t replyRead = 0;
     uint8_t replyCount = 0;
@@ -217,13 +231,37 @@ struct Worker {
     }
 
     void stopScan() {
-        if (state.wifiScanInProgress) esp_wifi_scan_stop();
-        WiFi.scanDelete();
+        if (wifiScanLifecycle.cancel()) esp_wifi_scan_stop();
+        // Keep the Arduino-owned array and lifecycle reserved until the event
+        // task finishes _scanDone(), even if the driver already reports FAILED.
         state.wifiScanInProgress = false;
         scanDeadline.cancel();
     }
 
+    void finishWifiDisable() {
+        if (!wifiDisablePending || wifiScanLifecycle.pending()) return;
+        wifiDisablePending = false;
+        WiFi.disconnect(false, true);
+        const bool stopped = WiFi.mode(WIFI_OFF);
+        state.wifiEnabled = WiFi.getMode() != WIFI_OFF;
+        wifi_ap_record_t observed{};
+        state.wifiConnected = state.wifiEnabled &&
+            esp_wifi_sta_get_ap_info(&observed) == ESP_OK && WiFi.status() == WL_CONNECTED;
+        state.wifiRssi = state.wifiConnected ? static_cast<int16_t>(WiFi.RSSI()) : 0;
+        std::memset(state.wifiSsid, 0, sizeof(state.wifiSsid));
+        if (state.wifiConnected)
+            std::memcpy(state.wifiSsid, observed.ssid, sizeof(state.wifiSsid) - 1);
+        status(stopped && !state.wifiEnabled ? Status::Off : Status::DriverError);
+    }
+
     void wifiEnable(bool enabled) {
+        if (enabled && wifiDisablePending) {
+            // The driver is still STA while its scan callback drains. Cancel
+            // only the requested shutdown; pending scan ownership stays held.
+            wifiDisablePending = false;
+            status(Status::WifiEnabled);
+            return;
+        }
         if (enabled == state.wifiEnabled) return;
         if (enabled) {
             if (!memoryAvailable(policy::Radio::Wifi)) return;
@@ -242,43 +280,56 @@ struct Worker {
             associationPending = false;
             connectionDeadline.cancel();
             state.wifiConnecting = false;
-            WiFi.disconnect(false, true);
-            const bool stopped = WiFi.mode(WIFI_OFF);
-            state.wifiEnabled = WiFi.getMode() != WIFI_OFF;
-            wifi_ap_record_t observed{};
-            state.wifiConnected = state.wifiEnabled &&
-                esp_wifi_sta_get_ap_info(&observed) == ESP_OK && WiFi.status() == WL_CONNECTED;
-            state.wifiRssi = state.wifiConnected ? static_cast<int16_t>(WiFi.RSSI()) : 0;
-            std::memset(state.wifiSsid, 0, sizeof(state.wifiSsid));
-            if (state.wifiConnected)
-                std::memcpy(state.wifiSsid, observed.ssid, sizeof(state.wifiSsid) - 1);
             std::memset(state.networks, 0, sizeof(state.networks));
             state.networkCount = 0;
-            status(stopped && !state.wifiEnabled ? Status::Off : Status::DriverError);
+            wifiDisablePending = true;
+            // Do not deinitialize the driver while _scanDone may still use it.
+            // Keep wifiEnabled faithful to the actual mode until it is off.
+            status(Status::Busy);
+            finishWifiDisable();
         }
     }
 
     void wifiScan() {
         if (!state.wifiEnabled) { status(Status::NotEnabled); return; }
-        if (state.wifiConnecting || state.wifiScanInProgress) { status(Status::Busy); return; }
+        if (state.wifiConnecting || wifiScanLifecycle.pending() || wifiDisablePending) {
+            status(Status::Busy); return;
+        }
         if (heap_caps_get_free_size(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 32000 ||
             heap_caps_get_largest_free_block(MALLOC_CAP_INTERNAL | MALLOC_CAP_8BIT) < 8192) {
             status(Status::MemoryLow);
             return;
         }
-        WiFi.scanDelete();
-        const auto result = WiFi.scanNetworks(true, false, false, 200);
-        if (result != WIFI_SCAN_RUNNING) { status(Status::WifiScanFailed); return; }
+        // STA is already enabled by wifiEnable. Start through IDF: Arduino
+        // 2.0.17's scanNetworks writes SCANNING after scan_start returns and
+        // can overwrite a completion that arrived before that return.
+        wifi_scan_config_t config{};
+        config.channel = 0;
+        config.show_hidden = false;
+        config.scan_type = WIFI_SCAN_TYPE_ACTIVE;
+        config.scan_time.active.min = 100;
+        config.scan_time.active.max = scanChannelMs;
+        // Arm BEFORE IDF start: _scanDone + onEvent may finish before it
+        // returns. Arduino still owns result allocation, reading and deletion.
+        if (!wifiScanLifecycle.begin()) { status(Status::Busy); return; }
+        const auto result = esp_wifi_scan_start(&config, false);
+        if (result != ESP_OK) {
+            wifiScanLifecycle.startFailed();
+            status(Status::WifiScanFailed);
+            return;
+        }
         state.wifiScanInProgress = true;
         state.networkCount = 0;
         std::memset(state.networks, 0, sizeof(state.networks));
-        scanDeadline.start(millis(), 12000);
+        scanDeadline.start(millis(), scanTimeoutMs);
         status(Status::WifiScanning);
     }
 
     void wifiConnect(policy::Credentials& credentials, bool reuseSaved) {
         if (!state.wifiEnabled) { status(Status::NotEnabled); return; }
-        if (state.wifiScanInProgress || state.wifiConnecting) { status(Status::Busy); return; }
+        if (wifiScanLifecycle.pending() || wifiDisablePending || state.wifiConnecting) {
+            status(Status::Busy); return;
+        }
         if (reuseSaved) {
             if (!state.wifiProfileAvailable || std::strcmp(credentials.ssid, saved.ssid) != 0) {
                 status(Status::NoSavedProfile);
@@ -321,10 +372,11 @@ struct Worker {
     }
 
     void pollWifi(uint32_t now) {
-        if (!state.wifiEnabled) return;
-        if (state.wifiScanInProgress) {
+        // Cleanup also runs with radios off, and never relies on queue delivery.
+        if (wifiScanLifecycle.ready()) {
             const auto found = WiFi.scanComplete();
-            if (found >= 0) {
+            const bool accept = state.wifiScanInProgress && !wifiScanLifecycle.cancelled();
+            if (accept && found >= 0) {
                 // The Arduino driver owns its transient scan results. Copy only
                 // six visible SSIDs and immediately release that driver buffer.
                 state.networkCount = 0;
@@ -338,13 +390,18 @@ struct Worker {
                     network.auth = static_cast<uint8_t>(WiFi.encryptionType(index));
                     network.open = network.auth == WIFI_AUTH_OPEN;
                 }
-                stopScan();
-                status(Status::WifiScanDone);
-            } else if (found == WIFI_SCAN_FAILED || scanDeadline.expired(now)) {
-                stopScan();
-                status(Status::WifiScanFailed);
             }
+            WiFi.scanDelete();
+            wifiScanLifecycle.released();
+            state.wifiScanInProgress = false;
+            scanDeadline.cancel();
+            if (accept) status(found >= 0 ? Status::WifiScanDone : Status::WifiScanFailed);
+        } else if (state.wifiScanInProgress && scanDeadline.expired(now)) {
+            stopScan();
+            status(Status::WifiScanFailed);
         }
+        finishWifiDisable();
+        if (!state.wifiEnabled || wifiDisablePending) return;
         wifi_ap_record_t accessPoint{};
         const auto associated = esp_wifi_sta_get_ap_info(&accessPoint) == ESP_OK;
         if (associationPending && !associated) {
@@ -694,8 +751,9 @@ void Worker::pollBle(uint32_t now) {
 
 void runWorker(void*) {
     // This task alone owns radio driver calls and private credentials. The
-    // callbacks only enqueue bounded events; no LVGL/SD/Serial is used here.
+    // callbacks only publish bounded notifications; no LVGL/SD/Serial is used here.
     Worker worker;
+    WiFi.onEvent(wifiScanCompleted, ARDUINO_EVENT_WIFI_SCAN_DONE);
     WiFi.persistent(false);
     WiFi.setAutoReconnect(false);
     WiFi.mode(WIFI_OFF);
@@ -705,7 +763,7 @@ void runWorker(void*) {
     worker.publish();
     for (;;) {
         Command command;
-        const auto wait = worker.state.wifiEnabled || worker.state.bleEnabled ?
+        const auto wait = worker.state.wifiEnabled || worker.state.bleEnabled || wifiScanLifecycle.pending() ?
             pdMS_TO_TICKS(20) : portMAX_DELAY;
         const bool received = xQueueReceive(queue, &command, wait) == pdTRUE;
         ++worker.state.workerWakeups;

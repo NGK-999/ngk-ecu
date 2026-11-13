@@ -30,20 +30,21 @@ extern "C" {
 #include <esp_task_wdt.h>
 #include "card_probe.hpp"
 #include "maintenance_policy.hpp"
+#include "maintenance_submission.hpp"
 #endif
 
 namespace {
 constexpr int SdClock = 18, SdMiso = 19, SdMosi = 23, SdSelect = 5;
 constexpr uint32_t SectorBytes = 512;
 #ifdef NGK_LOAD_BENCH
-constexpr const char* Version = "0.4.12-load-bench";
+constexpr const char* Version = "0.4.15-load-bench";
 TaskHandle_t loadMainTask = nullptr, loadSdTask = nullptr;
 #elif defined(NGK_SD_IO_BENCH)
-constexpr const char* Version = "0.4.12-sd-io-bench";
+constexpr const char* Version = "0.4.15-sd-io-bench";
 #elif defined(NGK_COMBINED_NUMBERS)
-constexpr const char* Version = "0.4.12-reference";
+constexpr const char* Version = "0.4.15-reference";
 #else
-constexpr const char* Version = "0.4.12-rx";
+constexpr const char* Version = "0.4.15-audit";
 #endif
 #if defined(NGK_SD_IO_BENCH) || defined(NGK_LOAD_BENCH)
 uint64_t motionObservedStartUs = 0, motionObservedEndUs = 0;
@@ -53,6 +54,9 @@ struct Snapshot {
     uint32_t sectors = 0, type = 0;
     uint64_t identity = 0; // RAM only. Never printed or persisted.
     int formatState = 0; // 0 idle, 1 active, 2 success, -1 failed
+#ifdef NGK_SD_MAINTENANCE
+    uint32_t formatCompleted = 0; // Worker acknowledgement, copied with outcome.
+#endif
 #ifdef NGK_SD_IO_BENCH
     uint32_t clockHz = 0;
 #endif
@@ -127,8 +131,16 @@ bool mountCard(SPIClass& spi, const Geometry& geometry, uint32_t* observedClock 
 }
 
 #ifdef NGK_SD_MAINTENANCE
-struct FormatRequest { char line[96]; Snapshot expected; };
+struct FormatRequest { char line[96]; Snapshot expected; uint32_t id; };
 QueueHandle_t formatQueue = nullptr;
+ecu::MaintenanceSubmission formatSubmission; // Main task only.
+
+void reportFormatCompletion() {
+    const bool terminal = view.formatState == 2 || view.formatState == -1;
+    formatSubmission.report(view.formatCompleted, terminal, [] {
+        return queueLine(view.formatState == 2 ? "FORMAT_DONE OK" : "FORMAT_DONE FAILED");
+    });
+}
 
 bool verifyOwnFile() {
     char path[64];
@@ -256,7 +268,8 @@ void storageWorker(void*) {
             state.mounted = accepted ? okay : (present && mountCard(spi, current));
             state.verified = okay;
             state.formatState = okay ? 2 : -1;
-            state.formatReady = false;
+            state.formatReady = present && current.identity && !revoked && !policy.consumed();
+            state.formatCompleted = request.id;
             xQueueOverwrite(snapshots, &state);
             lastAttempt = millis();
         }
@@ -532,13 +545,17 @@ void command(const char* line) {
     }
 #endif
 #ifdef NGK_SD_MAINTENANCE
-    static bool submitted = false;
-    if (!submitted && !strncmp(line, "FORMAT_SD ", 10) && view.formatReady) {
+    if (!strncmp(line, "FORMAT_SD ", 10)) {
         FormatRequest request{};
         strlcpy(request.line, line, sizeof(request.line));
         request.expected = view;
-        submitted = xQueueSend(formatQueue, &request, 0) == pdTRUE;
-        queueLine(submitted ? "FORMAT_QUEUED" : "FORMAT_FAILED queue");
+        const auto result = formatSubmission.submit(view.formatReady, view.formatCompleted, [&](uint32_t id) {
+            request.id = id;
+            return xQueueSend(formatQueue, &request, 0) == pdTRUE;
+        });
+        using Result = ecu::MaintenanceSubmission::Result;
+        queueLine(result == Result::Queued ? "FORMAT_QUEUED" :
+                  result == Result::QueueFull ? "FORMAT_FAILED queue" : "ERROR command rejected");
         return;
     }
 #endif
@@ -607,6 +624,9 @@ void loop() {
     ecu::loadbench::poll();
 #endif
     const bool storageChanged = xQueueReceive(snapshots, &view, 0) == pdTRUE;
+#ifdef NGK_SD_MAINTENANCE
+    reportFormatCompletion();
+#endif
     serialCommands();
     if (storageChanged)
         ecu::ui::setStorage(view.mounted, uint32_t(uint64_t(view.sectors) * SectorBytes / (1024 * 1024)));
@@ -666,13 +686,6 @@ void loop() {
             , static_cast<unsigned long long>(motionObservedStartUs), static_cast<unsigned long long>(motionObservedEndUs)
 #endif
         )) motionReportPending = false;
-    }
-    static int lastFormatState = 0;
-    if (view.formatState != lastFormatState) {
-        bool queued = true;
-        if (view.formatState == 2) queued = queueLine("FORMAT_DONE OK");
-        if (view.formatState == -1) queued = queueLine("FORMAT_DONE FAILED");
-        if (queued) lastFormatState = view.formatState;
     }
     pumpSerial();
     delay(1);

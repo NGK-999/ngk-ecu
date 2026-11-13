@@ -1,9 +1,9 @@
 # NGK ECU
 
-> Esta branch contém a **prévia 0.4.11-resource, com menos trabalho repetido no firmware**.
+> Esta branch contém a **prévia 0.4.15-audit, com correções da auditoria**.
 > Velocidade maior à direita e marcha menor à esquerda.
 > [Veja a proposta e as imagens](docs/proposta-painel-disposicao.md).
-> Prévia instalada e medida na ESP32 em bancada em 2026-11-11.
+> [Correções, validação e estado da instalação](docs/correcoes-auditoria-0415.md).
 
 Projeto experimental de painel e futura ECU para um motor boxer Volkswagen
 Fusca **1300 carburado**, de ano desconhecido, em uma gaiola de uso fora de
@@ -49,7 +49,7 @@ foram autorizadas. Não é necessário um leitor externo para o fluxo escolhido.
 
 Aplicativo nativo com acelerador, freio, embreagem, marchaR/N/1–4, temperatura,
 RPM/velocidade manuais e falhas selecionáveis. Funciona offline; Conectar envia
-simulação pela USB para o firmware 0.4.11-resource. O painel marcaSIM USB e deixa
+simulação pela USB para o firmware de bancada com protocolo SIM1. O painel marcaSIM USB e deixa
 os dados indisponíveis após 750 ms sem frames. Motor/sensores físicos continuam
 desabilitados. Modelo ilustrativo, sem calibração do veículo.
 
@@ -145,10 +145,20 @@ a proteção de memória recusou ambos simultaneamente: usar um por vez.
 O SD guarda perfis visuais; não substitui RAM nem buffers DMA.
 
 Preparação do agente e referências por versão: [ambiente ESP32](docs/desenvolvimento-esp32.md).
-A prévia local usa a tela real com `sh scripts/preview-ui`. A candidata
-[0.4.12-rx](docs/serial-rx-0412.md) melhora a drenagem serial e passou no modelo
-em memória; não foi instalada nesta etapa, e a última versão confirmada
-na placa continua sendo a 0.4.11.
+A prévia local usa a tela real com `sh scripts/preview-ui`.
+A [0.4.12-rx](docs/serial-rx-0412.md) melhorou a drenagem serial e concluiu os
+retestes físicos de 100 Hz. A versão normal instalada agora é a
+[0.4.15-audit](docs/correcoes-auditoria-0415.md): inicia diretamente no painel
+para uso na gaiola; duplo toque abre o menu. Calibração obrigatória e valores
+indisponíveis sem dados continuam preservados. O primeiro perfil salvo é aplicado
+sem a espera periódica inicial; o ganho medido na [0.4.14](docs/boot-rapido-0414.md) foi de cerca de 435 ms,
+enquanto o primeiro desenho melhorou cerca de 7 ms, sem medida de cold boot.
+
+A [0.4.15-audit](docs/correcoes-auditoria-0415.md) corrige os seis
+achados posteriores: concorrência no Wi-Fi, legendas/unidades, graduação RPM,
+prévia imperial, snapshot de pinagem e retry de comando inválido na manutenção.
+Backup, escrita e verificação do app concluídos; cinco cancelamentos/duas buscas
+Wi-Fi e USB100 passaram em bancada, com SIM/rádios desligados ao encerrar.
 
 Todos os pedidos estão organizados em [cinco etapas](docs/plano-geral.md).
 A [skill ESP32](docs/ferramentas-esp32.md) foi instalada localmente e auditada;

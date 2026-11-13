@@ -67,6 +67,10 @@ barra fixa de navegação no modo painel. Duplo toque no painel retorna ao menu.
 Essa exceção de gesto foi solicitada pelo responsável e não deve ser removida
 por diretrizes antigas de navegação exclusivamente por cliques simples.
 
+Pedido posterior explícito: ao ligar, abrir diretamente o painel para uso na
+gaiola. O duplo toque continua retornando ao menu. Se faltar calibração do touch,
+mantê-la obrigatória e entrar no painel ao concluir a calibração inicial.
+
 ## Simulador Linux
 
 `simulator/ngk_simulator/`: modelo e codec puros em `model.py`/`protocol.py`,

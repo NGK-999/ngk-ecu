@@ -77,6 +77,7 @@ lv_obj_t* settingsStateLabel = nullptr;
 lv_obj_t* detailLabel = nullptr;
 lv_obj_t* keyboardValue = nullptr;
 lv_obj_t* temperatureValue = nullptr;
+lv_obj_t* temperatureUnitLabel = nullptr;
 lv_obj_t* oilValue = nullptr;
 lv_obj_t* rpmScaleLabel = nullptr;
 lv_obj_t* gearLabel = nullptr;
@@ -483,10 +484,14 @@ void refreshRpmScaleCaption() {
     char scale[24];
     std::snprintf(scale, sizeof(scale), "MAX %u", unsigned(settingsEditor.values.rpmScale));
     setText(rpmScaleLabel, scale);
+    bool graduationsChanged = false;
     for (unsigned index = 0; index < rpmGraduations.size(); ++index) {
         auto& mark = rpmGraduations[index];
-        std::snprintf(mark.caption.data(), mark.caption.size(), "%u",
+        decltype(mark.caption) caption{};
+        std::snprintf(caption.data(), caption.size(), "%u",
                       unsigned(settingsEditor.values.rpmScale) * index / 4U);
+        graduationsChanged |= mark.caption != caption;
+        mark.caption = caption;
         lv_point_t measured{};
         lv_txt_get_size(&measured, mark.caption.data(), &lv_font_montserrat_12, 0, 0,
                         LV_COORD_MAX, LV_TEXT_FLAG_NONE);
@@ -497,11 +502,18 @@ void refreshRpmScaleCaption() {
         mark.labelY = rpmBar.h - rpmColumnHeight(mark.labelX + mark.width - 1) -
                       lv_font_montserrat_12.line_height - 3;
     }
+    // Custom draw data is not an LVGL property: invalidate it explicitly,
+    // including when no SIM frame arrives to update the ramp position.
+    if (graduationsChanged && rpmRampObject) lv_obj_invalidate(rpmRampObject);
 }
 
 void applyPreview() {
     usbPaintPending = true;
     demoNumberSchedule.reset(); demoNumbersFirstPaint = true;
+    // Legends follow effective settings even when an asynchronous import
+    // completes after navigation. Keep the page and any modal intact.
+    setText(unitLabel, settingsEditor.values.speedUnit == SpeedUnit::Kmh ? "km/h" : "mph");
+    setText(temperatureUnitLabel, settingsEditor.values.tempUnit == TempUnit::Celsius ? "°C" : "°F");
     refreshRpmScaleCaption();
     display.setBrightness(static_cast<std::uint8_t>(settingsEditor.values.brightness * 255U / 100U));
     if (registeredDisplay && benchmarkPhase == BenchmarkPhase::Idle) {
@@ -754,7 +766,7 @@ void renderPage(Page next) {
     page = next;
     storageLabel = menuStatusLabel = speedValue = rpmValue = speedSignal = rpmSignal = modeLabel = nullptr;
     unitLabel = settingsStateLabel = detailLabel = keyboardValue = nullptr;
-    temperatureValue = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
+    temperatureValue = temperatureUnitLabel = oilValue = rpmScaleLabel = gearLabel = gearValue = nullptr;
     dashboardHintLabel = faultFooterLabel = faultCountLabel = faultFooterPanel = sensorSourceLabel = nullptr;
     sensorValues.fill(nullptr);
     settingValues.fill(nullptr); networkLabels.fill(nullptr); networkButtons.fill(nullptr);
@@ -837,8 +849,8 @@ void renderPage(Page next) {
                           152, 61, 52, &lv_font_montserrat_12, secondary);
         label(pageContent, "BLOCO", temperatureCard.x, temperatureCard.y + 10, 56,
               &lv_font_montserrat_12, secondary);
-        label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "°C" : "°F",
-              138, temperatureCard.y + 18, 18, &lv_font_montserrat_12, secondary);
+        temperatureUnitLabel = label(pageContent, settingsEditor.values.tempUnit == TempUnit::Celsius ? "°C" : "°F",
+                                    138, temperatureCard.y + 18, 18, &lv_font_montserrat_12, secondary);
         temperatureValue = label(pageContent, unknown, 64, temperatureCard.y + 1, 72,
                                   &ngk_cockpit_48);
         lv_obj_set_style_text_align(temperatureValue, LV_TEXT_ALIGN_RIGHT, 0);
@@ -1177,7 +1189,8 @@ void refreshPairing() {
 
 void pollServices(bool force = false) {
     const auto now = millis();
-    if (!force && std::uint32_t(now - lastServicesAt) < 500) return;
+    // Consume the first ready profile immediately; throttle only steady-state polling.
+    if (!force && settingsLoaded && std::uint32_t(now - lastServicesAt) < 500) return;
     lastServicesAt = now;
     radio::Snapshot radios;
     if (radio::snapshot(radios)) radioView = radios;
@@ -1768,7 +1781,7 @@ bool begin() {
     noScroll(pageContent);
     // Children handle clicks; the dashboard gesture uses the input stream.
     lv_obj_clear_flag(pageContent, LV_OBJ_FLAG_CLICKABLE);
-    renderPage(Page::Menu);
+    renderPage(Page::Panel);
     ready = true;
     pollServices(true);
     applyPreview();
@@ -1798,7 +1811,9 @@ void tick() {
         calibrationOverlay = calibrationTarget = calibrationInstruction = nullptr;
         calibrating = false;
         debounce.reset();
-        renderPage(Page::Menu);
+        // Boot calibration returns to the dashboard; manual calibration keeps
+        // the existing menu return when invoked from settings.
+        renderPage(page == Page::Panel ? Page::Panel : Page::Menu);
     } else if (!calibrating && calibrationRequested) {
         calibrationRequested = false;
         startCalibration();

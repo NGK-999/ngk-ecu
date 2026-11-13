@@ -1,0 +1,265 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-12",
+  "source_base_commit": "40626184d754dd9b4e12a37ed68a74d3690ca8e0",
+  "source_sha256": {
+    "firmware/ecu/src/ui.cpp": "60420e1654cfb83a7546debcde5323291dccfc665068ca29192f4820a6cfc9b2",
+    "firmware/ecu/src/main.cpp": "a002cdd773a767433843b0edc01af8683ecaead36228565e409eeeba861f52cf"
+  },
+  "method": {
+    "reset": "RTS reset; three runs per temporary instrumented build",
+    "internal_clock": "esp_timer_get_time; timestamps exclude ROM/bootloader power-on time",
+    "first_frame": "completion of final DMA tile, not optical LCD presentation",
+    "saved_profile": "metric units as found in this board",
+    "probe_queries": "requested 1.2s after initial info response to avoid reading incomplete startup stages",
+    "temporary_probe_removed_from_delivery": true
+  },
+  "cases": {
+    "baseline": {
+      "completed": true,
+      "runs": [
+        {
+          "run": 1,
+          "reset_to_first_info_complete_ms": 1036.107,
+          "internal_stage_us": {
+            "ui_begin": 24748,
+            "lcd_init_begin": 24782,
+            "lcd_init_end": 258519,
+            "ui_ready": 312395,
+            "first_profile_applied": 809438,
+            "first_frame_dma_complete": 381423,
+            "first_profile_frame_dma_complete": 921403
+          },
+          "lcd_init_us": 233737,
+          "profile_applied_after_ui_begin_us": 784690,
+          "first_frame_after_ui_begin_us": 356675,
+          "profile_frame_after_ui_begin_us": 896655
+        },
+        {
+          "run": 2,
+          "reset_to_first_info_complete_ms": 1036.247,
+          "internal_stage_us": {
+            "ui_begin": 24732,
+            "lcd_init_begin": 24766,
+            "lcd_init_end": 258517,
+            "ui_ready": 312392,
+            "first_profile_applied": 809436,
+            "first_frame_dma_complete": 381420,
+            "first_profile_frame_dma_complete": 921401
+          },
+          "lcd_init_us": 233751,
+          "profile_applied_after_ui_begin_us": 784704,
+          "first_frame_after_ui_begin_us": 356688,
+          "profile_frame_after_ui_begin_us": 896669
+        },
+        {
+          "run": 3,
+          "reset_to_first_info_complete_ms": 1036.088,
+          "internal_stage_us": {
+            "ui_begin": 24729,
+            "lcd_init_begin": 24762,
+            "lcd_init_end": 258513,
+            "ui_ready": 312389,
+            "first_profile_applied": 809433,
+            "first_frame_dma_complete": 381417,
+            "first_profile_frame_dma_complete": 921398
+          },
+          "lcd_init_us": 233751,
+          "profile_applied_after_ui_begin_us": 784704,
+          "first_frame_after_ui_begin_us": 356688,
+          "profile_frame_after_ui_begin_us": 896669
+        }
+      ],
+      "median_first_frame_after_ui_begin_us": 356688,
+      "median_profile_applied_after_ui_begin_us": 784704
+    },
+    "fast": {
+      "completed": true,
+      "runs": [
+        {
+          "run": 1,
+          "reset_to_first_info_complete_ms": 1150.572,
+          "internal_stage_us": {
+            "ui_begin": 24777,
+            "lcd_init_begin": 24815,
+            "lcd_init_end": 257518,
+            "ui_ready": 316081,
+            "first_profile_applied": 384524,
+            "first_frame_dma_complete": 458146,
+            "first_profile_frame_dma_complete": 501453
+          },
+          "lcd_init_us": 232703,
+          "profile_applied_after_ui_begin_us": 359747,
+          "first_frame_after_ui_begin_us": 433369,
+          "profile_frame_after_ui_begin_us": 476676
+        },
+        {
+          "run": 2,
+          "reset_to_first_info_complete_ms": 1150.176,
+          "internal_stage_us": {
+            "ui_begin": 24780,
+            "lcd_init_begin": 24818,
+            "lcd_init_end": 257521,
+            "ui_ready": 316076,
+            "first_profile_applied": 384526,
+            "first_frame_dma_complete": 457727,
+            "first_profile_frame_dma_complete": 500810
+          },
+          "lcd_init_us": 232703,
+          "profile_applied_after_ui_begin_us": 359746,
+          "first_frame_after_ui_begin_us": 432947,
+          "profile_frame_after_ui_begin_us": 476030
+        },
+        {
+          "run": 3,
+          "reset_to_first_info_complete_ms": 1150.072,
+          "internal_stage_us": {
+            "ui_begin": 24755,
+            "lcd_init_begin": 24793,
+            "lcd_init_end": 257518,
+            "ui_ready": 316073,
+            "first_profile_applied": 384524,
+            "first_frame_dma_complete": 457728,
+            "first_profile_frame_dma_complete": 500808
+          },
+          "lcd_init_us": 232725,
+          "profile_applied_after_ui_begin_us": 359769,
+          "first_frame_after_ui_begin_us": 432973,
+          "profile_frame_after_ui_begin_us": 476053
+        }
+      ],
+      "median_first_frame_after_ui_begin_us": 432973,
+      "median_profile_applied_after_ui_begin_us": 359747
+    },
+    "fast2": {
+      "completed": true,
+      "runs": [
+        {
+          "run": 1,
+          "reset_to_first_info_complete_ms": 1029.049,
+          "internal_stage_us": {
+            "ui_begin": 24728,
+            "lcd_init_begin": 24766,
+            "lcd_init_end": 257514,
+            "ui_ready": 308497,
+            "first_profile_applied": 374589,
+            "first_frame_dma_complete": 374421,
+            "first_profile_frame_dma_complete": null
+          },
+          "lcd_init_us": 232748,
+          "profile_applied_after_ui_begin_us": 349861,
+          "first_frame_after_ui_begin_us": 349693,
+          "profile_frame_after_ui_begin_us": null
+        },
+        {
+          "run": 2,
+          "reset_to_first_info_complete_ms": 1029.079,
+          "internal_stage_us": {
+            "ui_begin": 24715,
+            "lcd_init_begin": 24753,
+            "lcd_init_end": 257515,
+            "ui_ready": 308498,
+            "first_profile_applied": 374590,
+            "first_frame_dma_complete": 374422,
+            "first_profile_frame_dma_complete": null
+          },
+          "lcd_init_us": 232762,
+          "profile_applied_after_ui_begin_us": 349875,
+          "first_frame_after_ui_begin_us": 349707,
+          "profile_frame_after_ui_begin_us": null
+        },
+        {
+          "run": 3,
+          "reset_to_first_info_complete_ms": 1029.095,
+          "internal_stage_us": {
+            "ui_begin": 24721,
+            "lcd_init_begin": 24759,
+            "lcd_init_end": 257524,
+            "ui_ready": 308506,
+            "first_profile_applied": 374598,
+            "first_frame_dma_complete": 374430,
+            "first_profile_frame_dma_complete": null
+          },
+          "lcd_init_us": 232765,
+          "profile_applied_after_ui_begin_us": 349877,
+          "first_frame_after_ui_begin_us": 349709,
+          "profile_frame_after_ui_begin_us": null
+        }
+      ],
+      "median_first_frame_after_ui_begin_us": 349707,
+      "median_profile_applied_after_ui_begin_us": 349875
+    }
+  },
+  "comparison": {
+    "profile_applied_earlier_us": 434829,
+    "first_frame_earlier_us": 6981,
+    "rejected_fast_first_frame_regression_us": 76285
+  },
+  "local_validation": {
+    "native_asan_ubsan_executables": 22,
+    "simulator_memory_tests": 102,
+    "preview_driver_tests": 3,
+    "preview_scenes": 11,
+    "early_profile_test_red_green": true,
+    "static_ram_bytes": 96848,
+    "linked_flash_bytes": 1417961
+  },
+  "delivery": {
+    "app_write_and_verify_passed": true,
+    "backup_verified": true,
+    "binary": {
+      "bytes": 1424544,
+      "firmware": "0.4.14-fastboot",
+      "sha256": "26509ebe3f0fd032ab750bcf2d136bc5009825f28f007c1258cbc070ff93f224"
+    },
+    "boot_probe_removed": true,
+    "capture_bytes": 153600,
+    "capture_crc32": "eaa0e4ed",
+    "completed": true,
+    "firmware": "0.4.14-fastboot",
+    "navigation_commands_sent": false,
+    "port_closed": true
+  },
+  "final_state": {
+    "info": {
+      "actuators_enabled": false,
+      "build": "normal",
+      "cpu_mhz": 240,
+      "firmware": "0.4.14-fastboot",
+      "flash_bytes": 4194304,
+      "mode": "bench",
+      "profile_persisted": true,
+      "profile_status": 1,
+      "psram_bytes": 0,
+      "reduced_motion": false,
+      "refresh_mode": 0,
+      "sd_mounted": true,
+      "sensor_inputs_enabled": false,
+      "simulation_enabled": false,
+      "simulation_protocol": 1
+    },
+    "port_closed": true,
+    "radios": {
+      "ble_advertising": false,
+      "ble_connected": false,
+      "ble_enabled": false,
+      "ble_pairing_pending": false,
+      "memory_failure": false,
+      "running": true,
+      "wifi_connected": false,
+      "wifi_connecting": false,
+      "wifi_enabled": false,
+      "wifi_scanning": false,
+      "worker_wakeups": 0
+    }
+  },
+  "limits": [
+    "No controlled power-cycle, automotive power ramp, cold boot or optical FPS measurement.",
+    "First image improved about7ms in this metric profile; do not describe435ms profile gain as435ms faster first image.",
+    "The first fast variant was rejected for a first-frame regression; only fast2 was delivered without instrumentation.",
+    "No post-profile DMA was observed in fast2 with unchanged unit legends; this marker stays null and is not a zero-time measurement.",
+    "Initial diagnostic reads occurred before all stages finished and were rejected; final comparison uses completed stage records.",
+    "Imperial profile correctness is tested on host; its physical startup timing was not measured.",
+    "No GPIO, bootloader, SDK, calibration, LCD delay, radio association or SD format changes."
+  ]
+}

@@ -1,9 +1,10 @@
-# Recepção serial independente de respostas longas — candidata 0.4.12
+# Recepção serial independente de respostas longas — 0.4.12
 
 O pedido de setup foi ampliado explicitamente para usar as ferramentas na
 melhoria do código. Esta alteração trata o acoplamento RX/TX encontrado na
-bateria anterior. **Foi validada no computador e por compilação; não foi
-gravada nem ensaiada na placa nesta etapa.**
+bateria anterior. A etapa inicial foi validada no computador e por compilação,
+sem gravar a placa. **Na etapa física autorizada de 2026-11-12, os quatro casos
+concluíram e o normal `0.4.12-rx` foi instalado e verificado.**
 
 ## Problema e evidência
 
@@ -86,6 +87,64 @@ PLATFORMIO_CORE_DIR="$PWD/.tools/platformio" .venv/bin/pio run -d firmware/ecu -
 
 A candidata usa `0.4.12-rx`; os ambientes diagnósticos e seus clientes foram
 identificados com 0.4.12 para evitar ensaiar uma versão diferente por engano.
-A última instalação confirmada continua 0.4.11. Uma próxima etapa física deve
-gravar deliberadamente a candidata e repetir os casos de 100 Hz, sem presumir que
-o resultado do modelo já resolveu o timeout na placa.
+Ao encerrar a etapa inicial, a última instalação confirmada ainda era 0.4.11;
+o teste em memória não foi tratado como resultado físico. A bancada posterior
+está registrada separadamente abaixo.
+
+## Bancada USB concluída — 2026-11-12
+
+Base `40626184d754dd9b4e12a37ed68a74d3690ca8e0`, após nova execução dos
+22 executáveis nativos ASan/UBSan, 102 testes Qt/cliente em memória e builds
+`ecu-normal`/`ecu-load-benchmark`. A ACL temporária foi concedida pelo operador
+somente ao usuário/dispositivo da serial. O aplicativo 0.4.11 foi preservado
+em backup privado do slot e teve seu prefixo conferido pelo SHA-256 conhecido;
+a tabela de partições foi comparada antes de qualquer escrita.
+
+O diagnóstico `0.4.12-load-bench` executou controle USB100, nominal USB100 e
+nominal USB50, com reset antes de cada caso e carga de 15 s. Depois, somente
+o aplicativo normal novo foi gravado em `0x10000`, com escrita e
+`verify-flash` aprovados. No normal `0.4.12-rx`, outro caso USB100 manteve
+12 consultas concorrentes de estado e verificou o TTL ao interromper o envio.
+
+| Caso | Envio observado | Slots pulados pelo host | Apresentações / janela UI | p95 do intervalo UI | Maior tick UI |
+| --- | ---: | ---: | ---: | ---: | ---: |
+| Controle USB100, diagnóstico | 100,025 Hz | 0 | 600 / 10.000 ms | 25,637 ms | 16,512 ms |
+| Nominal USB100, diagnóstico | 100,020 Hz | 0 | 600 / 10.001 ms | 25,672 ms | 16,858 ms |
+| Nominal USB50, diagnóstico | 50,054 Hz | 0 | 600 / 10.000 ms | 25,377 ms | 16,639 ms |
+| USB100, aplicativo normal | 100,031 Hz | 0 | 600 / 10.000 ms | 25,929 ms | 14,591 ms |
+
+Os quatro casos concluíram sem timeout, com janelas UI sintéticas completas e
+não interrompidas, SIM encerrada, rádios restaurados e porta fechada; as cargas
+diagnósticas também tiveram parada confirmada. No normal, a consulta após uma
+pausa de 900 ms confirmou `stale`/`live=false`, seguida de `sim-stop` confirmado.
+Os casos de controle e nominal USB100 que antes falharam com `control_timeout`
+concluíram neste reteste; as falhas históricas continuam preservadas na
+[bateria anterior](bateria-carga-sintetica.md).
+
+Na carga nominal USB100: 1500 lotes produzidos, 1380 consumidos,
+120 substituídos, zero pendentes e zero períodos perdidos do scheduler.
+As 120 substituições pertencem ao mailbox da carga sintética, não ao USB.
+Taxa de envio e slots pulados descrevem o produtor no host; o watermark de
+sequência SIM não conta frames aceitos nem permite afirmar perda USB zero.
+Heap mínimo e folgas de pilha do diagnóstico cobrem o boot/tarefa inteiro,
+não apenas a janela UI nem o consumo do aplicativo normal.
+
+A barreira texto→imagem também foi exercitada na placa: `info` seguido de
+`screen-capture`, na mesma escrita, concluiu com texto antes do binário,
+153600 B recebidos e CRC32 `d93988db` verificado. O PNG privado foi inspecionado:
+menu legível, SD pronto e conexões desligadas. Isso não compara seus pixels com
+capturas históricas nem mede atualização óptica do LCD.
+
+Estado final, reconferido após a captura: normal `0.4.12-rx`, SD montado,
+perfil persistido, SIM e rádios desligados, sensores/atuadores desabilitados.
+A tabela de partições permaneceu byte a byte igual. Não foram enviados comandos
+de escrita de NVS/calibração/tabela nem de formato SD. Aplicativo final:
+1.424.480 B, SHA-256
+`f3a58a5df29cf06d5fffc7801331c33f92e10407547a54532764eefa89a22ea5`.
+
+[Agregados revisados dos quatro casos, entrega e captura](measurements/serial-rx-2026-11-12.json).
+Uma execução por caso, sem refresh SD, busca Wi-Fi ou anúncio BLE nesta rodada.
+A prévia host pertence à etapa anterior e não foi reexecutada nesta bancada.
+Apresentações contam transferências parciais DMA; tempos UI são de parede.
+Não há medição de FPS óptico, percentual de CPU livre, sensores reais,
+condicionamento automotivo, injeção/ignição ou veículo.

@@ -955,3 +955,152 @@ Método, footprint (+16 B de RAM estática), definição do contador e limites e
 [agregados](measurements/resource-budget-2026-11-11.json). A cópia no RX BLE
 permanece; a API por referência é protegida no SDK instalado. Aquisição física,
 condicionamento e atuação não foram habilitados.
+
+## Recepção serial independente de respostas longas — 0.4.12
+
+### Sistema e execução local — 2026-11-12
+
+A etapa inicial de setup/correção foi validada em memória e compilação, sem
+gravação. Antes da bancada posterior, foram reexecutados 22 executáveis nativos
+ASan/UBSan, 102 testes Qt/cliente com transporte em memória e os builds locais
+`ecu-normal`/`ecu-load-benchmark`, todos aprovados. A primeira tentativa nativa
+sob sandbox foi limitada por LeakSanitizer/ptrace; a execução posterior no host
+passou mantendo os sanitizadores. Isso não constitui resultado de hardware.
+A prévia host já inspecionada na etapa inicial não foi reexecutada nesta bancada.
+
+### Bancada USB e entrega do aplicativo normal
+
+Com ACL temporária concedida pelo operador ao usuário/dispositivo específico,
+o aplicativo normal 0.4.11 foi identificado e preservado em backup privado do
+slot de 1.966.080 B. Seu prefixo foi conferido pelo hash conhecido e a tabela de
+partições comparada antes da gravação. Diagnóstico 0.4.12 instalado somente em
+app `0x10000`; três casos de 15 s executados com reset antes de cada um:
+controle USB100, nominal USB100 e nominal USB50. Depois foi instalado o novo
+normal `0.4.12-rx`, com escrita e `verify-flash` aprovados, e ensaiado USB100
+com 12 consultas concorrentes de estado.
+
+Os quatro casos concluíram sem timeout, com 600 apresentações parciais cada
+em janelas sintéticas de aproximadamente 10 s, sem interrupção. Taxas de envio
+observadas: 100,025/100,020/50,054/100,031 Hz, respectivamente. Os dois casos
+USB100 do diagnóstico que haviam falhado com `control_timeout` na 0.4.11
+concluíram neste reteste. No normal: p95 do intervalo entre apresentações
+25,929 ms, tick máximo 14,591 ms. Uma pausa de 900 ms confirmou estado SIM
+`stale` e `live=false` antes de encerrar a sessão com `sim-stop`.
+
+Na carga nominal USB100, 1500 lotes produzidos = 1380 consumidos +
+120 substituídos + zero pendentes; zero períodos perdidos do scheduler.
+As substituições pertencem ao mailbox da carga sintética, não ao USB.
+Os quatro produtores registraram zero slots pulados, mas esse contador mede
+o host; o watermark SIM não permite contar frames aceitos nem afirmar perda
+USB zero. SIM/rádios e portas foram encerrados, com parada das cargas confirmada.
+
+### Captura, estado final e limites
+
+A checagem `info` seguido de `screen-capture`, na mesma escrita, confirmou
+texto antes do binário e captura de 153600 B com CRC32 `d93988db` verificado.
+PNG privado inspecionado: menu legível, SD pronto e conexões desligadas.
+Sem publicação do PNG nem comparação de pixels com capturas históricas.
+
+Estado reconferido após a captura: normal `0.4.12-rx`, SD montado, perfil
+persistido, SIM/rádios off e sensores/atuadores false. Tabela de partições
+byte a byte igual; sem comandos de escrita de NVS/calibração/tabela ou
+formato SD. Aplicativo final 1.424.480 B, SHA-256
+`f3a58a5df29cf06d5fffc7801331c33f92e10407547a54532764eefa89a22ea5`.
+
+Uma execução por caso, sem repetir carga de refresh SD, busca Wi-Fi ou anúncio
+BLE. Contadores DMA e tempos de parede não medem FPS óptico, CPU livre ou
+fluidez observada ao longo do tempo. Nenhum sensor real, condicionamento
+automotivo, injeção/ignição ou veículo foi validado.
+[Método e contexto](serial-rx-0412.md) e
+[agregados revisados](measurements/serial-rx-2026-11-12.json).
+
+## Inicialização direta no painel — 0.4.13
+
+Pedido posterior do responsável: ligar diretamente no painel para uso na gaiola,
+mantendo duplo toque para o menu. O boot preserva a calibração obrigatória quando
+ausente e aplica as unidades do primeiro perfil carregado após a UI.
+
+Validação local: 22 executáveis nativos ASan/UBSan, 102 testes do simulador,
+build normal, três testes do renderer e onze cenas da prévia aprovados.
+Regressões do boot e do perfil imperial tardio foram observadas falhando antes
+das respectivas correções; conclusão de calibração foi sintetizada somente no
+host. Capturas host inspecionadas. Normal 0.4.13-panel instalado somente em app
+0x10000, com backup da 0.4.12-rx, escrita e verify-flash aprovados. Captura após
+reinício, sem navegação/SIM, confirmou o painel aberto: 153600 B, CRC eaa0e4ed.
+Uma checagem inicial foi recusada porque o SD ainda estava desmontado; a montagem
+concluiu e três leituras estáveis confirmaram SD montado/perfil persistido.
+Final SIM/rádios off, sensores/atuadores false e porta fechada. Sem comandos de
+escrita NVS/calibração/tabela ou formato SD; touch físico e veículo não retestados.
+
+[Comportamento, testes e estado da instalação](inicializacao-painel-0413.md).
+
+## Carregamento inicial do perfil — 0.4.14
+
+Em 2026-11-12, após o responsável pedir boot mais rápido ao desligar/ligar a
+placa, foi removida a espera de até 500 ms para consultar o primeiro perfil
+pronto. Após `settingsLoaded=true`, o polling continua limitado a 500 ms.
+O painel só é reconstruído se o primeiro perfil muda unidades de velocidade ou
+temperatura; calibração, dados indisponíveis e navegação foram preservados.
+GPIOs, frequências, SDK, bootloader e esperas de inicialização do LCD não mudaram.
+
+Validação local: 22 executáveis nativos ASan/UBSan, 102 testes do simulador em
+memória, três testes do driver, onze cenas host e build normal aprovados.
+Regressão do perfil imperial chegando 10 ms após o boot observada em RED antes
+da correção. Instrumentação de tempo existiu somente nos binários temporários;
+foi retirada das fontes de produção.
+
+O A/B físico teve três resets por RTS em cada variante, sem cortar alimentação,
+usando o perfil padrão métrico dessa unidade.
+Medianas desde o início de `ui::begin()`: primeiro DMA 356,688 → 349,707 ms;
+perfil aplicado 784,704 → 349,875 ms. Portanto, o perfil chegou 434,829 ms antes,
+mas o primeiro quadro DMA melhorou apenas 6,981 ms. A tentativa simples anterior
+foi descartada porque reconstruir o painel incondicionalmente atrasou o primeiro
+DMA para 432,973 ms, regressão de 76,285 ms.
+
+O marcador de quadro após aplicação do perfil ficou `null` nas três execuções
+finais: unidades métricas iguais não exigiram novo redraw marcado. Não foi
+atribuído tempo zero nem inventado um novo tempo de apresentação. A consulta
+dos marcos ocorreu após espera de 1,2 s desde o primeiro `info`; essa espera
+do condutor não é tempo interno de boot. Portas encerradas nos três casos.
+
+Artefato final `0.4.14-fastboot`: RAM estática 96.848 B, flash do linker
+1.417.961 B, binário 1.424.544 B, SHA-256
+`26509ebe3f0fd032ab750bcf2d136bc5009825f28f007c1258cbc070ff93f224`.
+Normal instalado somente em app `0x10000`, com backup da 0.4.13 validado,
+escrita e `verify-flash` aprovados e probe temporário ausente. Captura após
+reinício, sem navegação: 153600 B, CRC32 `eaa0e4ed`; imagem inspecionada com
+painel `--`/`SEM SINAL` e layout preservado. Estado final: SD montado, perfil
+persistido, SIM/rádios desligados, sensores/atuadores false e porta fechada.
+
+São resets de bancada e marcos internos da aplicação, sem medição de
+alimentação→imagem, boot óptico ou touch a frio. Nenhum novo ensaio de cargas SD,
+Wi-Fi/BLE, aquisição real ou veículo. Unidades imperiais foram conferidas no host;
+seu desempenho físico não foi medido. O ganho do perfil não deve ser apresentado
+como redução de aproximadamente 435 ms no aparecimento inicial da tela.
+[Método e limites](boot-rapido-0414.md) e
+[agregados revisados](measurements/boot-speed-2026-11-12.json).
+
+## Correções da auditoria — 0.4.15 instalada
+
+Os seis achados da auditoria da 0.4.14 foram corrigidos: barreira de conclusão
+no Wi-Fi, unidades após importação assíncrona, pixels da escala RPM, fluxo e
+asserts da prévia imperial, snapshot de pinagem e retry de comando inválido na
+manutenção. O início do scan usa IDF diretamente, evitando a escrita tardia de
+flags do wrapper Arduino; os clientes dos diagnósticos reconhecem as versões
+0.4.12/0.4.15 da variante correta.
+
+Passaram seis builds, 24 executáveis nativos ASan/UBSan, 107 testes do simulador,
+39 testes auxiliares, 11 cenas e regressões adicionais de UI. Revisão independente
+aprovou manutenção e integração final. Validador canônico: 14 sinais, zero erros,
+três avisos conhecidos. Fontes e versões preservadas; sem aquisição/atuação real.
+
+Normal 0.4.15-audit instalado somente no app `0x10000`, com backup da 0.4.14,
+escrita/verify aprovados e tabela de partições idêntica após leitura nova.
+Captura do boot sem navegação/SIM: 153.600 B, CRC32 `eaa0e4ed`, painel direto
+com `-- / SEM SINAL` inspecionado. Cinco cancelamentos e duas buscas Wi-Fi
+posteriores passaram; a bancada não força a ordem interna do callback usada no host.
+USB100: produtor 99,995 Hz, zero slots pulados, 600 apresentações em 10 s,
+TTL confirmado após 900 ms. SIM/rádios off, SD/perfil prontos, sensores/atuadores
+false e portas fechadas ao encerrar. Sem novos ensaios de touch, formatação,
+importação SD física, boot óptico ou veículo.
+[Alterações, evidências e limites](correcoes-auditoria-0415.md).

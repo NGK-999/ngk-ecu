@@ -1,0 +1,144 @@
+{
+  "schema_version": 1,
+  "date": "2026-11-12",
+  "firmware": "0.4.14-fastboot",
+  "source_base_commit": "40626184d754dd9b4e12a37ed68a74d3690ca8e0",
+  "source_file_count": 59,
+  "source_manifest_sha256": "7ef1ce29e967a19fc1811272f8ba32b5517e4b419c63c9e329443c3508dd39d9",
+  "production_changed": false,
+  "usb_accessed": false,
+  "firmware_written": false,
+  "canonical_checks": {
+    "native_asan_ubsan_executables": 22,
+    "simulator_tests": 102,
+    "setup_tests": 13,
+    "font_tests": 15,
+    "icon_tests": 2,
+    "capture_tests": 6,
+    "preview_driver_tests": 3,
+    "python_tests_skipped": 0,
+    "platformio_builds_passed": [
+      "ecu-normal",
+      "ecu-render-reference",
+      "ecu-load-benchmark",
+      "ecu-sd-benchmark",
+      "ecu-maintenance",
+      "ecu-benchmark"
+    ],
+    "pin_audit_launcher_exit_code": 2,
+    "pin_audit_stale_entry": "firmware/ecu/src/main.cpp",
+    "pin_validator_direct_valid": true,
+    "pin_validator_direct_error_count": 0,
+    "pin_validator_direct_warnings": [
+      {
+        "gpio": 15,
+        "code": "STRAPPING_PIN"
+      },
+      {
+        "gpio": 2,
+        "code": "STRAPPING_PIN"
+      },
+      {
+        "gpio": 5,
+        "code": "STRAPPING_PIN"
+      }
+    ]
+  },
+  "rea": {
+    "tool": "6.8.0",
+    "operation": "section_headers",
+    "exit_code": 0,
+    "completion_status": "complete",
+    "artifact_changed": false,
+    "elf_sha256": "b74ebe7a8de17354794b1f623fcf230e8b73a3235e8a6329b87b21916ea116e9"
+  },
+  "findings": [
+    {
+      "id": "A1",
+      "priority": "P1",
+      "file": "firmware/ecu/src/radio.cpp",
+      "line": 219,
+      "kind": "scan_cancellation_result_lifetime_race",
+      "evidence": "ASan heap-use-after-free in synthetic scheduling of exact Arduino2.0.17 scanDone/scanDelete methods; no physical incidence measured"
+    },
+    {
+      "id": "A2",
+      "priority": "P2",
+      "file": "firmware/ecu/src/ui.cpp",
+      "line": 1216,
+      "kind": "stale_units_after_async_profile_import",
+      "synthetic_input": {
+        "speed_kph": 100,
+        "block_celsius": 100
+      },
+      "observed_output": {
+        "speed_text": "62",
+        "speed_unit": "km/h",
+        "temperature_text": "212",
+        "temperature_unit": "C"
+      },
+      "evidence": "Real LVGL8.4 with production UI prefix and in-memory services"
+    },
+    {
+      "id": "A3",
+      "priority": "P3",
+      "file": "firmware/ecu/src/ui.cpp",
+      "line": 505,
+      "kind": "stale_graduation_pixels_after_scale_profile",
+      "configured_rpm_scale": 10000,
+      "stale_ticks": [
+        2000,
+        4000,
+        6000
+      ],
+      "expected_ticks": [
+        2500,
+        5000,
+        7500
+      ],
+      "pixels_changed_after_forced_invalidation": 380
+    },
+    {
+      "id": "A4",
+      "priority": "P3",
+      "file": "tools/ui_preview/hooks.cpp.inc",
+      "line": 18,
+      "kind": "imperial_preview_does_not_refresh_or_assert_units"
+    },
+    {
+      "id": "A5",
+      "priority": "P3",
+      "file": "tools/esp32-audit-board.sha256",
+      "line": 4,
+      "kind": "stale_audit_snapshot_blocks_launcher"
+    },
+    {
+      "id": "A6",
+      "priority": "P3",
+      "file": "firmware/ecu/src/main.cpp",
+      "line": 535,
+      "kind": "invalid_maintenance_request_latches_submission_until_reboot",
+      "evidence": "Static command/policy inspection only; formatter not executed"
+    }
+  ],
+  "conditional_dependency_observation": {
+    "sdk": "Arduino-ESP32 2.0.17",
+    "file": "cores/esp32/esp32-hal-misc.c",
+    "line": 249,
+    "description": "Default NVS erase recovery for NO_FREE_PAGES/NEW_VERSION_FOUND exists in source and linked initArduino; errors not observed on hardware"
+  },
+  "host_navigation_memory_check": {
+    "navigations": 630,
+    "lv_mem_test_passed": true,
+    "free_bytes": 17488,
+    "largest_free_bytes": 17488,
+    "fragmentation_percent": 0
+  },
+  "limits": [
+    "No hardware, USB, NVS read, flash, reset, SD format or vehicle test.",
+    "Synthetic WiFi driver models one unsafe interleaving; it does not establish physical frequency or all driver scheduling behavior.",
+    "Host UI service completion is synthetic; it is not a physical SD latency measurement.",
+    "No new concrete P1/P2 found in parser, TX reserves/order, SIM sessions/TTL or Python transport/model/codec/cycle.",
+    "Passing test suites and section inspection do not prove absence of bugs."
+  ]
+}

@@ -254,6 +254,40 @@ class LoadBenchTests(unittest.TestCase):
         with self.assertRaises(client.BenchError):
             client.validate_identity({**info_fixture(), "sd_mounted": False}, radios_fixture(), "sd-refresh")
 
+    def test_identity_accepts_only_reviewed_load_firmware_versions(self):
+        client = load_client()
+        for version in ("0.4.12-load-bench", "0.4.15-load-bench"):
+            with self.subTest(version=version):
+                info = {**info_fixture(), "firmware": version}
+                client.validate_identity(info, radios_fixture(), "off")
+                self.assertEqual(client.bounded(info, client.INFO)["firmware"], version)
+        for version in ("0.4.11-load-bench", "0.4.13-load-bench", "0.4.16-load-bench",
+                        "0.4.15-sd-io-bench", "0.4.15-audit", "0.4.12-sd-io-bench",
+                        "0.4.15-load-bench-extra", None, True, []):
+            with self.subTest(version=version), self.assertRaises(client.BenchError):
+                client.validate_identity({**info_fixture(), "firmware": version},
+                                         radios_fixture(), "off")
+
+    def test_current_firmware_keeps_protocol_and_physical_preconditions(self):
+        client = load_client()
+        current = {**info_fixture(), "firmware": "0.4.15-load-bench"}
+        for change in ({"build": "normal"}, {"mode": "reference"},
+                       {"simulation_protocol": 2}, {"load_benchmark_protocol": True},
+                       {"sensor_inputs_enabled": True}, {"actuators_enabled": True},
+                       {"simulation_enabled": True}, {"profile_persisted": False}):
+            with self.subTest(change=change), self.assertRaises(client.BenchError):
+                client.validate_identity({**current, **change}, radios_fixture(), "off")
+
+    def test_bounded_keeps_both_reviewed_load_versions_only(self):
+        client = load_client()
+        for version in ("0.4.12-load-bench", "0.4.15-load-bench"):
+            with self.subTest(version=version):
+                self.assertEqual(client.bounded({"firmware": version}, client.INFO),
+                                 {"firmware": version})
+        for version in ("0.4.15-sd-io-bench", "0.4.16-load-bench", []):
+            with self.subTest(version=version):
+                self.assertEqual(client.bounded({"firmware": version}, client.INFO), {})
+
     def test_status_rejects_bad_accounting_correlation_and_backwards_counters(self):
         client = load_client()
         good = status_fixture()

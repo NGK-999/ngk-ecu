@@ -163,6 +163,32 @@ class ScriptedBench:
 
 
 class SdBenchClientTests(unittest.TestCase):
+    def test_identity_accepts_only_reviewed_sd_firmware_versions(self):
+        for version in ("0.4.12-sd-io-bench", "0.4.15-sd-io-bench"):
+            with self.subTest(version=version):
+                info = {**info_fixture(), "firmware": version}
+                self.assertEqual(client.validate_identity(info, radios_fixture(), 30255),
+                                 info["sd_sectors"])
+        for version in ("0.4.11-sd-io-bench", "0.4.13-sd-io-bench", "0.4.16-sd-io-bench",
+                        "0.4.15-load-bench", "0.4.15-audit", "0.4.12-load-bench",
+                        "0.4.15-sd-io-bench-extra", None, True, []):
+            with self.subTest(version=version), self.assertRaises(client.BenchError):
+                client.validate_identity({**info_fixture(), "firmware": version},
+                                         radios_fixture(), 30255)
+
+    def test_current_firmware_keeps_protocol_card_and_radio_preconditions(self):
+        current = {**info_fixture(), "firmware": "0.4.15-sd-io-bench"}
+        for change in ({"build": "load-benchmark"}, {"mode": "reference"},
+                       {"simulation_protocol": 2}, {"sd_io_benchmark_protocol": True},
+                       {"sensor_inputs_enabled": True}, {"actuators_enabled": True},
+                       {"simulation_enabled": True}, {"sd_mounted": False},
+                       {"profile_persisted": False}, {"sd_mib": 1},
+                       {"sd_sectors": 0}, {"sd_spi_hz": 40_000_000}):
+            with self.subTest(change=change), self.assertRaises(client.BenchError):
+                client.validate_identity({**current, **change}, radios_fixture(), 30255)
+        with self.assertRaises(client.BenchError):
+            client.validate_identity(current, {**radios_fixture(), "wifi_enabled": True}, 30255)
+
     def test_baseline_polls_status_without_losing_ui_and_rejects_active_sd(self):
         class StatusPort(FakePort):
             def __init__(self, state="idle", with_ui=True):
